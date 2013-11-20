@@ -5,5 +5,10 @@
 	<color name="login_line_color">#458adb</color>
 	<color name="login_link_color">#001d43</color>
 	<color name="login_text_color">#ffffff</color>
-
+	<color name="list_bg_fep">#ff00ff80</color>
+	<color name="list_bg_fe">#00ffff80</color>
+	<color name="list_bg_fp">#ff00ff</color>
+	<color name="list_bg_p">#ff0000</color>
+	<color name="list_bg_f">#00ffff</color>
+	<color name="list_bg_c">#808080</color>
 </resources>

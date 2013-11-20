@@ -127,7 +127,7 @@ public class MetaSearch
 						startActivity(intent);
 					} else {
 						Intent myIntent = new Intent();
-						myIntent.setClass(getApplicationContext(), EmbeddedWebRemote.class);
+						myIntent.setClass(getApplicationContext(), TorrentViewActivity.class);
 						myIntent.setAction(Intent.ACTION_VIEW);
 						myIntent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 						myIntent.setData(uri);

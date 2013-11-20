@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:padding="10dp"
+	android:paddingLeft="0dp" >
+
+	<TextView
+		android:id="@+id/torrentrow_name"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignParentRight="true"
+		android:layout_alignParentTop="true"
+		android:layout_toRightOf="@+id/torrentrow_progress"
+		android:text="Torrent Name"
+		android:textAppearance="?android:attr/textAppearanceLarge" />
+
+	<TextView
+		android:id="@+id/torrentrow_state"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignLeft="@+id/torrentrow_name"
+		android:layout_below="@+id/torrentrow_name"
+		android:layout_toLeftOf="@+id/torrentRow_speed_graph"
+		android:text="Torrent State"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
+
+	<ProgressBar
+		android:id="@+id/torrentrow_progress"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignParentLeft="true"
+		android:layout_alignParentTop="true"
+		android:layout_alignTop="@+id/torrentrow_name"
+		android:indeterminateOnly="false"
+		android:max="10000"
+		android:maxHeight="500dp"
+		android:maxWidth="500dp"
+		android:minHeight="90dp"
+		android:minWidth="90dp"
+		android:progress="10000"
+		android:progressDrawable="@drawable/progress_ring" />
+
+	<TextView
+		android:id="@+id/torrentrow_info"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignLeft="@+id/torrentrow_state"
+		android:layout_below="@+id/torrentrow_state"
+		android:layout_toLeftOf="@+id/torrentRow_speed_graph"
+		android:text="5 Files, 128MB"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
+
+	<ImageView
+		android:id="@+id/torrentRow_speed_graph"
+		android:layout_width="100dp"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentRight="true"
+		android:layout_alignTop="@+id/torrentrow_state"
+		android:background="#777"
+		android:minHeight="20dp" />
+
+	<TextView
+		android:id="@+id/torrentrow_upspeed"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignBottom="@+id/torrentRow_speed_graph"
+		android:layout_alignRight="@+id/torrentRow_speed_graph"
+		android:text="↑ 0 kB/s"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
+
+	<TextView
+		android:id="@+id/torrentrow_downspeed"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignRight="@+id/torrentRow_speed_graph"
+		android:layout_alignTop="@+id/torrentRow_speed_graph"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
+
+	<LinearLayout
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignBottom="@id/torrentrow_progress"
+		android:layout_alignLeft="@id/torrentrow_progress"
+		android:layout_alignRight="@id/torrentrow_progress"
+		android:layout_alignTop="@id/torrentrow_progress"
+		android:layout_below="@+id/torrentRow_speed_graph"
+		android:gravity="center_vertical"
+		android:orientation="vertical" >
+
+		<TextView
+			android:id="@+id/torrentrow_progress_pct"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:gravity="center"
+			android:text="11%"
+			android:textAlignment="center"
+			android:textAppearance="?android:attr/textAppearanceMedium" />
+
+		<TextView
+			android:id="@+id/torrentrow_eta"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:gravity="center"
+			android:text="1m"
+			android:textSize="12sp" />
+
+	</LinearLayout>
+
+</RelativeLayout>

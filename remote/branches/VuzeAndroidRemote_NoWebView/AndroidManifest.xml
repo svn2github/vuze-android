@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.vuze.android.remote"
-	android:versionCode="23"
-	android:versionName="1.0.4" >
+	android:versionCode="24"
+	android:versionName="Alpha 24" >
 
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -41,7 +41,7 @@
 			android:name="com.vuze.android.remote.activity.MetaSearch"
 			android:configChanges="keyboardHidden|orientation|screenSize"
 			android:label="@string/title_activity_metasearch"
-			android:parentActivityName="com.vuze.android.remote.activity.EmbeddedWebRemote" >
+			android:parentActivityName="com.vuze.android.remote.activity.TorrentViewActivity" >
 			<intent-filter>
 				<action android:name="android.intent.action.SEARCH" />
 			</intent-filter>
@@ -51,10 +51,10 @@
 				android:resource="@xml/searchable" />
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
-				android:value="com.vuze.android.remote.activity.EmbeddedWebRemote" />
+				android:value="com.vuze.android.remote.activity.TorrentListActivity" />
 		</activity>
 		<activity
-			android:name="com.vuze.android.remote.activity.EmbeddedWebRemote"
+			android:name="com.vuze.android.remote.activity.TorrentViewActivity"
 			android:configChanges="keyboardHidden|orientation|screenSize"
 			android:label="@string/title_activity_embedded_web_remote"
 			android:parentActivityName="com.vuze.android.remote.activity.IntentHandler"

@@ -40,29 +40,25 @@ public class ProfileArrayAdapter
 		TextView tvSince = (TextView) rowView.findViewById(R.id.profilerow_since);
 		ImageButton ibEdit = (ImageButton) rowView.findViewById(R.id.profilerow_edit);
 
-		Object object = getItem(position);
-		if (object instanceof RemoteProfile) {
-			final RemoteProfile profile = (RemoteProfile) object;
-			tvNick.setText(profile.getNick());
-			long lastUsedOn = profile.getLastUsedOn();
-			if (lastUsedOn == 0) {
-				tvSince.setText(R.string.last_used_never);
-			} else {
-				String since = DateUtils.getRelativeDateTimeString(context, lastUsedOn,
-						DateUtils.MINUTE_IN_MILLIS, DateUtils.WEEK_IN_MILLIS * 2, 0).toString();
-				String s = context.getResources().getString(R.string.last_used_ago,
-						since);
-				tvSince.setText(s);
-			}
-
-			ibEdit.setOnClickListener(new OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					((IntentHandler) context).editProfile(profile);
-				}
-			});
-
+		final RemoteProfile profile = getItem(position);
+		tvNick.setText(profile.getNick());
+		long lastUsedOn = profile.getLastUsedOn();
+		if (lastUsedOn == 0) {
+			tvSince.setText(R.string.last_used_never);
+		} else {
+			String since = DateUtils.getRelativeDateTimeString(context, lastUsedOn,
+					DateUtils.MINUTE_IN_MILLIS, DateUtils.WEEK_IN_MILLIS * 2, 0).toString();
+			String s = context.getResources().getString(R.string.last_used_ago,
+					since);
+			tvSince.setText(s);
 		}
+
+		ibEdit.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				((IntentHandler) context).editProfile(profile);
+			}
+		});
 
 		return rowView;
 	}

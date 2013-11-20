@@ -17,54 +17,98 @@
 
 package com.vuze.android.remote.rpc;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
 
+import android.net.http.AndroidHttpClient;
+import android.util.Log;
+
+import com.aelitis.azureus.util.JSONUtils;
 import com.vuze.android.remote.AndroidUtils;
 
 public class RestJsonClient
 {
 	public static Object connect(String url)
 			throws RPCException {
+		return connect(url, null, null, null);
+	}
+
+	public static Map connect(String url, Map<?, ?> jsonPost, Header[] headers,
+			UsernamePasswordCredentials creds)
+			throws RPCException {
 		if (AndroidUtils.DEBUG) {
-			System.out.println("Execute " + url);
+			Log.d(null, "Execute " + url);
 		}
 		long now = System.currentTimeMillis();
 
-		BasicHttpParams basicHttpParams = new BasicHttpParams();
-		HttpProtocolParams.setUserAgent(basicHttpParams, "Vuze Android Remote");
-		HttpClient httpclient = new DefaultHttpClient(basicHttpParams);
-
-		// Prepare a request object
-		HttpGet httpget = new HttpGet(url); // IllegalArgumentException
-
-		// Execute the request
-		HttpResponse response;
-
-		Object json = null;
+		Map json = Collections.EMPTY_MAP;
 
 		try {
-			response = httpclient.execute(httpget);
+
+			BasicHttpParams basicHttpParams = new BasicHttpParams();
+			HttpProtocolParams.setUserAgent(basicHttpParams, "Vuze Android Remote");
+			//AndroidHttpClient.newInstance("Vuze Android Remote");
+			DefaultHttpClient httpclient = new DefaultHttpClient(basicHttpParams);
+			httpclient.getCredentialsProvider().setCredentials(
+					new AuthScope(null, -1), creds);
+
+			// Prepare a request object
+			HttpRequestBase httpRequest = jsonPost == null ? new HttpGet(url)
+					: new HttpPost(url); // IllegalArgumentException
+
+			if (jsonPost != null) {
+				HttpPost post = (HttpPost) httpRequest;
+				String postString = JSONUtils.encodeToJSON(jsonPost);
+				if (AndroidUtils.DEBUG) {
+					Log.d(null, "  Post: " + postString);
+				}
+				post.setEntity(new StringEntity(postString));
+				post.setHeader("Accept", "application/json");
+				post.setHeader("Content-type",
+						"application/x-www-form-urlencoded; charset=UTF-8");
+			}
+			
+			if (headers != null) {
+				for (Header header : headers) {
+					httpRequest.setHeader(header);
+				}
+			}
+
+			// Execute the request
+			HttpResponse response;
+
+			response = httpclient.execute(httpRequest);
 
 			long then = System.currentTimeMillis();
 			if (AndroidUtils.DEBUG) {
-				System.out.println("  conn ->" + (then - now) + "ms");
+				Log.d(null, "  conn ->" + (then - now) + "ms");
 			}
-
+			
 			now = then;
 
 			HttpEntity entity = response.getEntity();
-
+			
+			// XXX STATUSCODE!
+			
 			if (entity != null) {
 
 				// A Simple JSON Response Read
@@ -75,12 +119,20 @@ public class RestJsonClient
 
 				then = System.currentTimeMillis();
 				if (AndroidUtils.DEBUG) {
-					System.out.println("  readin ->" + (then - now) + "ms");
+					Log.d(null, "  readin ->" + (then - now) + "ms");
 				}
 				now = then;
 
 				try {
-					json = JSONValue.parseWithException(br);
+					Object o = JSONValue.parseWithException(br);
+					if (o instanceof Map) {
+						json = (Map) o;
+					} else {
+  					// could be : ArrayList, String, Number, Boolean
+  					Map map = new HashMap();
+  					map.put("value", o);
+  					json = map;
+					}
 
 				} catch (ParseException pe) {
 
@@ -88,7 +140,7 @@ public class RestJsonClient
 					String line = br.readLine().trim();
 
 					if (AndroidUtils.DEBUG) {
-						System.out.println("line: " + line);
+						Log.d(null, "line: " + line);
 					}
 					Header contentType = entity.getContentType();
 					if (line.startsWith("<")
@@ -96,7 +148,7 @@ public class RestJsonClient
 							|| (contentType != null && contentType.getValue().startsWith(
 									"text/html"))) {
 						// TODO: use android strings.xml
-						throw new RPCException(
+						throw new RPCException(response,
 								"Could not retrieve remote client location information.  The most common cause is being on a guest wifi that requires login before using the internet.");
 					}
 
@@ -106,7 +158,7 @@ public class RestJsonClient
 				}
 
 				if (AndroidUtils.DEBUG) {
-					System.out.println("JSON Result: " + json);
+					Log.d(null, "JSON Result: " + json);
 				}
 
 			}
@@ -118,7 +170,7 @@ public class RestJsonClient
 
 		if (AndroidUtils.DEBUG) {
 			long then = System.currentTimeMillis();
-			System.out.println("  parse ->" + (then - now) + "ms");
+			Log.d(null, "  parse ->" + (then - now) + "ms");
 		}
 		return json;
 	}

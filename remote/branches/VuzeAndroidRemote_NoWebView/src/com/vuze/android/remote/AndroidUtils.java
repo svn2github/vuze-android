@@ -106,14 +106,14 @@ public class AndroidUtils
 		});
 	}
 
-	public static void showError(Activity activity, int errMsgID,
+	public static void showConnectionError(Activity activity, int errMsgID,
 			boolean allowContinue) {
 		String errMsg = activity.getResources().getString(errMsgID);
-		showError(activity, errMsg, allowContinue);
+		showConnectionError(activity, errMsg, allowContinue);
 	}
 
-	public static void showError(final Activity activity, final String errMsg,
-			final boolean allowContinue) {
+	public static void showConnectionError(final Activity activity,
+			final String errMsg, final boolean allowContinue) {
 		activity.runOnUiThread(new Runnable() {
 			public void run() {
 				if (activity.isFinishing()) {
@@ -145,6 +145,41 @@ public class AndroidUtils
 
 	}
 
+	public static void showDialog(Activity activity, int titleID,
+			String msg) {
+		String title = activity.getResources().getString(titleID);
+		showDialog(activity, title,msg);
+	}
+
+	public static void showDialog(final Activity activity, final String title,
+			final String msg) {
+		activity.runOnUiThread(new Runnable() {
+			public void run() {
+				if (activity.isFinishing()) {
+					if (DEBUG) {
+						System.out.println("can't display -- finishing");
+					}
+					return;
+				}
+				Builder builder = new AlertDialog.Builder(activity).setMessage(msg).setCancelable(
+						true).setNegativeButton(android.R.string.ok,
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								if (activity.isTaskRoot()) {
+									new RemoteUtils(activity).openRemoteList(activity.getIntent());
+								}
+								activity.finish();
+							}
+						});
+				if (title != null) {
+					builder.setTitle(title);
+				}
+				builder.show();
+			}
+		});
+
+	}
+
 	public static void showFeatureRequiresVuze(final Activity activity,
 			final String feature) {
 		activity.runOnUiThread(new Runnable() {
@@ -158,11 +193,10 @@ public class AndroidUtils
 				String msg = activity.getResources().getString(R.string.vuze_required,
 						feature);
 				Builder builder = new AlertDialog.Builder(activity).setMessage(msg).setCancelable(
-						true).setPositiveButton(android.R.string.ok,
-						new OnClickListener() {
-							public void onClick(DialogInterface dialog, int which) {
-							}
-						});
+						true).setPositiveButton(android.R.string.ok, new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+					}
+				});
 				builder.show();
 			}
 		});
@@ -228,11 +262,11 @@ public class AndroidUtils
 		}
 
 		if (chooserIntent != null) {
-  		try {
-  			activity.startActivityForResult(chooserIntent, requestCode);
-  			return;
-  		} catch (android.content.ActivityNotFoundException ex) {
-  		}
+			try {
+				activity.startActivityForResult(chooserIntent, requestCode);
+				return;
+			} catch (android.content.ActivityNotFoundException ex) {
+			}
 		}
 		Toast.makeText(activity.getApplicationContext(),
 				activity.getResources().getString(R.string.no_file_chooser),

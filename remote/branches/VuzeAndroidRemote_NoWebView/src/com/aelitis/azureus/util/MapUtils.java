@@ -206,4 +206,22 @@ public class MapUtils
 		}
 	}
 
+	public static float getMapFloat(Map map, String key, float def) {
+		if (map == null) {
+			return def;
+		}
+		try {
+			Number n = (Number) map.get(key);
+			
+			if ( n == null ){
+				
+				return( def );
+			}
+
+			return n.floatValue();
+		} catch (Throwable e) {
+			return def;
+		}
+	}
+
 }

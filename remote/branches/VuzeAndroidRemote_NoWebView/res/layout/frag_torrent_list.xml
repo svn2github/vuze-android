@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:orientation="vertical"
+	tools:context=".activity.TorrentListFragment" >
+
+    <EditText
+    	android:id="@+id/filterText"
+    	android:layout_width="match_parent"
+    	android:layout_height="wrap_content"
+    	android:ems="10"
+    	android:hint="@string/hint_filter"
+    	android:imeOptions="actionNone"
+    	android:inputType="text"
+    	android:visibility="gone" >
+
+    	<requestFocus />
+    </EditText>
+
+    <ListView
+    	android:id="@+id/torlist_listview"
+    	android:layout_width="match_parent"
+    	android:layout_height="wrap_content"
+    	android:listSelector="@drawable/list_selector"
+    	android:choiceMode="multipleChoice" >
+
+    </ListView>
+
+</LinearLayout>

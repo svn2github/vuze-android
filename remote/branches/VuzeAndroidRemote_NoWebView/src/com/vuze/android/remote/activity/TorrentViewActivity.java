@@ -18,10 +18,9 @@
 package com.vuze.android.remote.activity;
 
 import java.io.*;
-import java.net.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 import org.gudy.azureus2.core3.util.DisplayFormatters;
 
@@ -32,25 +31,28 @@ import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.*;
 import android.content.DialogInterface.OnClickListener;
-import android.content.DialogInterface.OnDismissListener;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NavUtils;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Base64;
+import android.util.Log;
+import android.util.SparseBooleanArray;
 import android.view.*;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnLongClickListener;
 import android.view.inputmethod.InputMethodManager;
-import android.webkit.*;
-import android.webkit.CookieManager;
+import android.webkit.WebSettings;
+import android.widget.AbsListView.MultiChoiceModeListener;
 import android.widget.*;
+import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.SearchView.OnQueryTextListener;
 
 import com.aelitis.azureus.util.JSONUtils;
@@ -63,20 +65,15 @@ import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListe
 import com.vuze.android.remote.dialog.DialogFragmentOpenTorrent.OpenTorrentDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentSessionSettings.SessionSettingsListener;
 import com.vuze.android.remote.dialog.DialogFragmentSortBy.SortByDialogListener;
-import com.vuze.android.remote.rpc.RPC;
-import com.vuze.android.remote.rpc.RPCException;
+import com.vuze.android.remote.rpc.*;
 
-public class EmbeddedWebRemote
+public class TorrentViewActivity
 	extends FragmentActivity
 	implements OpenTorrentDialogListener, FilterByDialogListener,
-	SortByDialogListener, SessionSettingsListener, MoveDataDialogListener
+	SortByDialogListener, SessionSettingsListener, MoveDataDialogListener,
+	TorrentListReceivedListener, SessionSettingsReceivedListener,
+	TorrentAddedReceivedListener
 {
-	private WebView myWebView;
-
-	private ValueCallback<Uri> mUploadMessage;
-
-	private String rpcHost;
-
 	private SearchView mSearchView;
 
 	protected ActionMode mActionMode;
@@ -97,13 +94,7 @@ public class EmbeddedWebRemote
 
 	private EditText filterEditText;
 
-	private JSInterface jsInterface;
-
 	private String rpcRoot;
-
-	private Semaphore semGoBack;
-
-	private boolean goBackCancelled;
 
 	protected boolean uiReady = false;
 
@@ -137,16 +128,24 @@ public class EmbeddedWebRemote
 
 	private int rpcVersionAZ;
 
-	@SuppressWarnings("rawtypes")
-	protected List<Map> selectedTorrents = new ArrayList<Map>(0);
-
 	protected String page;
 
+	private TransmissionRPC rpc;
+
+	private ListView listview;
+
+	private TorrentAdapter adapter;
+
+	private Handler handler;
+
+	/* (non-Javadoc)
+	 * @see android.support.v4.app.FragmentActivity#onActivityResult(int, int, android.content.Intent)
+	 */
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		if (DEBUG) {
-			System.out.println("ActivityResult!! " + requestCode + "/" + resultCode
-					+ ";" + intent);
+			Log.d(null, "ActivityResult!! " + requestCode + "/" + resultCode + ";"
+					+ intent);
 		}
 
 		requestCode &= 0xFFFF;
@@ -155,26 +154,18 @@ public class EmbeddedWebRemote
 			Uri result = intent == null || resultCode != RESULT_OK ? null
 					: intent.getData();
 			if (DEBUG) {
-				System.out.println("result = " + result);
+				Log.d(null, "result = " + result);
 			}
 			if (result == null) {
 				return;
 			}
-			if (mUploadMessage != null) {
-				// came from the browser
-				mUploadMessage.onReceiveValue(result);
-				mUploadMessage = null;
-			} else {
-				openTorrent(result);
-			}
+			openTorrent(result);
 			return;
 		}
 
 		super.onActivityResult(requestCode, resultCode, intent);
 	}
 
-	@SuppressWarnings("deprecation")
-	@SuppressLint("SetJavaScriptEnabled")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -184,9 +175,8 @@ public class EmbeddedWebRemote
 
 		Intent intent = getIntent();
 		if (DEBUG) {
-			System.out.println("embeddedWebRemote intent = " + intent);
-			System.out.println("Type:" + intent.getType() + ";"
-					+ intent.getDataString());
+			Log.d(null, "TorrentViewActivity intent = " + intent);
+			Log.d(null, "Type:" + intent.getType() + ";" + intent.getDataString());
 		}
 
 		final Bundle extras = intent.getExtras();
@@ -203,14 +193,7 @@ public class EmbeddedWebRemote
 			setupIceCream();
 		}
 
-		if (Build.VERSION.SDK_INT >= 12) {
-			// needs to be done before first WebView instantiation
-			allowTheCookies();
-		}
-
-		setContentView(R.layout.activity_embedded_web_remote);
-
-		CookieManager.getInstance().setAcceptCookie(true);
+		setContentView(R.layout.activity_torrent_view);
 
 		// setup view ids now because listeners below may trigger as soon as we get them
 		tvUpSpeed = (TextView) findViewById(R.id.wvUpSpeed);
@@ -220,7 +203,7 @@ public class EmbeddedWebRemote
 		tvCenter = (TextView) findViewById(R.id.wvCenter);
 
 		filterEditText = (EditText) findViewById(R.id.filterText);
-		myWebView = (WebView) findViewById(R.id.webview);
+		listview = (ListView) findViewById(R.id.torlist_listview);
 
 		// register BroadcastReceiver on network state changes
 		mConnectivityReceiver = new BroadcastReceiver() {
@@ -255,156 +238,12 @@ public class EmbeddedWebRemote
 		}
 		setTitle(remoteProfile.getNick());
 
-		jsInterface = new JSInterface(this, myWebView, new JSInterfaceListener() {
-
-			public void uiReady() {
-				new Thread(new Runnable() {
-					public void run() {
-						setUIReady();
-					}
-				}, "UIReady").start();
-			}
-
-			@SuppressWarnings("rawtypes")
-			@Override
-			public void selectionChanged(final List<Map> selectedTorrentFields,
-					boolean haveActiveSel, boolean havePausedSel) {
-				EmbeddedWebRemote.this.selectedTorrents = selectedTorrentFields;
-				EmbeddedWebRemote.this.haveActiveSel = haveActiveSel;
-				EmbeddedWebRemote.this.havePausedSel = havePausedSel;
-
-				runOnUiThread(new Runnable() {
-					public void run() {
-						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-							selectionChangedHoneyComb(selectedTorrents.size());
-						}
-					}
-
-					@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-					private void selectionChangedHoneyComb(long selectionCount) {
-						if (selectionCount == 0) {
-							if (mActionMode != null) {
-								mActionMode.finish();
-							} else {
-								supportInvalidateOptionsMenu();
-							}
-							return;
-						}
-
-						showContextualActions();
-					}
-
-				});
-			}
-
-			@Override
-			public void cancelGoBack(boolean cancel) {
-				goBackCancelled = cancel;
-				semGoBack.release();
-			}
-
-			@Override
-			public void deleteTorrent(long torrentID) {
-				runJavaScript("deleteTorrent",
-						"transmission.remote.removeTorrentAndDataById(" + torrentID + ");");
-			}
-
-			@Override
-			public void updateSpeed(final long downSpeed, final long upSpeed) {
-				runOnUiThread(new Runnable() {
-					public void run() {
-						if (downSpeed <= 0) {
-							tvDownSpeed.setVisibility(View.GONE);
-						} else {
-							tvDownSpeed.setText(DisplayFormatters.formatByteCountToKiBEtcPerSec(downSpeed));
-							tvDownSpeed.setVisibility(View.VISIBLE);
-						}
-						if (upSpeed <= 0) {
-							tvUpSpeed.setVisibility(View.GONE);
-						} else {
-							tvUpSpeed.setText(DisplayFormatters.formatByteCountToKiBEtcPerSec(upSpeed));
-							tvUpSpeed.setVisibility(View.VISIBLE);
-						}
-					}
-				});
-			}
-
-			@Override
-			public void updateTorrentStates(boolean haveActive, boolean havePaused,
-					boolean haveActiveSel, boolean havePausedSel) {
-				EmbeddedWebRemote.this.haveActive = haveActive;
-				EmbeddedWebRemote.this.havePaused = havePaused;
-				EmbeddedWebRemote.this.haveActiveSel = haveActiveSel;
-				EmbeddedWebRemote.this.havePausedSel = havePausedSel;
-
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-					invalidateOptionsMenuHC();
-				}
-			}
-
-			@Override
-			public void updateTorrentCount(final long total) {
-				runOnUiThread(new Runnable() {
-					public void run() {
-						if (total == 0) {
-							tvTorrentCount.setText("");
-						} else {
-							tvTorrentCount.setText(total + " torrents");
-						}
-					}
-				});
-			}
-
-			@SuppressWarnings("rawtypes")
-			@Override
-			public void sessionPropertiesUpdated(Map map) {
-				SessionSettings settings = new SessionSettings();
-				settings.setDLIsAuto(MapUtils.getMapBoolean(map,
-						"speed-limit-down-enabled", true));
-				settings.setULIsAuto(MapUtils.getMapBoolean(map,
-						"speed-limit-up-enabled", true));
-				settings.setDownloadDir(MapUtils.getMapString(map, "download-dir", null));
-				long refreshRateSecs = MapUtils.getMapLong(map, "refresh_rate", 0);
-				long profileRefeshInterval = remoteProfile.getUpdateInterval();
-				long newRefreshRate = refreshRateSecs == 0 && profileRefeshInterval > 0
-						? profileRefeshInterval : refreshRateSecs;
-				if (refreshRateSecs != profileRefeshInterval || sessionSettings == null) {
-					settings.setRefreshIntervalEnabled(refreshRateSecs > 0);
-				} else {
-					settings.setRefreshIntervalEnabled(sessionSettings.isRefreshIntervalIsEnabled());
-				}
-				settings.setRefreshInterval(newRefreshRate);
-				settings.setDlSpeed(MapUtils.getMapLong(map, "speed-limit-down", 0));
-				settings.setUlSpeed(MapUtils.getMapLong(map, "speed-limit-up", 0));
-				if (EmbeddedWebRemote.this.sessionSettings == null) {
-					// first time: track RPC version
-					rpcVersion = MapUtils.getMapInt(map, "rpc-version", -1);
-					rpcVersionAZ = MapUtils.getMapInt(map, "az-rpc-version", -1);
-					if (rpcVersionAZ < 0 && map.containsKey("az-version")) {
-						rpcVersionAZ = 0;
-					}
-					page = "RPC v" + rpcVersion + "/" + rpcVersionAZ;
-
-					if (rpcVersion < 14) {
-						showOldRPCDialog();
-					}
-				}
-				EmbeddedWebRemote.this.sessionSettings = settings;
-
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-					invalidateOptionsMenuHC();
-				}
-			}
-		});
-
 		filterEditText.addTextChangedListener(new TextWatcher() {
 
 			@Override
 			public void onTextChanged(CharSequence s, int start, int before, int count) {
-				String newText = s.toString();
-				runJavaScript("filterText",
-						"transmission.setFilterText('" + newText.replaceAll("'", "\\'")
-								+ "');");
+				Filter filter = adapter.getFilter();
+				filter.filter(s);
 			}
 
 			@Override
@@ -417,129 +256,62 @@ public class EmbeddedWebRemote
 			}
 		});
 
-		myWebView.clearCache(true);
+		listview.setItemsCanFocus(false);
+		listview.setClickable(true);
+		listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+		adapter = new TorrentAdapter(this);
+
+		listview.setAdapter(adapter);
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			setupHoneyComb(listview);
+		}
+		listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> parent, final View view,
+					int position, long id) {
+				Object item = parent.getItemAtPosition(position);
+
+				Log.d(null,
+						position + "CLICKED; checked? " + listview.isItemChecked(position));
+
+				selectionChanged(null, haveActiveSel, havePausedSel);
+				//listview.setItemChecked(position, !listview.isItemChecked(position));
+			}
+
+		});
+		listview.setOnItemSelectedListener(new OnItemSelectedListener() {
+			@Override
+			public void onItemSelected(AdapterView<?> parent, View view,
+					int position, long id) {
+				selectionChanged(null, haveActiveSel, havePausedSel);
+			}
+
+			@Override
+			public void onNothingSelected(AdapterView<?> parent) {
+				selectionChanged(null, haveActiveSel, havePausedSel);
+			}
+		});
+
+		//registerForContextMenu(listview);
 
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
 			// old style menu
-			registerForContextMenu(myWebView);
+			registerForContextMenu(listview);
 		} else {
-			myWebView.setOnLongClickListener(new OnLongClickListener() {
+			listview.setOnLongClickListener(new OnLongClickListener() {
 				public boolean onLongClick(View view) {
 					return showContextualActions();
 				}
 			});
 		}
 
-		myWebView.setWebChromeClient(new WebChromeClient() {
-			public void onConsoleMessage(String message, int lineNumber,
-					String sourceID) {
-				// Just in case FROYO and above call this for backwards compat reasons
-				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.FROYO) {
-					if (rpcVersion > 0 && rpcVersion < 14) {
-						return;
-					}
-					AndroidUtils.handleConsoleMessageFroyo(EmbeddedWebRemote.this,
-							message, sourceID, lineNumber, page);
-				}
-			}
-
-			@TargetApi(Build.VERSION_CODES.FROYO)
-			public boolean onConsoleMessage(ConsoleMessage cm) {
-				if (rpcVersion > 0 && rpcVersion < 14) {
-					return true;
-				}
-				AndroidUtils.handleConsoleMessageFroyo(EmbeddedWebRemote.this,
-						cm.message(), cm.sourceId(), cm.lineNumber(), page);
-				return true;
-			}
-
-			// For Android 3.0+
-			@SuppressWarnings("unused")
-			public void openFileChooser(ValueCallback<Uri> uploadMsg) {
-				mUploadMessage = uploadMsg;
-				if (DEBUG) {
-					System.out.println("3.0+ Upload From Browser");
-				}
-				AndroidUtils.openFileChooser(EmbeddedWebRemote.this,
-						"application/x-bittorrent", FILECHOOSER_RESULTCODE);
-			}
-
-			// For Android 3.0+
-			@SuppressWarnings("unused")
-			public void openFileChooser(ValueCallback<Uri> uploadMsg,
-					String acceptType) {
-				mUploadMessage = uploadMsg;
-				if (DEBUG) {
-					System.out.println("3.0+ Upload From Browser: " + acceptType);
-				}
-				AndroidUtils.openFileChooser(EmbeddedWebRemote.this, acceptType,
-						FILECHOOSER_RESULTCODE);
-			}
-
-			//For Android 4.1
-			@SuppressWarnings("unused")
-			public void openFileChooser(ValueCallback<Uri> uploadMsg,
-					String acceptType, String capture) {
-				mUploadMessage = uploadMsg;
-				if (DEBUG) {
-					System.out.println("4.1+ Upload From Browser: " + acceptType);
-				}
-				AndroidUtils.openFileChooser(EmbeddedWebRemote.this, acceptType,
-						FILECHOOSER_RESULTCODE);
-			}
-
-			@Override
-			public boolean onJsAlert(WebView view, String url, String message,
-					final JsResult result) {
-				AlertDialog show = new AlertDialog.Builder(EmbeddedWebRemote.this).setMessage(
-						message).setPositiveButton(android.R.string.ok,
-						new OnClickListener() {
-							public void onClick(DialogInterface dialog, int which) {
-							}
-						}).show();
-				show.setOnDismissListener(new OnDismissListener() {
-					public void onDismiss(DialogInterface dialog) {
-						result.confirm();
-					}
-				});
-				return true;
-			}
-		});
-
-		myWebView.setWebViewClient(new WebViewClient() {
-			@Override
-			public boolean shouldOverrideUrlLoading(WebView view, String url) {
-				String newUrlHost = Uri.parse(url).getHost();
-				if (newUrlHost == null) {
-					newUrlHost = "";
-				}
-				if (!newUrlHost.equals(rpcHost)) {
-					return false;
-				}
-
-				// Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
-				Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-				startActivity(intent);
-				return true;
-			}
-		});
-
-		WebSettings webSettings = myWebView.getSettings();
-		webSettings.setJavaScriptEnabled(true);
-		webSettings.setLightTouchEnabled(true);
-		webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-		webSettings.setDomStorageEnabled(true);
-
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-			setupJellyBean(webSettings);
-		}
-
-		myWebView.addJavascriptInterface(jsInterface, "externalOSFunctions");
-
 		setProgressBarIndeterminateVisibility(true);
 
 		if (!isOnline) {
-			AndroidUtils.showConnectionError(this, R.string.no_network_connection, false);
+			AndroidUtils.showConnectionError(this, R.string.no_network_connection,
+					false);
 			return;
 		}
 
@@ -565,7 +337,7 @@ public class EmbeddedWebRemote
 				if (isFinishing()) {
 					return;
 				}
-				new AlertDialog.Builder(EmbeddedWebRemote.this).setMessage(
+				new AlertDialog.Builder(TorrentViewActivity.this).setMessage(
 						R.string.old_rpc).setPositiveButton(android.R.string.ok,
 						new OnClickListener() {
 							public void onClick(DialogInterface dialog, int which) {
@@ -575,19 +347,10 @@ public class EmbeddedWebRemote
 		});
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR1)
-	private void allowTheCookies() {
-		try {
-			CookieManager.setAcceptFileSchemeCookies(true);
-		} catch (UnsatisfiedLinkError ule) {
-			// ignore.  Some 4.2.2 out in the wild throws this
-		}
-	}
-
 	private void setUIReady() {
 		uiReady = true;
 		if (DEBUG) {
-			System.out.println("UI READY");
+			Log.d(null, "UI READY");
 		}
 		if (!isOnline) {
 			pauseUI();
@@ -616,6 +379,33 @@ public class EmbeddedWebRemote
 				}
 			}
 		}
+
+		runOnUiThread(new Runnable() {
+			public void run() {
+				setProgressBarIndeterminateVisibility(false);
+				tvCenter.setText("");
+
+				if (handler == null) {
+					handler = new Handler();
+				}
+				long interval = getRefreshInterval();
+				if (interval > 0) {
+					handler.postDelayed(new Runnable() {
+						public void run() {
+							refresh();
+							long interval = getRefreshInterval();
+							if (interval > 0) {
+								handler.postDelayed(null, interval * 1000);
+							}
+						}
+					}, interval * 1000);
+				}
+
+			}
+		});
+	}
+
+	protected long getRefreshInterval() {
 		boolean isUpdateIntervalEnabled = remoteProfile.isUpdateIntervalEnabled();
 		long interval = remoteProfile.getUpdateInterval();
 		if (sessionSettings != null) {
@@ -627,18 +417,12 @@ public class EmbeddedWebRemote
 		if (!isUpdateIntervalEnabled) {
 			interval = 0;
 		}
-		if (interval >= 0) {
-			runJavaScript("setRefreshInterval",
-					"transmission.setPref(Prefs._RefreshRate, " + interval + ");"
-							+ (interval > 0 ? "transmission.refreshTorrents();" : ""));
-		}
 
-		runOnUiThread(new Runnable() {
-			public void run() {
-				setProgressBarIndeterminateVisibility(false);
-				tvCenter.setText("");
-			}
-		});
+		return interval;
+	}
+
+	private void refresh() {
+		//rpc.getRecentTorrents(this);
 	}
 
 	@Override
@@ -656,7 +440,7 @@ public class EmbeddedWebRemote
 
 	protected void setOnline(boolean isOnline, final boolean initialValue) {
 		if (DEBUG) {
-			System.out.println("set Online to " + isOnline);
+			Log.d(null, "set Online to " + isOnline);
 		}
 		if (this.isOnline == isOnline) {
 			return;
@@ -668,7 +452,7 @@ public class EmbeddedWebRemote
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 					invalidateOptionsMenu();
 				}
-				if (EmbeddedWebRemote.this.isOnline) {
+				if (TorrentViewActivity.this.isOnline) {
 					if (!initialValue) {
 						tvCenter.setText("");
 					}
@@ -718,7 +502,7 @@ public class EmbeddedWebRemote
 			if (error != null) {
 				String errMsg = MapUtils.getMapString(error, "msg", "Unknown Error");
 				if (DEBUG) {
-					System.out.println("Error from getBindingInfo " + errMsg);
+					Log.d(null, "Error from getBindingInfo " + errMsg);
 				}
 
 				AndroidUtils.showConnectionError(this, errMsg, false);
@@ -745,24 +529,24 @@ public class EmbeddedWebRemote
 			}
 		} catch (final RPCException e) {
 			VuzeEasyTracker.getInstance(this).logError(this, e);
-			AndroidUtils.showConnectionError(EmbeddedWebRemote.this, e.getMessage(), false);
+			AndroidUtils.showConnectionError(TorrentViewActivity.this,
+					e.getMessage(), false);
 			if (DEBUG) {
 				e.printStackTrace();
 			}
 		}
 	}
 
-	@SuppressLint("NewApi")
 	private void open(String user, final String ac, String protocol, String host,
 			int port, boolean remember) {
 		try {
-			String up = user + ":" + ac;
 
 			rpcRoot = protocol + "://" + host + ":" + port + "/";
 			String rpcUrl = rpcRoot + "transmission/rpc";
 
 			if (!isURLAlive(rpcUrl)) {
-				AndroidUtils.showConnectionError(this, R.string.error_remote_not_found, false);
+				AndroidUtils.showConnectionError(this, R.string.error_remote_not_found,
+						false);
 				return;
 			}
 
@@ -773,46 +557,12 @@ public class EmbeddedWebRemote
 				appPreferences.addRemoteProfile(remoteProfile);
 			}
 
-			String urlEncoded = URLEncoder.encode(rpcUrl, "utf-8");
-			String acEnc = URLEncoder.encode(ac, "utf-8");
-
-			String basicAuth = Base64.encodeToString(up.getBytes("utf-8"), 0);
-
-			final String remoteUrl = "file:///android_asset/transmission/web/index.html";
-			final String remoteParams = "?vuze_pairing_ac=" + acEnc + "&_Root="
-					+ urlEncoded + "&_BasicAuth=" + basicAuth;
-			//remoteUrl = protocol + "://" + ip + ":" + port;
-
-			rpcHost = "";
-			try {
-				URI uri = new URI(rpcUrl);
-				rpcHost = uri.getHost();
-			} catch (URISyntaxException e) {
-				// TODO URISyntaxException happens.. handle it better
-				VuzeEasyTracker.getInstance(this).logError(this, e);
-			}
-
 			if (DEBUG) {
-				System.out.println("rpc root = " + rpcRoot);
+				Log.d(null, "rpc root = " + rpcRoot);
 			}
-			jsInterface.setRemoteProfile(remoteProfile);
-			jsInterface.setRpcRoot(rpcRoot);
 
-			runOnUiThread(new Runnable() {
-				public void run() {
-					// Android API 11-15 doesn't support url parameters on local files.  We
-					// hack it into userAgent :)
-					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB
-							&& Build.VERSION.SDK_INT <= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
-						WebSettings webSettings = myWebView.getSettings();
-						webSettings.setUserAgentString(remoteParams.replaceAll("[\r\n]", ""));
-						myWebView.loadUrl(remoteUrl);
-					} else {
-						myWebView.loadUrl(remoteUrl + remoteParams);
-					}
-				}
-			});
-		} catch (UnsupportedEncodingException e) {
+			rpc = new TransmissionRPC(rpcUrl, user, ac, this);
+		} catch (Exception e) {
 			VuzeEasyTracker.getInstance(this).logError(this, e);
 			if (DEBUG) {
 				e.printStackTrace();
@@ -842,6 +592,60 @@ public class EmbeddedWebRemote
 	@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 	private void setupIceCream() {
 		getActionBar().setHomeButtonEnabled(true);
+	}
+
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private void setupHoneyComb(ListView listview) {
+		listview.setMultiChoiceModeListener(new MultiChoiceModeListener() {
+			// Called when the action mode is created; startActionMode() was called
+			@Override
+			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+				// Inflate a menu resource providing context menu items
+				MenuInflater inflater = mode.getMenuInflater();
+				inflater.inflate(R.menu.menu_context, menu);
+				return true;
+			}
+
+			// Called each time the action mode is shown. Always called after onCreateActionMode, but
+			// may be called multiple times if the mode is invalidated.
+			@Override
+			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+				MenuItem menuMove = menu.findItem(R.id.action_sel_move);
+				menuMove.setEnabled(TorrentViewActivity.this.listview.getCheckedItemCount() > 0);
+
+				MenuItem menuStart = menu.findItem(R.id.action_sel_start);
+				menuStart.setVisible(havePausedSel);
+
+				MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
+				menuStop.setVisible(haveActiveSel);
+
+				fixupMenu(menu);
+
+				return true;
+			}
+
+			// Called when the user selects a contextual menu item
+			@Override
+			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+				if (TorrentViewActivity.this.handleMenu(item.getItemId())) {
+					return true;
+				}
+				return false;
+			}
+
+			// Called when the user exits the action mode
+			@Override
+			public void onDestroyActionMode(ActionMode mode) {
+				mActionMode = null;
+				runJavaScript("closeContext", "transmission.deselectAll();");
+			}
+
+			@Override
+			public void onItemCheckedStateChanged(ActionMode mode, int position,
+					long id, boolean checked) {
+			}
+		});
+
 	}
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -875,7 +679,7 @@ public class EmbeddedWebRemote
 			@Override
 			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
 				MenuItem menuMove = menu.findItem(R.id.action_sel_move);
-				menuMove.setEnabled(selectedTorrents.size() == 1);
+				menuMove.setEnabled(listview.getCheckedItemCount() > 0);
 
 				MenuItem menuStart = menu.findItem(R.id.action_sel_start);
 				menuStart.setVisible(havePausedSel);
@@ -891,7 +695,7 @@ public class EmbeddedWebRemote
 			// Called when the user selects a contextual menu item
 			@Override
 			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-				if (EmbeddedWebRemote.this.handleMenu(item.getItemId())) {
+				if (TorrentViewActivity.this.handleMenu(item.getItemId())) {
 					return true;
 				}
 				return false;
@@ -901,61 +705,13 @@ public class EmbeddedWebRemote
 			@Override
 			public void onDestroyActionMode(ActionMode mode) {
 				mActionMode = null;
-				runJavaScript("closeContext", "transmission.deselectAll();");
-			}
+				
+				listview.clearChoices();
+				// Not sure why ListView doesn't invalidate by default
+				adapter.notifyDataSetInvalidated();
+ 			}
 		};
 
-	}
-
-	@Override
-	public void onBackPressed() {
-		if (sendBackPressToWeb()) {
-			if (DEBUG) {
-				System.out.println("CANCELLED");
-			}
-			return;
-		}
-		super.onBackPressed();
-	}
-
-	private boolean sendBackPressToWeb() {
-		goBackCancelled = false;
-
-		semGoBack = new Semaphore(0);
-
-		runJavaScript("goBack", "vz.goBack();");
-
-		try {
-			boolean tryAcquire = semGoBack.tryAcquire(200, TimeUnit.MILLISECONDS);
-			if (tryAcquire) {
-				if (goBackCancelled) {
-					return true;
-				}
-			} else {
-				if (DEBUG) {
-					System.out.println("tryAquire timeout");
-				}
-			}
-		} catch (InterruptedException e) {
-			if (DEBUG) {
-				e.printStackTrace();
-			}
-			VuzeEasyTracker.getInstance(this).logError(this, e);
-		}
-		return false;
-	}
-
-	@Override
-	public boolean dispatchKeyEvent(KeyEvent event) {
-		if (mActionMode != null) {
-			if (event.getKeyCode() == KeyEvent.KEYCODE_BACK
-					&& event.getAction() == KeyEvent.ACTION_UP) {
-				if (sendBackPressToWeb()) {
-					return true;
-				}
-			}
-		}
-		return super.dispatchKeyEvent(event);
 	}
 
 	@Override
@@ -965,16 +721,6 @@ public class EmbeddedWebRemote
 	}
 
 	private void pauseUI() {
-		if (!AndroidUtils.areWebViewsPaused() && myWebView != null) {
-			if (DEBUG) {
-				System.out.println("EWR Pause");
-			}
-			//myWebView.pauseTimers();
-			//AndroidUtils.setWebViewsPaused(true);
-		}
-		if (uiReady) {
-			runJavaScript("pauseUI", "transmission.pauseUI();");
-		}
 	}
 
 	@Override
@@ -984,42 +730,19 @@ public class EmbeddedWebRemote
 	}
 
 	private void resumeUI() {
-		if (AndroidUtils.areWebViewsPaused() && myWebView != null && isOnline) {
-			if (DEBUG) {
-				System.out.println("EWR resume");
-			}
-			//myWebView.resumeTimers();
-			//AndroidUtils.setWebViewsPaused(false);
-		}
-		if (uiReady) {
-			runJavaScript("resumeUI", "transmission.resumeUI();");
-		}
 	}
 
 	@Override
 	protected void onStop() {
 		super.onStop();
 		if (DEBUG) {
-			System.out.println("EWR STOP");
+			Log.d(null, "EWR STOP");
 		}
 		VuzeEasyTracker.getInstance(this).activityStop(this);
 	}
 
 	@Override
 	protected void onDestroy() {
-		if (myWebView != null) {
-			// Ensure webview gets destroyed (reports are it doesn't!)
-			// http://www.anddev.org/other-coding-problems-f5/webviewcorethread-problem-t10234.html
-			myWebView.stopLoading();
-			//		try {
-			//			((ViewGroup) myWebView.getParent()).removeView(myWebView);
-			//		} catch (Exception e) {
-			//		}
-			//		myWebView.destroy();
-
-			myWebView.loadUrl("about:blank");
-		}
-
 		if (mConnectivityReceiver != null) {
 			unregisterReceiver(mConnectivityReceiver);
 			mConnectivityReceiver = null;
@@ -1027,7 +750,7 @@ public class EmbeddedWebRemote
 
 		super.onDestroy();
 		if (DEBUG) {
-			System.out.println("EWR onDestroy");
+			Log.d(null, "EWR onDestroy");
 		}
 	}
 
@@ -1038,8 +761,8 @@ public class EmbeddedWebRemote
 		if (s == null || s.length() == 0) {
 			return;
 		}
-		runJavaScript("openTorrent", "transmission.remote.addTorrentByUrl('"
-				+ quoteIt(s) + "', false)");
+		rpc.addTorrentByUrl(s, false, this);
+
 		VuzeEasyTracker.getInstance(this).send(
 				MapBuilder.createEvent("RemoteAction", "AddTorrent", "AddTorrentByUrl",
 						null).build());
@@ -1071,14 +794,14 @@ public class EmbeddedWebRemote
 	@Override
 	public void openTorrent(Uri uri) {
 		if (DEBUG) {
-			System.out.println("openTorernt " + uri);
+			Log.d(null, "openTorernt " + uri);
 		}
 		if (uri == null) {
 			return;
 		}
 		String scheme = uri.getScheme();
 		if (DEBUG) {
-			System.out.println("openTorernt " + scheme);
+			Log.d(null, "openTorernt " + scheme);
 		}
 		if ("file".equals(scheme) || "content".equals(scheme)) {
 			try {
@@ -1102,9 +825,6 @@ public class EmbeddedWebRemote
 		runOnUiThread(new Runnable() {
 			public void run() {
 				if (!isFinishing()) {
-					myWebView.loadUrl("javascript:try {" + js
-							+ "} catch (e) { console.log('Error in " + id
-							+ "');  console.log(e); }");
 					return;
 				}
 			}
@@ -1155,12 +875,11 @@ public class EmbeddedWebRemote
 					filterEditText.requestFocus();
 					InputMethodManager mgr = (InputMethodManager) this.getSystemService(Context.INPUT_METHOD_SERVICE);
 					mgr.showSoftInput(filterEditText, InputMethodManager.SHOW_IMPLICIT);
-					VuzeEasyTracker.getInstance(EmbeddedWebRemote.this).send(
+					VuzeEasyTracker.getInstance(TorrentViewActivity.this).send(
 							MapBuilder.createEvent("uiAction", "ViewShown", "FilterBox", null).build());
 				} else {
 					InputMethodManager mgr = (InputMethodManager) this.getSystemService(Context.INPUT_METHOD_SERVICE);
 					mgr.hideSoftInputFromWindow(filterEditText.getWindowToken(), 0);
-					myWebView.requestFocus();
 				}
 				return true;
 			case R.id.action_settings:
@@ -1178,11 +897,11 @@ public class EmbeddedWebRemote
 				return true;
 
 			case R.id.action_context:
-				openContextMenu(myWebView);
+				// TODO: openContextMenu(myWebView);
 				return true;
 
 			case R.id.action_logout:
-				new RemoteUtils(EmbeddedWebRemote.this).openRemoteList(getIntent());
+				new RemoteUtils(TorrentViewActivity.this).openRemoteList(getIntent());
 				finish();
 				return true;
 
@@ -1248,12 +967,16 @@ public class EmbeddedWebRemote
 
 	@SuppressWarnings("rawtypes")
 	private void openMoveDataDialog() {
-		if (selectedTorrents.size() == 0) {
+		if (getCheckedItemCount(listview) == 0) {
 			return;
 		}
 		DialogFragmentMoveData dlg = new DialogFragmentMoveData();
 		Bundle bundle = new Bundle();
-		Map mapTorrent = selectedTorrents.get(0);
+		Map mapTorrent = getFirstSelected();
+		if (mapTorrent == null) {
+			return;
+		}
+
 		bundle.putString("id", "" + mapTorrent.get("id"));
 		bundle.putString("name", "" + mapTorrent.get("name"));
 
@@ -1275,6 +998,45 @@ public class EmbeddedWebRemote
 		bundle.putStringArrayList("history", history);
 		dlg.setArguments(bundle);
 		dlg.show(getSupportFragmentManager(), "MoveDataDialog");
+	}
+
+	private int getCheckedItemCount(ListView listview) {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			return getCheckedItemCount_11(listview);
+		}
+		return getCheckedItemCount_Pre11(listview);
+	}
+
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private int getCheckedItemCount_11(ListView listview) {
+		return listview.getCheckedItemCount();
+	}
+
+	private int getCheckedItemCount_Pre11(ListView listview) {
+		int total = 0;
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				total++;
+			}
+		}
+		return total;
+	}
+
+	private Map getFirstSelected() {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				return (Map) listview.getItemAtPosition(key);
+			}
+		}
+		return null;
 	}
 
 	private void showSessionSettings() {
@@ -1358,7 +1120,7 @@ public class EmbeddedWebRemote
 
 		MenuItem menuContext = menu.findItem(R.id.action_context);
 		if (menuContext != null) {
-			menuContext.setVisible(selectedTorrents.size() > 0);
+			menuContext.setVisible(getCheckedItemCount(listview) > 0);
 		}
 
 		if (sessionSettings != null) {
@@ -1437,7 +1199,7 @@ public class EmbeddedWebRemote
 		mSearchView.setOnQueryTextListener(new OnQueryTextListener() {
 			@Override
 			public boolean onQueryTextSubmit(String query) {
-				jsInterface.executeSearch(query);
+				// TODO: jsInterface.executeSearch(query);
 				return true;
 			}
 
@@ -1498,13 +1260,16 @@ public class EmbeddedWebRemote
 			con.setReadTimeout(2000);
 			con.setRequestMethod("HEAD");
 			con.getResponseCode();
-			//	System.out.println("conn result=" + con.getResponseCode() + ";" + con.getResponseMessage());
+			//	Log.d(null, "conn result=" + con.getResponseCode() + ";" + con.getResponseMessage());
 			return true;
 		} catch (Exception e) {
 			return false;
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.dialog.DialogFragmentSessionSettings.SessionSettingsListener#sessionSettingsChanged(com.vuze.android.remote.SessionSettings)
+	 */
 	@Override
 	public void sessionSettingsChanged(SessionSettings newSettings) {
 
@@ -1568,4 +1333,166 @@ public class EmbeddedWebRemote
 		remoteProfile.setSavePathHistory(history);
 		saveProfileIfRemember();
 	}
+
+	@SuppressWarnings("rawtypes")
+	public void selectionChanged(final List<Map> selectedTorrentFields,
+			boolean haveActiveSel, boolean havePausedSel) {
+		Log.d(null, "SELECTION CHANGED " + getCheckedItemCount(listview));
+		TorrentViewActivity.this.haveActiveSel = haveActiveSel;
+		TorrentViewActivity.this.havePausedSel = havePausedSel;
+
+		runOnUiThread(new Runnable() {
+			public void run() {
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					selectionChangedHoneyComb();
+				}
+			}
+
+			@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+			private void selectionChangedHoneyComb() {
+				if (listview.getCheckedItemCount() == 0) {
+					if (mActionMode != null) {
+						mActionMode.finish();
+					} else {
+						supportInvalidateOptionsMenu();
+					}
+					return;
+				}
+
+				showContextualActions();
+			}
+
+		});
+	}
+
+	public void deleteTorrent(long torrentID) {
+		runJavaScript("deleteTorrent",
+				"transmission.remote.removeTorrentAndDataById(" + torrentID + ");");
+	}
+
+	public void updateSpeed(final long downSpeed, final long upSpeed) {
+		runOnUiThread(new Runnable() {
+			public void run() {
+				if (downSpeed <= 0) {
+					tvDownSpeed.setVisibility(View.GONE);
+				} else {
+					tvDownSpeed.setText(DisplayFormatters.formatByteCountToKiBEtcPerSec(downSpeed));
+					tvDownSpeed.setVisibility(View.VISIBLE);
+				}
+				if (upSpeed <= 0) {
+					tvUpSpeed.setVisibility(View.GONE);
+				} else {
+					tvUpSpeed.setText(DisplayFormatters.formatByteCountToKiBEtcPerSec(upSpeed));
+					tvUpSpeed.setVisibility(View.VISIBLE);
+				}
+			}
+		});
+	}
+
+	public void updateTorrentStates(boolean haveActive, boolean havePaused,
+			boolean haveActiveSel, boolean havePausedSel) {
+		TorrentViewActivity.this.haveActive = haveActive;
+		TorrentViewActivity.this.havePaused = havePaused;
+		TorrentViewActivity.this.haveActiveSel = haveActiveSel;
+		TorrentViewActivity.this.havePausedSel = havePausedSel;
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			invalidateOptionsMenuHC();
+		}
+	}
+
+	public void updateTorrentCount(final long total) {
+		runOnUiThread(new Runnable() {
+			public void run() {
+				if (total == 0) {
+					tvTorrentCount.setText("");
+				} else {
+					tvTorrentCount.setText(total + " torrents");
+				}
+			}
+		});
+	}
+
+	@SuppressWarnings("rawtypes")
+	public void sessionPropertiesUpdated(Map map) {
+		boolean firstCall = sessionSettings == null;
+		SessionSettings settings = new SessionSettings();
+		settings.setDLIsAuto(MapUtils.getMapBoolean(map,
+				"speed-limit-down-enabled", true));
+		settings.setULIsAuto(MapUtils.getMapBoolean(map, "speed-limit-up-enabled",
+				true));
+		settings.setDownloadDir(MapUtils.getMapString(map, "download-dir", null));
+		long refreshRateSecs = MapUtils.getMapLong(map, "refresh_rate", 0);
+		long profileRefeshInterval = remoteProfile.getUpdateInterval();
+		long newRefreshRate = refreshRateSecs == 0 && profileRefeshInterval > 0
+				? profileRefeshInterval : refreshRateSecs;
+		if (refreshRateSecs != profileRefeshInterval || sessionSettings == null) {
+			settings.setRefreshIntervalEnabled(refreshRateSecs > 0);
+		} else {
+			settings.setRefreshIntervalEnabled(sessionSettings.isRefreshIntervalIsEnabled());
+		}
+		settings.setRefreshInterval(newRefreshRate);
+
+		settings.setDlSpeed(MapUtils.getMapLong(map, "speed-limit-down", 0));
+		settings.setUlSpeed(MapUtils.getMapLong(map, "speed-limit-up", 0));
+		if (firstCall) {
+			// first time: track RPC version
+			rpcVersion = MapUtils.getMapInt(map, "rpc-version", -1);
+			rpcVersionAZ = MapUtils.getMapInt(map, "az-rpc-version", -1);
+			if (rpcVersionAZ < 0 && map.containsKey("az-version")) {
+				rpcVersionAZ = 0;
+			}
+			page = "RPC v" + rpcVersion + "/" + rpcVersionAZ;
+
+			if (rpcVersion < 14) {
+				showOldRPCDialog();
+			}
+		}
+		TorrentViewActivity.this.sessionSettings = settings;
+
+		if (firstCall) {
+			rpc.getAllTorrents(this);
+			setUIReady();
+		}
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			invalidateOptionsMenuHC();
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.rpc.TorrentListReceivedListener#rpcTorrentListReceived(java.util.List)
+	 */
+	@Override
+	public void rpcTorrentListReceived(final List listTorrents) {
+		if (DEBUG) {
+			Log.d(null, "got TorrentList: " + listTorrents.size());
+		}
+		runOnUiThread(new Runnable() {
+
+			@Override
+			public void run() {
+				adapter.addAll(listTorrents);
+			}
+		});
+	}
+
+	@Override
+	public void torrentAdded(Map mapTorrentAdded, boolean duplicate) {
+		rpc.getRecentTorrents(this);
+	}
+
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.rpc.TorrentAddedReceivedListener#torrentAddFailed(java.lang.String)
+	 */
+	@Override
+	public void torrentAddFailed(String message) {
+		AndroidUtils.showDialog(this, R.string.add_torrent, message);
+	}
+
+	@Override
+	public void torrentAddError(Exception e) {
+		AndroidUtils.showConnectionError(this, e.getMessage(), true);
+	}
+
 }

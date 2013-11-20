@@ -177,7 +177,7 @@ public class JSInterface
 			// TODO: Don't ignore
 			return true;
 		}
-		AndroidUtils.showError(activity, errMsg, true);
+		AndroidUtils.showConnectionError(activity, errMsg, true);
 		return true;
 	}
 
