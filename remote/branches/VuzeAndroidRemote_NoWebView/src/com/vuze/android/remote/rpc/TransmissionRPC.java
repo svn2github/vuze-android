@@ -11,6 +11,7 @@ import android.util.Log;
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.AndroidUtils;
 import com.vuze.android.remote.TransmissionVars;
+import com.vuze.android.remote.activity.TorrentViewActivity.RefreshReplyMapReceivedListener;
 
 @SuppressWarnings("rawtypes")
 public class TransmissionRPC
@@ -31,6 +32,8 @@ public class TransmissionRPC
 	private List<String> basicTorrentFieldIDs;
 
 	private Object mLock = new Object();
+
+	private List<TorrentListReceivedListener> torrentListReceivedListeners = new ArrayList<TorrentListReceivedListener>();
 
 	public TransmissionRPC(String rpcURL, String username, String ac,
 			final SessionSettingsReceivedListener l) {
@@ -71,13 +74,27 @@ public class TransmissionRPC
 
 	public void addTorrentByUrl(String url, boolean addPaused,
 			final TorrentAddedReceivedListener l) {
+		addTorrent(false, url, addPaused, l);
+	}
+
+	public void addTorrentByMeta(String torrentData, boolean addPaused,
+			final TorrentAddedReceivedListener l) {
+		addTorrent(true, torrentData, addPaused, l);
+	}
+
+	private void addTorrent(boolean isTorrentData, String data,
+			boolean addPaused, final TorrentAddedReceivedListener l) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("method", "torrent-add");
 
 		Map<String, Object> mapArguments = new HashMap<String, Object>();
 		map.put("arguments", mapArguments);
 		mapArguments.put("paused", addPaused);
-		mapArguments.put("filename", url);
+		if (isTorrentData) {
+			mapArguments.put("metainfo", data);
+		} else {
+			mapArguments.put("filename", data);
+		}
 		//download-dir
 
 		sendRequest("addTorrentByUrl", map, new ReplyMapReceivedListener() {
@@ -247,4 +264,101 @@ public class TransmissionRPC
 		getTorrents("recently-active", l);
 	}
 
+	public void simpleRpcCall(String method, ReplyMapReceivedListener l) {
+		simpleRpcCall(method, null, l);
+	}
+
+	public void simpleRpcCall(String method, long[] ids,
+			ReplyMapReceivedListener l) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", method);
+		if (ids != null) {
+			Map<String, Object> mapArguments = new HashMap<String, Object>();
+			map.put("arguments", mapArguments);
+			mapArguments.put("ids", ids);
+		}
+		sendRequest(method, map, l);
+	}
+
+	public void startTorrents(long[] ids, boolean forceStart,
+			ReplyMapReceivedListener l) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", forceStart ? "torrent-start-now" : "torrent-start");
+		if (ids != null) {
+			Map<String, Object> mapArguments = new HashMap<String, Object>();
+			map.put("arguments", mapArguments);
+			mapArguments.put("ids", ids);
+		}
+		sendRequest("startTorrents", map, l);
+	}
+
+	public void stopTorrents(long[] ids, ReplyMapReceivedListener l) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "torrent-stop");
+		if (ids != null) {
+			Map<String, Object> mapArguments = new HashMap<String, Object>();
+			map.put("arguments", mapArguments);
+			mapArguments.put("ids", ids);
+		}
+		sendRequest("startTorrents", map, l);
+	}
+
+	public void addTorrentListReceivedListener(TorrentListReceivedListener l) {
+		synchronized (torrentListReceivedListeners) {
+			if (!torrentListReceivedListeners.contains(l)) {
+				torrentListReceivedListeners.add(l);
+			}
+		}
+	}
+
+	public void removeTorrentListReceivedListener(TorrentListReceivedListener l) {
+		synchronized (torrentListReceivedListeners) {
+			torrentListReceivedListeners.remove(l);
+		}
+	}
+
+	public TorrentListReceivedListener[] getTorrentListReceivedListeners() {
+		return torrentListReceivedListeners.toArray(new TorrentListReceivedListener[0]);
+	}
+
+	public void moveTorrent(long id, String newLocation,
+			ReplyMapReceivedListener listener) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "torrent-set-location");
+
+		Map<String, Object> mapArguments = new HashMap<String, Object>();
+		map.put("arguments", mapArguments);
+
+		mapArguments.put("ids", new long[] { id });
+		mapArguments.put("move", true);
+		mapArguments.put("location", newLocation);
+
+		sendRequest("torrent-set-location", map, listener);
+	}
+
+	public void removeTorrent(long id, boolean deleteData,
+			ReplyMapReceivedListener listener) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "torrent-remove");
+
+		Map<String, Object> mapArguments = new HashMap<String, Object>();
+		map.put("arguments", mapArguments);
+
+		mapArguments.put("ids", new long[] { id });
+		mapArguments.put("delete-local-data", deleteData);
+
+		sendRequest("torrent-remove", map, listener);
+	}
+
+	public void updateSettings(Map<String, Object> changes) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "session-set");
+
+		map.put("arguments", changes);
+
+
+		sendRequest("session-get", map, null);
+	}
+
 }
+

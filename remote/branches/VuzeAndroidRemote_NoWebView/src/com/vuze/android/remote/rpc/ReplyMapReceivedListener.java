@@ -2,7 +2,7 @@ package com.vuze.android.remote.rpc;
 
 import java.util.Map;
 
-interface ReplyMapReceivedListener
+public interface ReplyMapReceivedListener
 {
 	public void rpcSuccess(String id, Map optionalMap);
 

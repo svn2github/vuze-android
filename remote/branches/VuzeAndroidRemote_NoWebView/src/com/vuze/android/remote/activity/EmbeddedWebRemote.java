@@ -1254,7 +1254,7 @@ public class EmbeddedWebRemote
 		DialogFragmentMoveData dlg = new DialogFragmentMoveData();
 		Bundle bundle = new Bundle();
 		Map mapTorrent = selectedTorrents.get(0);
-		bundle.putString("id", "" + mapTorrent.get("id"));
+		bundle.putLong("id",  MapUtils.getMapLong(mapTorrent, "id", -1));
 		bundle.putString("name", "" + mapTorrent.get("name"));
 
 		String defaultDownloadDir = sessionSettings.getDownloadDir();
@@ -1552,7 +1552,7 @@ public class EmbeddedWebRemote
 	}
 
 	@Override
-	public void moveDataTo(String id, String s) {
+	public void moveDataTo(long id, String s) {
 		runJavaScript("moveData", "transmission.remote.moveTorrents([" + id
 				+ "], '" + quoteIt(s)
 				+ "', transmission.refreshTorrents, transmission);");

@@ -31,6 +31,7 @@ import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.*;
 import android.content.DialogInterface.OnClickListener;
+import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -138,6 +139,8 @@ public class TorrentViewActivity
 
 	private Handler handler;
 
+	private RefreshReplyMapReceivedListener refreshActiveOnReply;
+
 	/* (non-Javadoc)
 	 * @see android.support.v4.app.FragmentActivity#onActivityResult(int, int, android.content.Intent)
 	 */
@@ -185,6 +188,8 @@ public class TorrentViewActivity
 			finish();
 			return;
 		}
+
+		refreshActiveOnReply = new RefreshReplyMapReceivedListener(true);
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
@@ -271,7 +276,7 @@ public class TorrentViewActivity
 			@Override
 			public void onItemClick(AdapterView<?> parent, final View view,
 					int position, long id) {
-				Object item = parent.getItemAtPosition(position);
+				//Object item = parent.getItemAtPosition(position);
 
 				Log.d(null,
 						position + "CLICKED; checked? " + listview.isItemChecked(position));
@@ -384,25 +389,29 @@ public class TorrentViewActivity
 			public void run() {
 				setProgressBarIndeterminateVisibility(false);
 				tvCenter.setText("");
-
-				if (handler == null) {
-					handler = new Handler();
-				}
-				long interval = getRefreshInterval();
-				if (interval > 0) {
-					handler.postDelayed(new Runnable() {
-						public void run() {
-							refresh();
-							long interval = getRefreshInterval();
-							if (interval > 0) {
-								handler.postDelayed(null, interval * 1000);
-							}
-						}
-					}, interval * 1000);
-				}
-
+				
+				initRefreshHandler();
 			}
 		});
+		
+	}
+	
+	public void initRefreshHandler() {
+		if (handler == null) {
+			handler = new Handler();
+		}
+		long interval = getRefreshInterval();
+		if (interval > 0) {
+			handler.postDelayed(new Runnable() {
+				public void run() {
+					refresh(true);
+					long interval = getRefreshInterval();
+					if (interval > 0) {
+						handler.postDelayed(null, interval * 1000);
+					}
+				}
+			}, interval * 1000);
+		}
 	}
 
 	protected long getRefreshInterval() {
@@ -421,7 +430,7 @@ public class TorrentViewActivity
 		return interval;
 	}
 
-	private void refresh() {
+	private void refresh(boolean recentOnly) {
 		//rpc.getRecentTorrents(this);
 	}
 
@@ -637,7 +646,7 @@ public class TorrentViewActivity
 			@Override
 			public void onDestroyActionMode(ActionMode mode) {
 				mActionMode = null;
-				runJavaScript("closeContext", "transmission.deselectAll();");
+				clearChecked();
 			}
 
 			@Override
@@ -705,11 +714,11 @@ public class TorrentViewActivity
 			@Override
 			public void onDestroyActionMode(ActionMode mode) {
 				mActionMode = null;
-				
+
 				listview.clearChoices();
 				// Not sure why ListView doesn't invalidate by default
 				adapter.notifyDataSetInvalidated();
- 			}
+			}
 		};
 
 	}
@@ -778,8 +787,7 @@ public class TorrentViewActivity
 			byte[] bs = readInputStreamAsByteArray(is);
 			String metainfo = Base64.encodeToString(bs, Base64.DEFAULT).replaceAll(
 					"[\\r\\n]", "");
-			runJavaScript("openTorrent", "transmission.remote.addTorrentByMetainfo('"
-					+ metainfo + "')");
+			rpc.addTorrentByMeta(metainfo, havePaused, this);
 		} catch (IOException e) {
 			if (DEBUG) {
 				e.printStackTrace();
@@ -816,19 +824,6 @@ public class TorrentViewActivity
 		} else {
 			openTorrent(uri.toString());
 		}
-	}
-
-	private void runJavaScript(final String id, final String js) {
-		if (id == null || js == null) {
-			return;
-		}
-		runOnUiThread(new Runnable() {
-			public void run() {
-				if (!isFinishing()) {
-					return;
-				}
-			}
-		});
 	}
 
 	@Override
@@ -906,15 +901,17 @@ public class TorrentViewActivity
 				return true;
 
 			case R.id.action_start_all:
-				runJavaScript("startAll", "transmission.startAllTorrents(false);");
+				rpc.startTorrents(null, false, refreshActiveOnReply);
 				return true;
 
 			case R.id.action_stop_all:
-				runJavaScript("stopAll", "transmission.stopAllTorrents();");
+				rpc.stopTorrents(null, refreshActiveOnReply);
 				return true;
 
 			case R.id.action_refresh:
-				runJavaScript("refresh", "transmission.refreshTorrents(true);");
+				// TODO: Maybe get all of them?
+				rpc.getRecentTorrents(this);
+
 				disableRefreshButton = true;
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 					invalidateOptionsMenuHC();
@@ -931,36 +928,54 @@ public class TorrentViewActivity
 				return true;
 
 				// Start of Context Menu Items
-			case R.id.action_sel_remove:
-				runJavaScript("removeSelected",
-						"transmission.removeSelectedTorrentsAndData();");
+			case R.id.action_sel_remove:{
+				Map[] maps = getSelectedTorrentMaps();
+				for (Map map : maps) {
+					long id = MapUtils.getMapLong(map, "id", -1);
+					String name = MapUtils.getMapString(map, "name", "");
+					// TODO: One at a time!
+					showConfirmDeleteDialog(name, id);
+				}
 				return true;
-			case R.id.action_sel_start:
-				runJavaScript("startSelected",
-						"transmission.startSelectedTorrents(false);");
+			}
+			case R.id.action_sel_start: {
+				long[] ids = getSelectedIDs();
+				rpc.startTorrents(ids, false, refreshActiveOnReply);
 				return true;
-			case R.id.action_sel_forcestart:
-				runJavaScript("fstartSelected",
-						"transmission.startSelectedTorrents(true);");
+			}
+			case R.id.action_sel_forcestart: {
+				long[] ids = getSelectedIDs();
+				rpc.startTorrents(ids, true, refreshActiveOnReply);
 				return true;
-			case R.id.action_sel_stop:
-				runJavaScript("remoteSelected", "transmission.stopSelectedTorrents();");
+			}
+			case R.id.action_sel_stop: {
+				long[] ids = getSelectedIDs();
+				rpc.stopTorrents(ids, refreshActiveOnReply);
 				return true;
+			}
 			case R.id.action_sel_relocate:
 				openMoveDataDialog();
 				return true;
-			case R.id.action_sel_move_top:
-				runJavaScript("relocate", "transmission.moveTop();");
+			case R.id.action_sel_move_top: {
+				rpc.simpleRpcCall("queue-move-top", getSelectedIDs(),
+						refreshActiveOnReply);
 				return true;
-			case R.id.action_sel_move_up:
-				runJavaScript("relocate", "transmission.moveUp();");
+			}
+			case R.id.action_sel_move_up: {
+				rpc.simpleRpcCall("queue-move-up", getSelectedIDs(),
+						refreshActiveOnReply);
 				return true;
-			case R.id.action_sel_move_down:
-				runJavaScript("relocate", "transmission.moveDown();");
+			}
+			case R.id.action_sel_move_down: {
+				rpc.simpleRpcCall("queue-move-down", getSelectedIDs(),
+						refreshActiveOnReply);
 				return true;
-			case R.id.action_sel_move_bottom:
-				runJavaScript("relocate", "transmission.moveBottom();");
+			}
+			case R.id.action_sel_move_bottom: {
+				rpc.simpleRpcCall("queue-move-bottom", getSelectedIDs(),
+						refreshActiveOnReply);
 				return true;
+			}
 		}
 		return false;
 	}
@@ -977,7 +992,7 @@ public class TorrentViewActivity
 			return;
 		}
 
-		bundle.putString("id", "" + mapTorrent.get("id"));
+		bundle.putLong("id",  MapUtils.getMapLong(mapTorrent, "id", -1));
 		bundle.putString("name", "" + mapTorrent.get("name"));
 
 		String defaultDownloadDir = sessionSettings.getDownloadDir();
@@ -1026,17 +1041,78 @@ public class TorrentViewActivity
 		return total;
 	}
 
-	private Map getFirstSelected() {
+	private Map<?, ?>[] getSelectedTorrentMaps() {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		Map<?, ?>[] torrentMaps = new Map<?, ?>[size];
+		int pos = 0;
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
+				if (mapTorrent != null) {
+					torrentMaps[pos] = mapTorrent;
+					pos++;
+				}
+			}
+		}
+		if (pos < size) {
+			Map<?, ?>[] torrents = new Map<?, ?>[pos];
+			System.arraycopy(torrentMaps, 0, torrents, 0, pos);
+			return torrents;
+		}
+		return torrentMaps;
+	}
+
+	private long[] getSelectedIDs() {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		long[] moreIDs = new long[size];
+		int pos = 0;
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
+				long id = MapUtils.getMapLong(mapTorrent, "id", -1);
+				if (id >= 0) {
+					moreIDs[pos] = id;
+					pos++;
+				}
+			}
+		}
+		if (pos < size) {
+			long[] ids = new long[pos];
+			System.arraycopy(moreIDs, 0, ids, 0, pos);
+			return ids;
+		}
+		return moreIDs;
+	}
+
+	private Map<?, ?> getFirstSelected() {
 		SparseBooleanArray checked = listview.getCheckedItemPositions();
 		int size = checked.size(); // number of name-value pairs in the array
 		for (int i = 0; i < size; i++) {
 			int key = checked.keyAt(i);
 			boolean value = checked.get(key);
 			if (value) {
-				return (Map) listview.getItemAtPosition(key);
+				return (Map<?, ?>) listview.getItemAtPosition(key);
 			}
 		}
 		return null;
+	}
+
+	private void clearChecked() {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				listview.setItemChecked(key, false);
+			}
+		}
 	}
 
 	private void showSessionSettings() {
@@ -1146,8 +1222,7 @@ public class TorrentViewActivity
 
 	@Override
 	public void filterBy(String filterMode, final String name, boolean save) {
-		runJavaScript("filterText", "transmission.setFilterMode(" + filterMode
-				+ ");");
+		// TODO
 		runOnUiThread(new Runnable() {
 			public void run() {
 				tvFilteringBy.setText(name);
@@ -1168,7 +1243,8 @@ public class TorrentViewActivity
 
 	@Override
 	public void sortBy(String sortType, boolean save) {
-		runJavaScript("sortBy", "transmission.setSortMethod(" + sortType + ");");
+		// TODO
+		
 		if (save) {
 			remoteProfile.setSortBy(sortType);
 			saveProfileIfRemember();
@@ -1177,9 +1253,7 @@ public class TorrentViewActivity
 
 	@Override
 	public void flipSortOrder() {
-		runJavaScript(
-				"flipSort",
-				"if (transmission[Prefs._SortDirection] === Prefs._SortDescending) transmission.setSortDirection(Prefs._SortAscending); else transmission.setSortDirection(Prefs._SortDescending);");
+		// TODO
 	}
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -1279,15 +1353,18 @@ public class TorrentViewActivity
 		}
 		if (newSettings.isRefreshIntervalIsEnabled() != sessionSettings.isRefreshIntervalIsEnabled()
 				|| newSettings.getRefreshInterval() != sessionSettings.getRefreshInterval()) {
-			long interval = newSettings.getRefreshInterval();
-
 			if (!newSettings.isRefreshIntervalIsEnabled()) {
-				interval = 0;
+				handler.removeCallbacksAndMessages(null);
+				handler = null;
+			} else {
+				runOnUiThread(new Runnable() {
+					public void run() {
+						if (handler == null) {
+							initRefreshHandler();
+						}
+					}
+				});
 			}
-			runJavaScript("setRefreshInterval",
-					"transmission.setPref(Prefs._RefreshRate, " + interval + ");"
-							+ (interval > 0 ? "transmission.refreshTorrents();" : ""));
-
 			remoteProfile.setUpdateInterval(newSettings.getRefreshInterval());
 			remoteProfile.setUpdateIntervalEnabled(newSettings.isRefreshIntervalIsEnabled());
 			saveProfileIfRemember();
@@ -1306,8 +1383,7 @@ public class TorrentViewActivity
 			changes.put("speed-limit-down", newSettings.getDlSpeed());
 		}
 		if (changes.size() > 0) {
-			String json = JSONUtils.encodeToJSON(changes);
-			runJavaScript("setSpeeds", "transmission.remote.savePrefs(" + json + ");");
+			rpc.updateSettings(changes);
 		}
 		sessionSettings = newSettings;
 
@@ -1316,11 +1392,9 @@ public class TorrentViewActivity
 		}
 	}
 
-	@Override
-	public void moveDataTo(String id, String s) {
-		runJavaScript("moveData", "transmission.remote.moveTorrents([" + id
-				+ "], '" + quoteIt(s)
-				+ "', transmission.refreshTorrents, transmission);");
+	public void moveDataTo(long id, String s) {
+		rpc.moveTorrent(id, s, refreshActiveOnReply);
+
 		VuzeEasyTracker.getInstance(this).send(
 				MapBuilder.createEvent("RemoteAction", "MoveData", null, null).build());
 	}
@@ -1366,8 +1440,7 @@ public class TorrentViewActivity
 	}
 
 	public void deleteTorrent(long torrentID) {
-		runJavaScript("deleteTorrent",
-				"transmission.remote.removeTorrentAndDataById(" + torrentID + ");");
+		rpc.removeTorrent(torrentID, true, refreshActiveOnReply);
 	}
 
 	public void updateSpeed(final long downSpeed, final long upSpeed) {
@@ -1469,7 +1542,6 @@ public class TorrentViewActivity
 			Log.d(null, "got TorrentList: " + listTorrents.size());
 		}
 		runOnUiThread(new Runnable() {
-
 			@Override
 			public void run() {
 				adapter.addAll(listTorrents);
@@ -1493,6 +1565,49 @@ public class TorrentViewActivity
 	@Override
 	public void torrentAddError(Exception e) {
 		AndroidUtils.showConnectionError(this, e.getMessage(), true);
+	}
+
+	public class RefreshReplyMapReceivedListener
+		implements ReplyMapReceivedListener
+	{
+
+		private boolean recentOnly;
+
+		public RefreshReplyMapReceivedListener(boolean recentOnly) {
+			this.recentOnly = recentOnly;
+		}
+
+		@Override
+		public void rpcSuccess(String id, Map optionalMap) {
+			refresh(recentOnly);
+		}
+
+		@Override
+		public void rpcError(String id, Exception e) {
+		}
+
+		@Override
+		public void rpcFailure(String id, String message) {
+		}
+
+	}
+
+	public boolean showConfirmDeleteDialog(String name, final long torrentID) {
+		Resources res = getResources();
+		String message = res.getString(R.string.dialog_delete_message, name);
+
+		new AlertDialog.Builder(this).setTitle(R.string.dialog_delete_title).setMessage(
+				message).setPositiveButton(R.string.dialog_delete_button_remove,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						deleteTorrent(torrentID);
+					}
+				}).setNegativeButton(android.R.string.cancel,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+					}
+				}).setIcon(android.R.drawable.ic_dialog_alert).show();
+		return true;
 	}
 
 }
