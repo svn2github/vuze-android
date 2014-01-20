@@ -23,38 +23,44 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
 
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.VuzeEasyTracker;
+import com.vuze.android.remote.*;
+import com.vuze.android.remote.AndroidUtils.ValueStringArray;
 
 public class DialogFragmentFilterBy
 	extends DialogFragment
 {
 	public interface FilterByDialogListener
 	{
-		void filterBy(String filterMode, String item, boolean save);
+		void filterBy(int val, String item, boolean save);
+	}
+
+	public static void openFilterByDialog(Fragment fragment) {
+		DialogFragmentFilterBy dlg = new DialogFragmentFilterBy();
+		dlg.setTargetFragment(fragment, 0);
+		dlg.show(fragment.getFragmentManager(), "OpenFilterDialog");
 	}
 
 	private FilterByDialogListener mListener;
 
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
-		final String[] stringArray = getResources().getStringArray(
-				R.array.filterby_list);
+		final ValueStringArray filterByList = AndroidUtils.getValueStringArray(
+				getResources(), R.array.filterby_list);
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 		builder.setTitle(R.string.filterby_title);
-		builder.setItems(stringArray, new DialogInterface.OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				if (mListener == null) {
-					return;
-				}
-				String item = stringArray[which];
-				String[] valuesArray = getResources().getStringArray(
-						R.array.filterby_list_values);
-				mListener.filterBy(valuesArray[which], item, true);
-			}
-		});
+		builder.setItems(filterByList.strings,
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						if (mListener == null) {
+							return;
+						}
+						mListener.filterBy(filterByList.values[which],
+								filterByList.strings[which], true);
+					}
+				});
 		return builder.create();
 	}
 
@@ -62,7 +68,10 @@ public class DialogFragmentFilterBy
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
 
-		if (activity instanceof FilterByDialogListener) {
+		Fragment targetFragment = getTargetFragment();
+		if (targetFragment instanceof FilterByDialogListener) {
+			mListener = (FilterByDialogListener) targetFragment;
+		} else if (activity instanceof FilterByDialogListener) {
 			mListener = (FilterByDialogListener) activity;
 		}
 	}

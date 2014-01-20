@@ -196,11 +196,11 @@ public class TransmissionVars
 
 	//////////////////////////////////////////////////////////////////////////////
 
-	public static final long TR_PRI_LOW = -1;
+	public static final int TR_PRI_LOW = -1;
 
-	public static final long TR_PRI_NORMAL = 0; /* since NORMAL is 0, memset initializes nicely */
+	public static final int TR_PRI_NORMAL = 0; /* since NORMAL is 0, memset initializes nicely */
 
-	public static final long TR_PRI_HIGH = 1;
+	public static final int TR_PRI_HIGH = 1;
 
 	//////////////////////////////////////////////////////////////////////////////
 	//tr_stat_errtype;
@@ -241,6 +241,8 @@ public class TransmissionVars
 
 	public static final String TORRENT_FIELD_WANTED = "wanted";
 
+	public static final String TORRENT_FIELD_PRIORITIES = "priorities";
+
 	public static final String TORRENT_FIELD_FILE_COUNT = "fileCount";
 
 	public static final String TORRENT_FIELD_ETA = "eta";
@@ -263,7 +265,14 @@ public class TransmissionVars
 
 	public static final String TORRENT_FIELD_ID = "id";
 
-	
+	public static final String TORRENT_FIELD_FILES_PRIORITY = "priority";
+
+	public static final String TORRENT_FIELD_POSITION = "queuePosition";
+
+	public static final String TORRENT_FIELD_UPLOAD_RATIO = "uploadRatio";
+
+	public static final String TORRENT_FIELD_DATE_ADDED = "addedDate";
+
 	public static long convertVuzePriority(int priority) {
 		return priority == 0 ? TransmissionVars.TR_PRI_NORMAL
 				: priority < 0 ? TransmissionVars.TR_PRI_LOW
@@ -279,4 +288,5 @@ public class TransmissionVars
 	public static final int TR_STATUS_DOWNLOAD       = 4; /* Downloading */
 	public static final int TR_STATUS_SEED_WAIT      = 5; /* Queued to seed */
 	public static final int TR_STATUS_SEED           = 6; /* Seeding */
+
 }

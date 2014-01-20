@@ -52,7 +52,11 @@ public class DialogFragmentVuzeRemoteProfile
 		String remoteAsJSON = arguments == null ? null
 				: arguments.getString("remote.json");
 		if (remoteAsJSON != null) {
-			remoteProfile = new RemoteProfile(JSONUtils.decodeJSON(remoteAsJSON));
+			try {
+				remoteProfile = new RemoteProfile(JSONUtils.decodeJSON(remoteAsJSON));
+			} catch (Exception e) {
+				return null;
+			}
 		} else {
 			return null;
 		}

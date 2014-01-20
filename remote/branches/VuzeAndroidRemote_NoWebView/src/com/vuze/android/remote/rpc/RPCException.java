@@ -26,7 +26,7 @@ public class RPCException
 	private HttpResponse httpResponse;
 
 	public RPCException(HttpResponse response, String string) {
-		super();
+		super(string);
 		httpResponse = response;
 	}
 

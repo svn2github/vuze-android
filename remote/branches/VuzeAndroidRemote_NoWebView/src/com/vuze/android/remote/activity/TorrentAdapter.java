@@ -7,26 +7,52 @@ import org.gudy.azureus2.core3.util.DisplayFormatters;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 
 import com.aelitis.azureus.util.MapUtils;
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.TransmissionVars;
+import com.vuze.android.remote.*;
 
 public class TorrentAdapter
 	extends BaseAdapter
 	implements Filterable
 {
+	public final static int FILTERBY_ALL = 8;
+
+	public final static int FILTERBY_ACTIVE = 4;
+
+	public final static int FILTERBY_COMPLETE = 9;
+
+	public final static int FILTERBY_INCOMPLETE = 1;
+
+	public final static int FILTERBY_STOPPED = 2;
+
+	public static final boolean DEBUG = AndroidUtils.DEBUG;
+
+	static class ViewHolder
+	{
+		TextView tvName;
+
+		TextView tvProgress;
+
+		ProgressBar pb;
+
+		TextView tvInfo;
+
+		TextView tvETA;
+
+		TextView tvUlRate;
+
+		TextView tvDlRate;
+
+		TextView tvStatus;
+	}
+
 	private Context context;
 
 	private TorrentFilter filter;
-
-	/** <Key, TorrentMap> */
-	private LinkedHashMap<Object, Map<?, ?>> mapOriginal;
 
 	/** List of they keys of all entries displayed, in the display order */
 	private List<Object> displayList;
@@ -37,54 +63,98 @@ public class TorrentAdapter
 
 	private Resources resources;
 
+	private String[] sortFieldIDs;
+
+	private Boolean[] sortOrderAsc;
+
+	private SessionInfo sessionInfo;
+
 	public TorrentAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
-		this.mapOriginal = new LinkedHashMap<Object, Map<?, ?>>();
 		displayList = new ArrayList<Object>();
+	}
+
+	public void setSessionInfo(SessionInfo sessionInfo) {
+		this.sessionInfo = sessionInfo;
+	}
+
+	public int getPosition(Map<?, ?> item) {
+		Object itemKey = item.get("id");
+		int position = -1;
+		synchronized (mLock) {
+			int i = -1;
+			for (Iterator iterator = displayList.iterator(); iterator.hasNext();) {
+				i++;
+				Object key = (Object) iterator.next();
+				if (key.equals(itemKey)) {
+					position = i;
+					break;
+				}
+			}
+		}
+		return position;
 	}
 
 	@Override
 	public View getView(int position, View convertView, ViewGroup parent) {
-		LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		View rowView = inflater.inflate(R.layout.row_torrent_list, parent, false);
+		return getView(position, convertView, parent, false);
+	}
 
-		boolean isChecked = false;
-		if (parent instanceof ListView) {
-			isChecked = ((ListView) parent).isItemChecked(position);
-			System.out.println(position + " checked? " + isChecked);
+	public void refreshView(int position, View view, ListView listView) {
+		getView(position, view, listView, true);
+	}
+
+	public View getView(int position, View convertView, ViewGroup parent,
+			boolean requireHolder) {
+		View rowView = convertView;
+		if (rowView == null) {
+			if (requireHolder) {
+				return null;
+			}
+			LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			rowView = inflater.inflate(R.layout.row_torrent_list, parent, false);
+			ViewHolder viewHolder = new ViewHolder();
+
+			viewHolder.tvName = (TextView) rowView.findViewById(R.id.torrentrow_name);
+
+			viewHolder.tvProgress = (TextView) rowView.findViewById(R.id.torrentrow_progress_pct);
+			viewHolder.pb = (ProgressBar) rowView.findViewById(R.id.torrentrow_progress);
+			viewHolder.tvInfo = (TextView) rowView.findViewById(R.id.torrentrow_info);
+			viewHolder.tvETA = (TextView) rowView.findViewById(R.id.torrentrow_eta);
+			viewHolder.tvUlRate = (TextView) rowView.findViewById(R.id.torrentrow_upspeed);
+			viewHolder.tvDlRate = (TextView) rowView.findViewById(R.id.torrentrow_downspeed);
+			viewHolder.tvStatus = (TextView) rowView.findViewById(R.id.torrentrow_state);
+
+			rowView.setTag(viewHolder);
 		}
 
-		rowView.setBackgroundColor(isChecked
-				? resources.getColor(R.color.list_bg_f) : 0);
+		ViewHolder holder = (ViewHolder) rowView.getTag();
 
-		TextView tvName = (TextView) rowView.findViewById(R.id.torrentrow_name);
+		//		boolean isChecked = false;
+		//		if (parent instanceof ListView) {
+		//			isChecked = ((ListView) parent).isItemChecked(position);
+		//			System.out.println(position + " checked? " + isChecked);
+		//		}
 
-		TextView tvProgress = (TextView) rowView.findViewById(R.id.torrentrow_progress_pct);
-		ProgressBar pb = (ProgressBar) rowView.findViewById(R.id.torrentrow_progress);
-		TextView tvInfo = (TextView) rowView.findViewById(R.id.torrentrow_info);
-		TextView tvETA = (TextView) rowView.findViewById(R.id.torrentrow_eta);
-		TextView tvUlRate = (TextView) rowView.findViewById(R.id.torrentrow_upspeed);
-		TextView tvDlRate = (TextView) rowView.findViewById(R.id.torrentrow_downspeed);
-		TextView tvStatus = (TextView) rowView.findViewById(R.id.torrentrow_state);
+		//		rowView.setBackgroundColor(isChecked
+		//				? resources.getColor(R.color.list_bg_f) : 0);
 
 		Map<?, ?> item = getItem(position);
-		if (tvName != null) {
-			tvName.setText(MapUtils.getMapString(item, "name", "??"));
+		if (holder.tvName != null) {
+			holder.tvName.setText(MapUtils.getMapString(item, "name", "??"));
 		}
 		float pctDone = MapUtils.getMapFloat(item, "percentDone", 0f);
-		if (tvProgress != null) {
+		if (holder.tvProgress != null) {
 			NumberFormat format = NumberFormat.getPercentInstance();
 			format.setMaximumFractionDigits(1);
 			String s = format.format(pctDone);
-			tvProgress.setText(s);
+			holder.tvProgress.setText(s);
 		}
-		if (pb != null) {
-			pb.setProgress((int) (pctDone * 10000));
+		if (holder.pb != null) {
+			holder.pb.setProgress((int) (pctDone * 10000));
 		}
-		if (tvInfo != null) {
-			Resources resources = parent.getResources();
-
+		if (holder.tvInfo != null) {
 			int fileCount = MapUtils.getMapInt(item, "fileCount", 0);
 			long size = MapUtils.getMapLong(item, "sizeWhenDone", 0);
 
@@ -92,42 +162,45 @@ public class TorrentAdapter
 					fileCount, fileCount)
 					+ resources.getString(R.string.torrent_row_info2,
 							DisplayFormatters.formatByteCountToKiBEtc(size));
-			tvInfo.setText(s);
+			holder.tvInfo.setText(s);
 		}
-		if (tvETA != null) {
+		if (holder.tvETA != null) {
 			long etaSecs = MapUtils.getMapLong(item, "eta", -1);
 			if (etaSecs > 0) {
 				String s = DisplayFormatters.prettyFormat(etaSecs);
-				tvETA.setText(s);
-				tvETA.setVisibility(View.VISIBLE);
+				holder.tvETA.setText(s);
+				holder.tvETA.setVisibility(View.VISIBLE);
 			} else {
-				tvETA.setVisibility(View.GONE);
-				tvETA.setText("");
+				holder.tvETA.setVisibility(View.GONE);
+				holder.tvETA.setText("");
 			}
 		}
-		if (tvUlRate != null) {
+		if (holder.tvUlRate != null) {
 			long rateUpload = MapUtils.getMapLong(item, "rateUpload", 0);
 
 			if (rateUpload > 0) {
-				tvUlRate.setText("\u25B2 "
+				holder.tvUlRate.setText("\u25B2 "
 						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateUpload));
 			} else {
-				tvUlRate.setText("");
+				holder.tvUlRate.setText("");
 			}
 		}
-		if (tvDlRate != null) {
+		if (holder.tvDlRate != null) {
 			long rateDownload = MapUtils.getMapLong(item, "rateDownload", 0);
 
 			if (rateDownload > 0) {
-				tvDlRate.setText("\u25BC "
+				holder.tvDlRate.setText("\u25BC "
 						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateDownload));
 			} else {
-				tvDlRate.setText("");
+				holder.tvDlRate.setText("");
 			}
 		}
-		if (tvStatus != null) {
-			int status = MapUtils.getMapInt(item, "status", TransmissionVars.TR_STATUS_STOPPED);
-			long error = MapUtils.getMapLong(item, "error", TransmissionVars.TR_STAT_OK);
+		if (holder.tvStatus != null) {
+			int status = MapUtils.getMapInt(item,
+					TransmissionVars.TORRENT_FIELD_STATUS,
+					TransmissionVars.TR_STATUS_STOPPED);
+			long error = MapUtils.getMapLong(item, "error",
+					TransmissionVars.TR_STAT_OK);
 			if (error == TransmissionVars.TR_STAT_OK) {
 				int id;
 				switch (status) {
@@ -161,15 +234,15 @@ public class TorrentAdapter
 						break;
 				}
 				if (id >= 0) {
-					tvStatus.setText(id);
+					holder.tvStatus.setText(id);
 				} else {
-					tvStatus.setText("");
+					holder.tvStatus.setText("");
 				}
 			} else {
 				// error
 				// TODO: parse error and add error type to message
 				String errorString = MapUtils.getMapString(item, "errorString", "");
-				tvStatus.setText(errorString);
+				holder.tvStatus.setText(errorString);
 			}
 		}
 
@@ -184,33 +257,121 @@ public class TorrentAdapter
 		return filter;
 	}
 
-	private class TorrentFilter
+	public class TorrentFilter
 		extends Filter
 	{
+		private int filterMode;
+
+		private CharSequence constraint;
+
+		public void setFilterMode(int filterMode) {
+			this.filterMode = filterMode;
+			filter(constraint);
+		}
 
 		@Override
 		protected FilterResults performFiltering(CharSequence constraint) {
+			this.constraint = constraint;
 			FilterResults results = new FilterResults();
 
-			if (constraint == null || constraint.length() == 0) {
+			if (sessionInfo == null) {
+				return results;
+			}
+
+			boolean hasConstraint = constraint != null && constraint.length() > 0;
+
+			LinkedHashMap<Object, Map<?, ?>> mapOriginal = sessionInfo.getTorrentList();
+			if (!hasConstraint && filterMode < 0) {
 				synchronized (mLock) {
 					results.values = mapOriginal.keySet();
 					results.count = mapOriginal.size();
 				}
+				if (DEBUG) {
+					System.out.println("doall=" + results.count);
+				}
 			} else {
-				String constraintString = constraint.toString().toLowerCase();
+				// might need to be LinkedHashMap to keep order if filter must be by order
+				Map<?, Map<?, ?>> mapCopy = new HashMap<Object, Map<?, ?>>(mapOriginal);
 
-				List<Object> nList = new ArrayList<Object>();
+				if (DEBUG) {
+					System.out.println("doSome1=" + mapCopy.size());
+				}
 
-				for (Map<?, ?> map : mapOriginal.values()) {
-					String name = MapUtils.getMapString(map, "name", "").toLowerCase();
-					if (name.contains(constraintString)) {
-						nList.add(map.get("id"));
+				if (filterMode >= 0 && filterMode != FILTERBY_ALL) {
+					synchronized (mLock) {
+						for (Iterator iterator = mapCopy.keySet().iterator(); iterator.hasNext();) {
+							Object key = iterator.next();
+							Map map = mapCopy.get(key);
+
+							switch (filterMode) {
+								case FILTERBY_ACTIVE:
+									long dlRate = MapUtils.getMapLong(map,
+											TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD, -1);
+									long ulRate = MapUtils.getMapLong(map,
+											TransmissionVars.TORRENT_FIELD_RATE_UPLOAD, -1);
+									if (ulRate <= 0 && dlRate <= 0) {
+										iterator.remove();
+									}
+									break;
+
+								case FILTERBY_COMPLETE: {
+									float pctDone = MapUtils.getMapFloat(map,
+											TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
+									if (pctDone < 1.0f) {
+										iterator.remove();
+									}
+									break;
+								}
+								case FILTERBY_INCOMPLETE: {
+									float pctDone = MapUtils.getMapFloat(map,
+											TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
+									if (pctDone >= 1.0f) {
+										iterator.remove();
+									}
+									break;
+								}
+								case FILTERBY_STOPPED: {
+									int status = MapUtils.getMapInt(map,
+											TransmissionVars.TORRENT_FIELD_STATUS,
+											TransmissionVars.TR_STATUS_STOPPED);
+									if (status != TransmissionVars.TR_STATUS_STOPPED) {
+										iterator.remove();
+									}
+									break;
+								}
+							}
+						}
 					}
 				}
 
-				results.values = nList;
-				results.count = nList.size();
+				if (DEBUG) {
+					System.out.println("doSome2=" + mapCopy.size());
+				}
+
+				if (hasConstraint) {
+					String constraintString = constraint.toString().toLowerCase();
+
+					synchronized (mLock) {
+						for (Iterator iterator = mapCopy.keySet().iterator(); iterator.hasNext();) {
+							Object key = iterator.next();
+							Map map = mapCopy.get(key);
+
+							String name = MapUtils.getMapString(map,
+									TransmissionVars.TORRENT_FIELD_NAME, "").toLowerCase();
+							if (!name.contains(constraintString)) {
+								iterator.remove();
+							}
+						}
+					}
+
+					if (DEBUG) {
+						System.out.println("doSome3=" + mapCopy.size());
+					}
+				}
+
+
+				results.values = mapCopy.keySet();
+				results.count = mapCopy.size();
 
 			}
 			return results;
@@ -226,48 +387,108 @@ public class TorrentAdapter
 				synchronized (mLock) {
 					if (results.values instanceof Collection) {
 						displayList = new ArrayList<Object>((Collection<?>) results.values);
+						doSort();
 					}
 				}
-				notifyDataSetChanged();
 			}
 		}
 
 	}
 
-	public void addAll(Collection<? extends Map<?, ?>> collection) {
-		// How does this work with filters?
-		synchronized (mLock) {
-			for (Map<?, ?> mapTorrent : collection) {
-				Object key = mapTorrent.get("id");
-				mapOriginal.put(key, mapTorrent);
-				displayList.add(key);
+	public void refreshDisplayList() {
+		if (sessionInfo != null) {
+			// How does this work with filters?
+			Object[] keys = sessionInfo.getTorrentListKeys();
+			synchronized (mLock) {
+				for (Object key : keys) {
+					if (!displayList.contains(key)) {
+						displayList.add(key);
+					}
+				}
 			}
 		}
 		doSort();
-		notifyDataSetChanged();
+	}
+
+	public void setSort(String[] fieldIDs, Boolean[] sortOrderAsc) {
+		synchronized (mLock) {
+			sortFieldIDs = fieldIDs;
+			Boolean[] order;
+			if (sortOrderAsc == null) {
+				order = new Boolean[sortFieldIDs.length];
+				Arrays.fill(order, Boolean.FALSE);
+			} else if (sortOrderAsc.length != sortFieldIDs.length) {
+				order = new Boolean[sortFieldIDs.length];
+				Arrays.fill(order, Boolean.FALSE);
+				System.arraycopy(sortOrderAsc, 0, order, 0, sortOrderAsc.length);
+			} else {
+				order = sortOrderAsc;
+			}
+			this.sortOrderAsc = order;
+			comparator = null;
+		}
+		doSort();
 	}
 
 	public void setSort(Comparator<? super Map<?, ?>> comparator) {
-		this.comparator = comparator;
+		synchronized (mLock) {
+			this.comparator = comparator;
+		}
 		doSort();
-		notifyDataSetChanged();
 	}
 
 	private void doSort() {
-		if (comparator == null) {
+		if (sessionInfo == null) {
 			return;
 		}
+		if (comparator == null && sortFieldIDs == null) {
+			return;
+		}
+		System.out.println("sort: " + Arrays.asList(sortFieldIDs) + "/" + Arrays.asList(sortOrderAsc));
 		synchronized (mLock) {
+			final LinkedHashMap<Object, Map<?, ?>> mapOriginal = sessionInfo.getTorrentList();
 			Collections.sort(displayList, new Comparator<Object>() {
+				@SuppressWarnings({
+					"unchecked",
+					"rawtypes"
+				})
 				@Override
 				public int compare(Object lhs, Object rhs) {
 					Map<?, ?> mapLHS = mapOriginal.get(lhs);
 					Map<?, ?> mapRHS = mapOriginal.get(rhs);
 
-					return comparator.compare(mapLHS, mapRHS);
+					if (mapLHS == null || mapRHS == null) {
+						return 0;
+					}
+
+					if (sortFieldIDs == null) {
+						return comparator.compare(mapLHS, mapRHS);
+					} else {
+						for (int i = 0; i < sortFieldIDs.length; i++) {
+							String fieldID = sortFieldIDs[i];
+							Comparable oLHS = (Comparable) mapLHS.get(fieldID);
+							Comparable oRHS = (Comparable) mapRHS.get(fieldID);
+							if (oLHS == null || oRHS == null) {
+								System.out.println("no field:" + fieldID);
+								if (oLHS != oRHS) {
+									return oLHS == null ? -1 : 1;
+								} // else == drops to next sort field
+
+							} else {
+								int comp = sortOrderAsc[i] ? oLHS.compareTo(oRHS)
+										: oRHS.compareTo(oLHS);
+								if (comp != 0) {
+									return comp;
+								} // else == drops to next sort field
+							}
+						}
+
+						return 0;
+					}
 				}
 			});
 		}
+		notifyDataSetChanged();
 	}
 
 	/* (non-Javadoc)
@@ -283,6 +504,10 @@ public class TorrentAdapter
 	 */
 	@Override
 	public Map<?, ?> getItem(int position) {
+		if (sessionInfo == null) {
+			return new HashMap();
+		}
+		LinkedHashMap<Object, Map<?, ?>> mapOriginal = sessionInfo.getTorrentList();
 		return mapOriginal.get(displayList.get(position));
 	}
 

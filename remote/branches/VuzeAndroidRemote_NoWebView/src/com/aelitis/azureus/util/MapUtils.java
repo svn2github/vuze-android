@@ -181,14 +181,20 @@ public class MapUtils
 			return def;
 		}
 		try {
-			List list = (List) map.get(key);
-			if (list == null && !map.containsKey(key)) {
+			Object o = map.get(key);
+			if (o instanceof List) {
+				return (List) o;
+			}
+			if (o == null) {
 				return def;
 			}
-			return list;
+			if (o.getClass().isArray()) {
+				return Arrays.asList((Object[]) o);
+			}
 		} catch (Throwable t) {
-			return def;
+			t.printStackTrace();
 		}
+		return def;
 	}
 
 	public static Map getMapMap(Map map, String key, Map def) {

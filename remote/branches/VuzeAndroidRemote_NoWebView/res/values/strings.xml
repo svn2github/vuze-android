@@ -13,18 +13,11 @@
 	<string name="filterby_title">Filter By</string>
 
 	<string-array name="filterby_list">
-		<item>All</item>
-		<item>Active</item>
-		<item>Complete</item>
-		<item>Incomplete</item>
-		<item>Stopped</item>
-	</string-array>
-	<string-array name="filterby_list_values">
-		<item>Prefs._FilterAll</item>
-		<item>Prefs._FilterActive</item>
-		<item>Prefs._FilterComplete</item>
-		<item>Prefs._FilterIncomplete</item>
-		<item>Prefs._FilterPaused</item>
+		<item>8,All</item>
+		<item>4,Active</item>
+		<item>9,Complete</item>
+		<item>1,Incomplete</item>
+		<item>2,Stopped</item>
 	</string-array>
 
 	<string name="sortby_title">Sort By</string>
@@ -143,4 +136,10 @@ If you have any feature ideas, or would like to vote on what gets worked on next
 	<string name="torrent_status_seed">Seeding</string>
 	<string name="local_name">Local Vuze on %s</string>
 	<string name="dialog_delete_datatoo">Remove downloaded files as well</string>
+	<string name="multi_select_tip">Tap &amp; Hold to Multi-Select</string>
+	<string name="files_row_size">%1$s of %2$s downloaded</string>
+
+	<string name="torrent_file_priority_high">High Priority</string>
+	<string name="torrent_file_priority_low">Low Priority</string>
+	<string name="torrent_file_priority_normal"></string>
 </resources>

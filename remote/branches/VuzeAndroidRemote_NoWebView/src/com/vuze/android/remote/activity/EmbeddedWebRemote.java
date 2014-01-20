@@ -243,8 +243,12 @@ public class EmbeddedWebRemote
 		remember = extras.getBoolean("com.vuze.android.remote.remember");
 		String remoteAsJSON = extras.getString("remote.json");
 		if (remoteAsJSON != null) {
-			remoteProfile = new RemoteProfile(JSONUtils.decodeJSON(remoteAsJSON));
-		} else {
+			try {
+				remoteProfile = new RemoteProfile(JSONUtils.decodeJSON(remoteAsJSON));
+			} catch (Exception e) {
+			}
+		}
+		if (remoteAsJSON == null) {
 
 			String ac = extras.getString("com.vuze.android.remote.ac");
 			String user = extras.getString("com.vuze.android.remote.user");
@@ -604,6 +608,7 @@ public class EmbeddedWebRemote
 			openTorrent(getIntent().getData());
 		}
 
+/*
 		String sortBy = remoteProfile.getSortBy();
 		if (sortBy != null) {
 			sortBy(sortBy, false);
@@ -623,6 +628,7 @@ public class EmbeddedWebRemote
 				}
 			}
 		}
+ */
 		boolean isUpdateIntervalEnabled = remoteProfile.isUpdateIntervalEnabled();
 		long interval = remoteProfile.getUpdateInterval();
 		if (sessionSettings != null) {
@@ -1395,7 +1401,7 @@ public class EmbeddedWebRemote
 	}
 
 	@Override
-	public void filterBy(String filterMode, final String name, boolean save) {
+	public void filterBy(final int filterMode, final String name, boolean save) {
 		runJavaScript("filterText", "transmission.setFilterMode(" + filterMode
 				+ ");");
 		runOnUiThread(new Runnable() {
@@ -1417,10 +1423,13 @@ public class EmbeddedWebRemote
 	}
 
 	@Override
+	public void sortBy(String[] sortFieldIDs, Boolean[] sortOrderAsc, boolean save) {
+	}
+
 	public void sortBy(String sortType, boolean save) {
 		runJavaScript("sortBy", "transmission.setSortMethod(" + sortType + ");");
 		if (save) {
-			remoteProfile.setSortBy(sortType);
+			//remoteProfile.setSortBy(sortType);
 			saveProfileIfRemember();
 		}
 	}

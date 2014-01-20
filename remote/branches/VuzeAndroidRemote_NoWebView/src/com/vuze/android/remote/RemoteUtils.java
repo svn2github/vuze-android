@@ -23,8 +23,8 @@ import android.app.Activity;
 import android.content.Intent;
 
 import com.aelitis.azureus.util.JSONUtils;
-import com.vuze.android.remote.activity.TorrentViewActivity;
 import com.vuze.android.remote.activity.IntentHandler;
+import com.vuze.android.remote.activity.TorrentViewActivity;
 
 public class RemoteUtils
 {

@@ -82,7 +82,11 @@ public class DialogFragmentGenericRemoteProfile
 		
 		String remoteAsJSON = arguments == null ? null : arguments.getString("remote.json");
 		if (remoteAsJSON != null) {
-			remoteProfile = new RemoteProfile(JSONUtils.decodeJSON(remoteAsJSON));
+			try {
+				remoteProfile = new RemoteProfile(JSONUtils.decodeJSON(remoteAsJSON));
+			} catch (Exception e) {
+				remoteProfile = new RemoteProfile(RemoteProfile.TYPE_NORMAL);
+			}
 		} else {
 			remoteProfile = new RemoteProfile(RemoteProfile.TYPE_NORMAL);
 		}

@@ -27,6 +27,7 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 
 import com.aelitis.azureus.util.JSONUtils;
+import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 
 @SuppressWarnings({
@@ -60,7 +61,7 @@ public class AppPreferences
 
 				String lastUsed = (String) mapConfig.get(KEY_LASTUSED);
 				if (lastUsed != null) {
-					Map mapRemotes = (Map) mapConfig.get(KEY_REMOTES);
+  				Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 					if (mapRemotes != null) {
 						Map mapRemote = (Map) mapRemotes.get(lastUsed);
 						if (mapRemote != null) {
@@ -103,7 +104,7 @@ public class AppPreferences
 			if (config != null) {
 				Map mapConfig = JSONUtils.decodeJSON(config);
 
-				Map mapRemotes = (Map) mapConfig.get(KEY_REMOTES);
+				Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 				if (mapRemotes != null) {
 					Object mapRemote = mapRemotes.get(nick);
 					if (mapRemote instanceof Map) {
@@ -128,13 +129,15 @@ public class AppPreferences
 			if (config != null) {
 				Map mapConfig = JSONUtils.decodeJSON(config);
 
-				Map mapRemotes = (Map) mapConfig.get(KEY_REMOTES);
-				if (mapRemotes != null) {
-					for (Object val : mapRemotes.values()) {
-						if (val instanceof Map) {
-							listRemotes.add(new RemoteProfile((Map) val));
-						}
-					}
+				if (mapConfig != null) {
+  				Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
+  				if (mapRemotes != null) {
+  					for (Object val : mapRemotes.values()) {
+  						if (val instanceof Map) {
+  							listRemotes.add(new RemoteProfile((Map) val));
+  						}
+  					}
+  				}
 				}
 			}
 		} catch (Throwable t) {
@@ -157,7 +160,7 @@ public class AppPreferences
 				mapConfig = new HashMap();
 			}
 
-			Map mapRemotes = (Map) mapConfig.get(KEY_REMOTES);
+			Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 			if (mapRemotes == null) {
 				mapRemotes = new HashMap();
 				mapConfig.put(KEY_REMOTES, mapRemotes);
@@ -202,7 +205,7 @@ public class AppPreferences
 				mapConfig.put(KEY_LASTUSED, ac);
 			}
 
-			Map mapRemotes = (Map) mapConfig.get(KEY_REMOTES);
+			Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 			if (mapRemotes == null) {
 				mapRemotes = new HashMap();
 				mapConfig.put(KEY_REMOTES, mapRemotes);
@@ -243,7 +246,7 @@ public class AppPreferences
 				return;
 			}
 
-			Map mapRemotes = (Map) mapConfig.get(KEY_REMOTES);
+			Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 			if (mapRemotes == null) {
 				return;
 			}

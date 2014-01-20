@@ -23,6 +23,7 @@ import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.TextView;
@@ -114,4 +115,16 @@ public class DialogFragmentDeleteTorrent
 		super.onStop();
 		VuzeEasyTracker.getInstance(this).activityStop(this);
 	}
+
+	public static void open(FragmentManager fragmentManager, String name,
+			long torrentID) {
+		DialogFragmentDeleteTorrent dlg = new DialogFragmentDeleteTorrent();
+		Bundle bundle = new Bundle();
+		bundle.putString("name", name);
+		bundle.putString("id", "" + torrentID);
+
+		dlg.setArguments(bundle);
+		dlg.show(fragmentManager, "DeleteTorrentDialog");
+	}
+
 }

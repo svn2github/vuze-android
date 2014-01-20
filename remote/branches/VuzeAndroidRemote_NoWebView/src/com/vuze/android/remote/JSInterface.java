@@ -56,8 +56,12 @@ public class JSInterface
 
 	@JavascriptInterface
 	public void updateSessionProperties(String json) {
-		Map<?, ?> map = JSONUtils.decodeJSON(json);
-		listener.sessionPropertiesUpdated(map);
+		try {
+			Map<?, ?> map = JSONUtils.decodeJSON(json);
+			listener.sessionPropertiesUpdated(map);
+		} catch (Exception e) {
+			VuzeEasyTracker.getInstance(activity).logError(activity, e);
+		}
 	}
 
 	@JavascriptInterface

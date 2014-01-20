@@ -17,21 +17,20 @@
 
 package com.aelitis.azureus.util;
 
-import java.io.UnsupportedEncodingException;
 import java.util.*;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
+import android.content.Context;
 
-import android.annotation.SuppressLint;
-import android.util.Base64;
-
+import com.alibaba.fastjson.JSON;
+import com.vuze.android.remote.VuzeEasyTracker;
 
 /**
- * @author TuxPaper
- * @created Feb 14, 2007
- *
+ * Wrap JSON functions so we can easily switch out JSON library.
+ * <p>
+ * On a torrent with 9775 files, pulling "files" and "fileStats":<BR>
+ * 33xx-3800 for simple
+ * 22xx for GSON 2.2.4
+ * 18xx-19xx for fastjson 1.1.34 (stream Reader broken on chunks > 8192)
  */
 @SuppressWarnings({
 	"unchecked",
@@ -39,6 +38,7 @@ import android.util.Base64;
 })
 public class JSONUtils
 {
+
 	/**
 	 * decodes JSON formatted text into a map.
 	 * 
@@ -49,24 +49,47 @@ public class JSONUtils
 	 *  <p>
 	 *  if the String is formatted badly, null is returned
 	 */
-	public static Map decodeJSON(String json) {
+	public static Map decodeJSONnoException(String json) {
 		try {
-			Object object = JSONValue.parseWithException(json);
-			if (object instanceof Map) {
-				return (Map) object;
-			}
-			// could be : ArrayList, String, Number, Boolean
-			Map map = new HashMap();
-			map.put("value", object);
-			return map;
-		} catch (Throwable t) {
+			return decodeJSON(json);
+		} catch (Exception e) {
+			System.err.println("Parsing " + json);
+			e.printStackTrace();
 			return null;
 		}
 	}
 
+	public static Map decodeJSONnoException(Context context, String json) {
+		try {
+			return decodeJSON(json);
+		} catch (Exception e) {
+			e.printStackTrace();
+			VuzeEasyTracker.getInstance(context).logError(context, e);
+			return null;
+		}
+	}
+
+	
+	public static Map decodeJSON(String json)
+			throws Exception {
+		Object object = parseWithException(json);
+		//System.out.println("decode: " + json + "\nto\n" + object);
+		if (object instanceof Map) {
+			return (Map) object;
+		}
+		// could be : ArrayList, String, Number, Boolean
+		Map map = new HashMap();
+		map.put("value", object);
+		return map;
+	}
+
+	private static Object parseWithException(String json) {
+		return JSON.parse(json);
+	}
+
 	public static List decodeJSONList(String json) {
 		try {
-			Object object = JSONValue.parseWithException(json);
+			Object object = parseWithException(json);
 			if (object instanceof List) {
 				return (List) object;
 			}
@@ -79,87 +102,21 @@ public class JSONUtils
 		}
 	}
 
-	/**
-	 * encodes a map into a JSONObject.
-	 * <P>
-	 * It's recommended that you use {@link #encodeToJSON(Map)} instead
-	 * 
-	 * @param map
-	 * @return
-	 *
-	 * @since 3.0.1.5
-	 */
-	@SuppressLint("NewApi")
-	public static Map encodeToJSONObject(Map map) {
-		Map newMap = new JSONObject();
 
-		for (Iterator iter = map.keySet().iterator(); iter.hasNext();) {
-			String key = (String) iter.next();
-			Object value = map.get(key);
-
-			if (value instanceof byte[]) {
-				key += ".B64";
-				value = Base64.encode((byte[]) value, Base64.DEFAULT);
-			}
-
-			value = coerce(value);
-
-			newMap.put(key, value);
-		}
-		return newMap;
-	}
-
-	/**
-	 * Encodes a map into a JSON formatted string.
-	 * <p>
-	 * Handles multiple layers of Maps and Lists.  Handls String, Number,
-	 * Boolean, and null values.
-	 * 
-	 * @param map Map to change into a JSON formatted string
-	 * @return JSON formatted string
-	 *
-	 * @since 3.0.1.5
-	 */
 	public static String encodeToJSON(Map map) {
-		return encodeToJSONObject(map).toString();
+		return JSON.toJSONString(map);
 	}
 
 	public static String encodeToJSON(Collection list) {
-		return encodeToJSONArray(list).toString();
+		return JSON.toJSONString(list);
 	}
 
-	private static Object coerce(Object value) {
-		if (value instanceof Map) {
-			value = encodeToJSONObject((Map) value);
-		} else if (value instanceof List) {
-			value = encodeToJSONArray((List) value);
-		} else if (value instanceof Object[]) {
-			Object[] array = (Object[]) value;
-			value = encodeToJSONArray(Arrays.asList(array));
-		} else if (value instanceof byte[]) {
-			try {
-				value = new String((byte[]) value, "utf-8");
-			} catch (UnsupportedEncodingException e) {
-			}
-		}
-		return value;
+	/*
+	public static Map decodeJSON(Reader br) throws Exception {
+		JSONReader jsonReader = new JSONReader(br);
+		// Breaks on objects > 8192 bytes
+		Object readObject = jsonReader.readObject(HashMap.class);
+		return (Map) readObject;
 	}
-
-	/**
-	 * @param value
-	 * @return
-	 *
-	 * @since 3.0.1.5
-	 */
-	private static List encodeToJSONArray(Collection list) {
-		List newList = new JSONArray(list);
-
-		for (int i = 0; i < newList.size(); i++) {
-			Object value = newList.get(i);
-
-			newList.set(i, coerce(value));
-		}
-
-		return newList;
-	}
+	*/
 }

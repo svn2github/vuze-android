@@ -17,11 +17,8 @@
 
 package com.vuze.android.remote.rpc;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.Header;
@@ -36,10 +33,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpProtocolParams;
-import org.json.simple.JSONValue;
-import org.json.simple.parser.ParseException;
 
-import android.net.http.AndroidHttpClient;
 import android.util.Log;
 
 import com.aelitis.azureus.util.JSONUtils;
@@ -86,7 +80,7 @@ public class RestJsonClient
 				post.setHeader("Content-type",
 						"application/x-www-form-urlencoded; charset=UTF-8");
 			}
-			
+
 			if (headers != null) {
 				for (Header header : headers) {
 					httpRequest.setHeader(header);
@@ -102,63 +96,83 @@ public class RestJsonClient
 			if (AndroidUtils.DEBUG) {
 				Log.d(null, "  conn ->" + (then - now) + "ms");
 			}
-			
+
 			now = then;
 
 			HttpEntity entity = response.getEntity();
-			
+
 			// XXX STATUSCODE!
-			
+
 			if (entity != null) {
 
 				// A Simple JSON Response Read
 				InputStream instream = entity.getContent();
 				InputStreamReader isr = new InputStreamReader(instream, "utf8");
-				BufferedReader br = new BufferedReader(isr);
-				br.mark(32767);
-
-				then = System.currentTimeMillis();
-				if (AndroidUtils.DEBUG) {
-					Log.d(null, "  readin ->" + (then - now) + "ms");
-				}
-				now = then;
+				StringBuilder sb = new StringBuilder();
+				//BufferedReader br = new BufferedReader(isr);
+				//br.mark(32767);
 
 				try {
-					Object o = JSONValue.parseWithException(br);
-					if (o instanceof Map) {
-						json = (Map) o;
-					} else {
-  					// could be : ArrayList, String, Number, Boolean
-  					Map map = new HashMap();
-  					map.put("value", o);
-  					json = map;
-					}
-
-				} catch (ParseException pe) {
-
-					br.reset();
-					String line = br.readLine().trim();
-
+					
+  				char c[] = new char[8192];
+  				while (true) {
+  						int read = isr.read(c);
+  						if (read < 0) {
+  							break;
+  						}
+  						sb.append(c, 0, read);
+  				}
+					then = System.currentTimeMillis();
+  				json = JSONUtils.decodeJSON(sb.toString());
 					if (AndroidUtils.DEBUG) {
-						Log.d(null, "line: " + line);
+						Log.d(null, "  read ->" + (then - now) + "ms");
 					}
-					Header contentType = entity.getContentType();
-					if (line.startsWith("<")
-							|| line.contains("<html")
-							|| (contentType != null && contentType.getValue().startsWith(
-									"text/html"))) {
-						// TODO: use android strings.xml
-						throw new RPCException(response,
-								"Could not retrieve remote client location information.  The most common cause is being on a guest wifi that requires login before using the internet.");
+					now = then;
+
+					// 9775 files
+					// 33xx-3800 for simple; 22xx for GSON 2.2.4; 18xx-19xx for fastjson 1.1.34
+//					json = JSONUtils.decodeJSON(br);
+
+					then = System.currentTimeMillis();
+					if (AndroidUtils.DEBUG) {
+						Log.d(null, "  parse ->" + (then - now) + "ms");
+					}
+					now = then;
+
+				} catch (Exception pe) {
+
+					try {
+
+//  					br.reset();
+//  					String line = br.readLine().trim();
+						isr.close();
+						String line = sb.subSequence(0, Math.min(128, sb.length())).toString();
+  
+  					if (AndroidUtils.DEBUG) {
+  						Log.d(null, "line: " + line);
+  					}
+  					Header contentType = entity.getContentType();
+  					if (line.startsWith("<")
+  							|| line.contains("<html")
+  							|| (contentType != null && contentType.getValue().startsWith(
+  									"text/html"))) {
+  						// TODO: use android strings.xml
+  						throw new RPCException(
+  								response,
+  								"Could not retrieve remote client location information.  The most common cause is being on a guest wifi that requires login before using the internet.");
+  					}
+					} catch (IOException io) {
+						
 					}
 
 					throw new RPCException(pe);
 				} finally {
-					br.close();
+					isr.close();
+//					br.close();
 				}
 
 				if (AndroidUtils.DEBUG) {
-					Log.d(null, "JSON Result: " + json);
+//					Log.d(null, "JSON Result: " + json);
 				}
 
 			}

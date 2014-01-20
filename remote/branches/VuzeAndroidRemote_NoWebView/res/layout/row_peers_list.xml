@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.android.music.CheckableRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:background="@drawable/list_selector"
+	android:padding="10dp"
+	android:paddingLeft="0dp" >
+
+    <TextView
+    	android:id="@+id/peerrow_ip"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_alignLeft="@+id/peerrow_client"
+    	android:layout_below="@+id/peerrow_client"
+    	android:text="255.255.255.255"
+    	android:textSize="10sp" />
+
+    <TextView
+    	android:id="@+id/peerrow_ul"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_alignLeft="@+id/peerrow_dl"
+    	android:layout_below="@+id/peerrow_dl"
+    	android:text="10.8 kB/s" />
+
+    <TextView
+    	android:id="@+id/peerrow_cc"
+    	android:layout_width="30dp"
+    	android:layout_height="wrap_content"
+    	android:layout_alignParentBottom="true"
+    	android:layout_alignParentLeft="true"
+    	android:layout_alignParentTop="true"
+    	android:gravity="center_vertical"
+    	android:maxLines="1"
+    	android:text="CA" />
+
+    <TextView
+    	android:id="@+id/peerrow_client"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_alignParentTop="true"
+    	android:layout_toRightOf="@+id/peerrow_cc"
+    	android:text="Vuze 5.2.0.0"
+    	android:textAppearance="?android:attr/textAppearanceMedium" />
+
+    <TextView
+    	android:id="@+id/peerrow_pct"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_alignParentBottom="true"
+    	android:layout_alignParentRight="true"
+    	android:layout_alignParentTop="true"
+    	android:background="@color/list_bg_c"
+    	android:gravity="center_vertical"
+    	android:text="99.8%" />
+
+    <TextView
+    	android:id="@+id/peerrow_dl"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_alignParentTop="true"
+    	android:layout_toLeftOf="@+id/peerrow_pct"
+    	android:text="10.8 kB/s" />
+
+</com.android.music.CheckableRelativeLayout>

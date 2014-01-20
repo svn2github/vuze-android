@@ -11,4 +11,5 @@
 	<color name="list_bg_p">#ff0000</color>
 	<color name="list_bg_f">#00ffff</color>
 	<color name="list_bg_c">#808080</color>
+	<color name="list_bg_s">#802080</color>
 </resources>

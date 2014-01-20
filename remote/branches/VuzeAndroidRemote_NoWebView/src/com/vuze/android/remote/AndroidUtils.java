@@ -17,22 +17,31 @@
 
 package com.vuze.android.remote;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import com.aelitis.azureus.util.MapUtils;
+import com.vuze.android.remote.dialog.DialogFragmentMoveData;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.*;
 import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnDismissListener;
+import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
-import android.view.ContextThemeWrapper;
-import android.view.View;
+import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -145,10 +154,9 @@ public class AndroidUtils
 
 	}
 
-	public static void showDialog(Activity activity, int titleID,
-			String msg) {
+	public static void showDialog(Activity activity, int titleID, String msg) {
 		String title = activity.getResources().getString(titleID);
-		showDialog(activity, title,msg);
+		showDialog(activity, title, msg);
 	}
 
 	public static void showDialog(final Activity activity, final String title,
@@ -319,6 +327,9 @@ public class AndroidUtils
 		}
 	}
 
+	/**
+	 * Remove all extras from intent
+	 */
 	public static void clearExtras(Intent intent) {
 		Bundle extras = intent.getExtras();
 		if (extras == null) {
@@ -328,4 +339,75 @@ public class AndroidUtils
 			intent.removeExtra(key);
 		}
 	}
+
+	/**
+	 * Android doesn't fade out disbaled menu item icons, so do it ourselves
+	 */
+	public static void fixupMenuAlpha(Menu menu) {
+		for (int i = 0; i < menu.size(); i++) {
+			MenuItem item = menu.getItem(i);
+			Drawable icon = item.getIcon();
+			if (icon != null) {
+				icon.setAlpha(item.isEnabled() ? 255 : 64);
+			}
+		}
+	}
+
+	public static class ValueStringArray
+	{
+		public int values[];
+
+		public String strings[];
+
+		public ValueStringArray(int[] value, String[] string) {
+			this.values = value;
+			this.strings = string;
+		}
+
+	}
+
+	public static ValueStringArray getValueStringArray(Resources resources, int id) {
+		String[] stringArray = resources.getStringArray(id);
+		String[] strings = new String[stringArray.length];
+		int[] values = new int[stringArray.length];
+		
+		for (int i = 0; i < stringArray.length; i++) {
+			String[] s = stringArray[i].split(",");
+			values[i] = Integer.parseInt(s[0]);
+			strings[i] = s[1];
+		}
+		return new ValueStringArray(values, strings);
+	}
+
+	@SuppressWarnings("rawtypes")
+	public static void openMoveDataDialog(Map mapTorrent, SessionInfo sessionInfo, FragmentManager fm) {
+		DialogFragmentMoveData dlg = new DialogFragmentMoveData();
+		Bundle bundle = new Bundle();
+		if (mapTorrent == null) {
+			return;
+		}
+
+		bundle.putLong("id", MapUtils.getMapLong(mapTorrent, "id", -1));
+		bundle.putString("name", "" + mapTorrent.get("name"));
+
+		String defaultDownloadDir = sessionInfo.getSessionSettings().getDownloadDir();
+		String downloadDir = MapUtils.getMapString(mapTorrent, "downloadDir",
+				defaultDownloadDir);
+		bundle.putString("downloadDir", downloadDir);
+		ArrayList<String> history = new ArrayList<String>();
+		if (defaultDownloadDir != null) {
+			history.add(defaultDownloadDir);
+		}
+
+		List<String> saveHistory = sessionInfo.getRemoteProfile().getSavePathHistory();
+		for (String s : saveHistory) {
+			if (!history.contains(s)) {
+				history.add(s);
+			}
+		}
+		bundle.putStringArrayList("history", history);
+		dlg.setArguments(bundle);
+		dlg.show(fm, "MoveDataDialog");
+	}
+
 }
