@@ -1,37 +1,33 @@
-package com.vuze.android.remote.activity;
+package com.vuze.android.remote.fragment;
 
 import java.util.Map;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.view.*;
 
 import com.aelitis.azureus.util.MapUtils;
-import com.vuze.android.remote.AndroidUtils;
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.SessionInfo;
-import com.vuze.android.remote.activity.TorrentViewActivity.TransmissionRpcAvailableListener;
+import com.vuze.android.remote.*;
 import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent;
 
 public class TorrentDetailsFragment
-	extends Fragment
+	extends Fragment implements SessionInfoListener
 {
 	ViewPager mViewPager;
 
 	private TorrentDetailsPagerAdapter pagerAdapter;
 
-	protected SessionInfo sessionInfo;
+	private SessionInfo sessionInfo;
 
 	private long[] ids;
 
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
 
-		setHasOptionsMenu(true);
+		setHasOptionsMenu(false);
 		View view = inflater.inflate(R.layout.frag_torrent_details, container,
 				false);
 
@@ -58,20 +54,6 @@ public class TorrentDetailsFragment
 		PagerTabStrip pts = (PagerTabStrip) view.findViewById(R.id.pager_title_strip);
 		pts.setTextSpacing(0);
 
-		FragmentActivity activity = getActivity();
-		if (activity instanceof TorrentViewActivity) {
-			((TorrentViewActivity) activity).addRpcAvailableListener(new TransmissionRpcAvailableListener() {
-
-				@Override
-				public void uiReady() {
-				}
-
-				@Override
-				public void transmissionRpcAvailable(SessionInfo sessionInfo) {
-					TorrentDetailsFragment.this.sessionInfo = sessionInfo;
-				}
-			});
-		}
 
 		return view;
 	}
@@ -86,21 +68,26 @@ public class TorrentDetailsFragment
 
 	}
 
-	public void setTorrentIDs(long[] ids) {
-		this.ids = ids;
-		if (ids == null || ids.length != 1) {
-			mViewPager.setVisibility(View.GONE);
-		} else {
-			pagerAdapter.setSelection(sessionInfo, ids[0]);
-			mViewPager.setVisibility(View.VISIBLE);
-			int currentItem = mViewPager.getCurrentItem();
-			System.out.println("currentItem = " + currentItem);
-			Fragment item = pagerAdapter.getFragment(currentItem);
-			System.out.println("frag = " + item);
-			if (item instanceof SetTorrentIdListener) {
-				((SetTorrentIdListener) item).setTorrentID(sessionInfo, ids[0]);
+	public void setTorrentIDs(long[] newIDs) {
+		this.ids = newIDs;
+		getActivity().runOnUiThread(new Runnable() {
+			public void run() {
+				if (ids == null || ids.length != 1) {
+					ids = null;
+					setHasOptionsMenu(false);
+				} else {
+					setHasOptionsMenu(true);
+					pagerAdapter.setSelection(sessionInfo, ids[0]);
+					int currentItem = mViewPager.getCurrentItem();
+					System.out.println("currentItem = " + currentItem);
+					Fragment item = pagerAdapter.getFragment(currentItem);
+					System.out.println("frag = " + item);
+					if (item instanceof SetTorrentIdListener) {
+						((SetTorrentIdListener) item).setTorrentID(sessionInfo, ids[0]);
+					}
+				}
 			}
-		}
+		});
 	}
 
 	@Override
@@ -118,6 +105,9 @@ public class TorrentDetailsFragment
 	}
 
 	protected boolean handleMenu(int itemId) {
+		if (sessionInfo == null || ids == null) {
+			return false;
+		}
 		switch (itemId) {
 			case R.id.action_sel_remove: {
 				Map<?, ?> map = sessionInfo.getTorrent(ids[0]);
@@ -162,4 +152,37 @@ public class TorrentDetailsFragment
 		return false;
 	}
 
+	@Override
+	public void onPrepareOptionsMenu(Menu menu) {
+		super.onPrepareOptionsMenu(menu);
+
+		if (sessionInfo == null || ids == null) {
+			return;
+		}
+		Map<?, ?> torrent = sessionInfo.getTorrent(ids[0]);
+		int status = MapUtils.getMapInt(torrent,
+				TransmissionVars.TORRENT_FIELD_STATUS,
+				TransmissionVars.TR_STATUS_STOPPED);
+		boolean canStart = status == TransmissionVars.TR_STATUS_STOPPED;
+		boolean canStop = status != TransmissionVars.TR_STATUS_STOPPED;
+		MenuItem menuStart = menu.findItem(R.id.action_sel_start);
+		menuStart.setVisible(canStart);
+
+		MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
+		menuStop.setVisible(canStop);
+
+		AndroidUtils.fixupMenuAlpha(menu);
+	}
+
+	@Override
+	public void transmissionRpcAvailable(SessionInfo _sessionInfo) {
+		sessionInfo = _sessionInfo;
+		if (ids != null) {
+			setTorrentIDs(ids);
+		}
+	}
+
+	@Override
+	public void uiReady() {
+	}
 }

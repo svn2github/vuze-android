@@ -1,12 +1,14 @@
-package com.vuze.android.remote.activity;
+package com.vuze.android.remote.fragment;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.text.Editable;
@@ -24,21 +26,21 @@ import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.ValueStringArray;
-import com.vuze.android.remote.activity.TorrentAdapter.TorrentFilter;
-import com.vuze.android.remote.activity.TorrentViewActivity.TransmissionRpcAvailableListener;
 import com.vuze.android.remote.dialog.*;
 import com.vuze.android.remote.dialog.DialogFragmentFilterBy.FilterByDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentSortBy.SortByDialogListener;
+import com.vuze.android.remote.fragment.TorrentListAdapter.TorrentFilter;
+import com.vuze.android.remote.rpc.ReplyMapReceivedListener;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class TorrentListFragment
 	extends Fragment
 	implements TorrentListReceivedListener, FilterByDialogListener,
-	SortByDialogListener
+	SortByDialogListener, SessionInfoListener
 {
 	public interface OnTorrentSelectedListener
 	{
-		public void onTorrentSelectedListener(long[] ids);
+		public void onTorrentSelectedListener(long[] ids, boolean inMultiMode);
 	}
 
 	private OnTorrentSelectedListener mCallback;
@@ -49,7 +51,7 @@ public class TorrentListFragment
 
 	protected ActionMode mActionMode;
 
-	private TorrentAdapter adapter;
+	private TorrentListAdapter adapter;
 
 	private SessionInfo sessionInfo;
 
@@ -58,10 +60,6 @@ public class TorrentListFragment
 	private boolean haveActive;
 
 	private boolean havePaused;
-
-	protected boolean haveActiveSel;
-
-	protected boolean havePausedSel;
 
 	private Callback mActionModeCallback;
 
@@ -77,44 +75,73 @@ public class TorrentListFragment
 			mCallback = (OnTorrentSelectedListener) activity;
 		}
 
-		if (activity instanceof TorrentViewActivity) {
-			((TorrentViewActivity) activity).addRpcAvailableListener(new TransmissionRpcAvailableListener() {
+	}
 
-				@Override
-				public void uiReady() {
-					sessionInfo.getRpc().getAllTorrents(null);
+	@Override
+	public void uiReady() {
+		/*
+		sessionInfo.getRpc().simpleRpcCall("rcm-is-enabled" , new ReplyMapReceivedListener() {
+			
+			@Override
+			public void rpcSuccess(String id, Map optionalMap) {
+				System.out.println("rcm-is-enabled: " + optionalMap);
+			}
+			
+			@Override
+			public void rpcFailure(String id, String message) {
+			}
+			
+			@Override
+			public void rpcError(String id, Exception e) {
+			}
+		});
+		sessionInfo.getRpc().simpleRpcCall("rcm-get-list" , new ReplyMapReceivedListener() {
+			
+			@Override
+			public void rpcSuccess(String id, Map optionalMap) {
+				System.out.println("rcm-get-list: " + optionalMap);
+			}
+			
+			@Override
+			public void rpcFailure(String id, String message) {
+			}
+			
+			@Override
+			public void rpcError(String id, Exception e) {
+			}
+		});
+		*/
+		
+		sessionInfo.getRpc().getAllTorrents(null);
 
-					RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
+		RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
 
-					String[] sortBy = remoteProfile.getSortBy();
-					Boolean[] sortOrder = remoteProfile.getSortOrder();
-					if (sortBy != null) {
-						sortBy(sortBy, sortOrder, false);
-					}
-
-					int filterBy = remoteProfile.getFilterBy();
-					if (filterBy >= 0) {
-						final ValueStringArray filterByList = AndroidUtils.getValueStringArray(
-								getResources(), R.array.filterby_list);
-						for (int i = 0; i < filterByList.values.length; i++) {
-							long val = filterByList.values[i];
-							if (val == filterBy) {
-								filterBy(filterBy, filterByList.strings[i], false);
-								break;
-							}
-						}
-					}
-
-				}
-
-				@Override
-				public void transmissionRpcAvailable(SessionInfo sessionInfo) {
-					TorrentListFragment.this.sessionInfo = sessionInfo;
-					adapter.setSessionInfo(sessionInfo);
-					sessionInfo.setTorrentListReceivedListener(TorrentListFragment.this);
-				}
-			});
+		String[] sortBy = remoteProfile.getSortBy();
+		Boolean[] sortOrder = remoteProfile.getSortOrder();
+		if (sortBy != null) {
+			sortBy(sortBy, sortOrder, false);
 		}
+
+		int filterBy = remoteProfile.getFilterBy();
+		if (filterBy >= 0) {
+			final ValueStringArray filterByList = AndroidUtils.getValueStringArray(
+					getResources(), R.array.filterby_list);
+			for (int i = 0; i < filterByList.values.length; i++) {
+				long val = filterByList.values[i];
+				if (val == filterBy) {
+					filterBy(filterBy, filterByList.strings[i], false);
+					break;
+				}
+			}
+		}
+
+	}
+
+	@Override
+	public void transmissionRpcAvailable(SessionInfo sessionInfo) {
+		TorrentListFragment.this.sessionInfo = sessionInfo;
+		adapter.setSessionInfo(sessionInfo);
+		sessionInfo.addTorrentListReceivedListener(this);
 	}
 
 	/* (non-Javadoc)
@@ -137,7 +164,7 @@ public class TorrentListFragment
 		listview.setItemsCanFocus(false);
 		listview.setClickable(true);
 		listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-		adapter = new TorrentAdapter(this.getActivity());
+		adapter = new TorrentListAdapter(this.getActivity());
 
 		listview.setAdapter(adapter);
 
@@ -186,9 +213,10 @@ public class TorrentListFragment
 				}
 
 				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(getSelectedIDs());
+					mCallback.onTorrentSelectedListener(getSelectedIDs(), false);
 				}
-				//selectionChanged(null, haveActiveSel, havePausedSel);
+				
+					invalidateOptionsMenuHC();
 			}
 
 		});
@@ -347,11 +375,10 @@ public class TorrentListFragment
 	@Override
 	public void rpcTorrentListReceived(final List listTorrents) {
 		getActivity().runOnUiThread(new Runnable() {
-			@SuppressWarnings("unchecked")
 			@Override
 			public void run() {
 				adapter.refreshDisplayList();
-				updateTorrentCount(listTorrents.size());
+				updateTorrentCount(adapter.getCount());
 			}
 		});
 	}
@@ -400,6 +427,7 @@ public class TorrentListFragment
 				if (DEBUG) {
 					System.out.println("MULTI:ON CREATEACTIONMODE");
 				}
+				mActionMode = mode;
 				// Inflate a menu resource providing context menu items
 				MenuInflater inflater = mode.getMenuInflater();
 				inflater.inflate(R.menu.menu_context, menu);
@@ -416,11 +444,21 @@ public class TorrentListFragment
 				MenuItem menuMove = menu.findItem(R.id.action_sel_move);
 				menuMove.setEnabled(listview.getCheckedItemCount() > 0);
 
+				Map<?, ?>[] selectedTorrentMaps = getSelectedTorrentMaps();
+				boolean canStart = false;
+				boolean canStop = false;
+				for (Map<?, ?> mapTorrent : selectedTorrentMaps) {
+					int status = MapUtils.getMapInt(mapTorrent,
+							TransmissionVars.TORRENT_FIELD_STATUS,
+							TransmissionVars.TR_STATUS_STOPPED);
+					canStart |= status == TransmissionVars.TR_STATUS_STOPPED;
+					canStop |= status != TransmissionVars.TR_STATUS_STOPPED;
+				}
 				MenuItem menuStart = menu.findItem(R.id.action_sel_start);
-				menuStart.setVisible(havePausedSel);
+				menuStart.setVisible(canStart);
 
 				MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
-				menuStop.setVisible(haveActiveSel);
+				menuStop.setVisible(canStop);
 
 				AndroidUtils.fixupMenuAlpha(menu);
 
@@ -431,7 +469,7 @@ public class TorrentListFragment
 			@Override
 			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
 				if (DEBUG) {
-					System.out.println("MULTI:onDestroyActionMode");
+					System.out.println("MULTI:onActionItemClicked");
 				}
 				if (TorrentListFragment.this.handleMenu(item.getItemId())) {
 					return true;
@@ -452,6 +490,9 @@ public class TorrentListFragment
 						listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 					}
 				});
+				if (mCallback != null) {
+					mCallback.onTorrentSelectedListener(new long[] {}, false);
+				}
 			}
 
 			@Override
@@ -461,6 +502,10 @@ public class TorrentListFragment
 					System.out.println("MULTI:CHECK CHANGE");
 				}
 				mode.setTitle(getCheckedItemCount(listview) + " selected");
+				if (mCallback != null) {
+					mCallback.onTorrentSelectedListener(getSelectedIDs(), true);
+				}
+					invalidateOptionsMenuHC();
 			}
 		});
 
@@ -543,7 +588,8 @@ public class TorrentListFragment
 				if (getCheckedItemCount(listview) == 0) {
 					return true;
 				}
-				AndroidUtils.openMoveDataDialog(getFirstSelected(), sessionInfo, getFragmentManager());
+				AndroidUtils.openMoveDataDialog(getFirstSelected(), sessionInfo,
+						getFragmentManager());
 				return true;
 			case R.id.action_sel_move_top: {
 				sessionInfo.getRpc().simpleRpcCall("queue-move-top", getSelectedIDs(),
@@ -569,7 +615,6 @@ public class TorrentListFragment
 		return false;
 	}
 
-
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	private void setupHoneyComb() {
 		mActionModeCallback = new ActionMode.Callback() {
@@ -587,14 +632,25 @@ public class TorrentListFragment
 			// may be called multiple times if the mode is invalidated.
 			@Override
 			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+				System.out.println("onPrepareActionMode in frag");
 				MenuItem menuMove = menu.findItem(R.id.action_sel_move);
 				menuMove.setEnabled(listview.getCheckedItemCount() > 0);
 
+				Map<?, ?>[] selectedTorrentMaps = getSelectedTorrentMaps();
+				boolean canStart = false;
+				boolean canStop = false;
+				for (Map<?, ?> mapTorrent : selectedTorrentMaps) {
+					int status = MapUtils.getMapInt(mapTorrent,
+							TransmissionVars.TORRENT_FIELD_STATUS,
+							TransmissionVars.TR_STATUS_STOPPED);
+					canStart |= status == TransmissionVars.TR_STATUS_STOPPED;
+					canStop |= status != TransmissionVars.TR_STATUS_STOPPED;
+				}
 				MenuItem menuStart = menu.findItem(R.id.action_sel_start);
-				menuStart.setVisible(havePausedSel);
+				menuStart.setVisible(canStart);
 
 				MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
-				menuStop.setVisible(haveActiveSel);
+				menuStop.setVisible(canStop);
 
 				AndroidUtils.fixupMenuAlpha(menu);
 
@@ -618,6 +674,9 @@ public class TorrentListFragment
 				listview.clearChoices();
 				// Not sure why ListView doesn't invalidate by default
 				adapter.notifyDataSetInvalidated();
+				if (mCallback != null) {
+					mCallback.onTorrentSelectedListener(new long[] {}, false);
+				}
 			}
 		};
 	}
@@ -676,18 +735,19 @@ public class TorrentListFragment
 			Log.d(null, "FILTER BY " + name);
 		}
 
-		TorrentFilter filter = adapter.getFilter();
-		filter.setFilterMode(filterMode);
-		if (tvFilteringBy != null) {
-			getActivity().runOnUiThread(new Runnable() {
-				public void run() {
+		getActivity().runOnUiThread(new Runnable() {
+			public void run() {
+				// java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()
+				TorrentFilter filter = adapter.getFilter();
+				filter.setFilterMode(filterMode);
+				if (tvFilteringBy != null) {
 					tvFilteringBy.setText(name);
 				}
-			});
-		}
+			}
+		});
 		if (save) {
 			sessionInfo.getRemoteProfile().setFilterBy(filterMode);
-			sessionInfo.saveProfileIfRemember(getActivity());
+			sessionInfo.saveProfileIfRemember();
 		}
 	}
 
@@ -704,7 +764,7 @@ public class TorrentListFragment
 
 		if (save) {
 			sessionInfo.getRemoteProfile().setSortBy(sortFieldIDs, sortOrderAsc);
-			sessionInfo.saveProfileIfRemember(getActivity());
+			sessionInfo.saveProfileIfRemember();
 		}
 	}
 
@@ -727,7 +787,6 @@ public class TorrentListFragment
 		sortBy(remoteProfile.getSortBy(), sortOrder, true);
 	}
 
-
 	public void updateTorrentCount(final long total) {
 		if (tvTorrentCount == null) {
 			return;
@@ -742,4 +801,25 @@ public class TorrentListFragment
 			}
 		});
 	}
+
+	public void setTorrentIDs(SessionInfo sessionInfo, long[] ids) {
+	}
+	
+	protected void invalidateOptionsMenuHC() {
+		getActivity().runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				ActivityCompat.invalidateOptionsMenu(getActivity());
+				invalidateActionMode();
+			}
+
+			@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+			private void invalidateActionMode() {
+				if (mActionMode != null) {
+					mActionMode.invalidate();
+				}
+			}
+		});
+	}
+
 }

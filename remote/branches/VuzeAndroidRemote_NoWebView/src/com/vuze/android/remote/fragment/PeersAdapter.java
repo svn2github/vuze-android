@@ -1,4 +1,4 @@
-package com.vuze.android.remote.activity;
+package com.vuze.android.remote.fragment;
 
 import java.text.NumberFormat;
 import java.util.*;
@@ -15,28 +15,29 @@ import android.widget.*;
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 
-public class FilesAdapter
+public class PeersAdapter
 	extends BaseAdapter
 	implements Filterable
 {
+
 	static class ViewHolder
 	{
+		TextView tvIP;
+
 		TextView tvName;
 
 		TextView tvProgress;
 
-		ProgressBar pb;
+		TextView tvUlRate;
 
-		TextView tvInfo;
+		TextView tvDlRate;
 
-		TextView tvETA;
-
-		TextView tvStatus;
+		TextView tvCC;
 	}
 
 	private Context context;
 
-	private FileFilter filter;
+	private PeerFilter filter;
 
 	/** List of they keys of all entries displayed, in the display order */
 	private List<Object> displayList;
@@ -55,7 +56,7 @@ public class FilesAdapter
 
 	private long torrentID;
 
-	public FilesAdapter(Context context) {
+	public PeersAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
 		displayList = new ArrayList<Object>();
@@ -82,16 +83,15 @@ public class FilesAdapter
 				return null;
 			}
 			LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-			rowView = inflater.inflate(R.layout.row_file_list, parent, false);
+			rowView = inflater.inflate(R.layout.row_peers_list, parent, false);
 			ViewHolder viewHolder = new ViewHolder();
 
-			viewHolder.tvName = (TextView) rowView.findViewById(R.id.filerow_name);
-
-			viewHolder.tvProgress = (TextView) rowView.findViewById(R.id.filerow_progress_pct);
-			viewHolder.pb = (ProgressBar) rowView.findViewById(R.id.filerow_progress);
-			viewHolder.tvInfo = (TextView) rowView.findViewById(R.id.filerow_info);
-			viewHolder.tvETA = (TextView) rowView.findViewById(R.id.filerow_eta);
-			viewHolder.tvStatus = (TextView) rowView.findViewById(R.id.filerow_state);
+			viewHolder.tvName = (TextView) rowView.findViewById(R.id.peerrow_client);
+			viewHolder.tvCC = (TextView) rowView.findViewById(R.id.peerrow_cc);
+			viewHolder.tvDlRate = (TextView) rowView.findViewById(R.id.peerrow_dl);
+			viewHolder.tvIP = (TextView) rowView.findViewById(R.id.peerrow_ip);
+			viewHolder.tvProgress = (TextView) rowView.findViewById(R.id.peerrow_pct);
+			viewHolder.tvUlRate = (TextView) rowView.findViewById(R.id.peerrow_ul);
 
 			rowView.setTag(viewHolder);
 		}
@@ -99,78 +99,57 @@ public class FilesAdapter
 		ViewHolder holder = (ViewHolder) rowView.getTag();
 
 		Map<?, ?> item = getItem(position);
-		boolean wanted = MapUtils.getMapBoolean(item, "wanted", true);
 
 		if (holder.tvName != null) {
-			holder.tvName.setText(MapUtils.getMapString(item, "name", "??"));
+			holder.tvName.setText(MapUtils.getMapString(item, "clientName", "??"));
 		}
-		long bytesCompleted = MapUtils.getMapLong(item, "bytesCompleted", 0);
-		long length = MapUtils.getMapLong(item, "length", -1);
-		if (length > 0) {
-			float pctDone = (float) bytesCompleted / length;
-			if (holder.tvProgress != null) {
-				holder.tvProgress.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
-				NumberFormat format = NumberFormat.getPercentInstance();
-				format.setMaximumFractionDigits(1);
-				String s = format.format(pctDone);
-				holder.tvProgress.setText(s);
-			}
-			if (holder.pb != null) {
-				holder.pb.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
-				holder.pb.setProgress((int) (pctDone * 10000));
-			}
+		if (holder.tvCC != null) {
+			holder.tvCC.setText(MapUtils.getMapString(item, "cc", ""));
 		}
-		if (holder.tvInfo != null) {
-			String s = resources.getString(R.string.files_row_size,
-					DisplayFormatters.formatByteCountToKiBEtc(bytesCompleted),
-					DisplayFormatters.formatByteCountToKiBEtc(length));
-			holder.tvInfo.setText(s);
-		}
-		if (holder.tvETA != null) {
-			holder.tvETA.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
-			
-			long etaSecs = MapUtils.getMapLong(item, "eta", -1);
-			if (etaSecs > 0) {
-				String s = DisplayFormatters.prettyFormat(etaSecs);
-				holder.tvETA.setText(s);
-				holder.tvETA.setVisibility(View.VISIBLE);
-			} else {
-				holder.tvETA.setVisibility(View.GONE);
-				holder.tvETA.setText("");
-			}
-		}
-		if (holder.tvStatus != null) {
-			int priority = MapUtils.getMapInt(item,
-					TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
-					TransmissionVars.TR_PRI_NORMAL);
-			int id;
-			switch (priority) {
-				case TransmissionVars.TR_PRI_HIGH:
-					id = R.string.torrent_file_priority_high;
-					break;
-				case TransmissionVars.TR_PRI_LOW:
-					id = R.string.torrent_file_priority_low;
-					break;
-				default:
-					id = R.string.torrent_file_priority_normal;
-					break;
-			}
+		if (holder.tvUlRate != null) {
+			long rateUpload = MapUtils.getMapLong(item, "rateToPeer", 0);
 
-			holder.tvStatus.setText(id);
+			if (rateUpload > 0) {
+				holder.tvUlRate.setText("\u25B2 "
+						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateUpload));
+			} else {
+				holder.tvUlRate.setText("");
+			}
+		}
+		if (holder.tvDlRate != null) {
+			long rateDownload = MapUtils.getMapLong(item, "rateToClient", 0);
+
+			if (rateDownload > 0) {
+				holder.tvDlRate.setText("\u25BC "
+						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateDownload));
+			} else {
+				holder.tvDlRate.setText("");
+			}
+		}
+		float pctDone = MapUtils.getMapFloat(item, "progress", 0f);
+		if (holder.tvProgress != null) {
+			NumberFormat format = NumberFormat.getPercentInstance();
+			format.setMaximumFractionDigits(1);
+			String s = format.format(pctDone);
+			holder.tvProgress.setText(s);
+		}
+
+		if (holder.tvIP != null) {
+			holder.tvIP.setText(MapUtils.getMapString(item, "address", "??"));
 		}
 
 		return rowView;
 	}
 
 	@Override
-	public FileFilter getFilter() {
+	public PeerFilter getFilter() {
 		if (filter == null) {
-			filter = new FileFilter();
+			filter = new PeerFilter();
 		}
 		return filter;
 	}
 
-	public class FileFilter
+	public class PeerFilter
 		extends Filter
 	{
 		private int filterMode;
@@ -185,55 +164,68 @@ public class FilesAdapter
 		@Override
 		protected FilterResults performFiltering(CharSequence constraint) {
 			this.constraint = constraint;
-			System.out.println("performFIlter Start");
+			if (AndroidUtils.DEBUG) {
+  			System.out.println("performFIlter Start");
+			}
 			FilterResults results = new FilterResults();
 
 			if (sessionInfo == null) {
-				System.out.println("noSessionInfo");
+				if (AndroidUtils.DEBUG) {
+					System.out.println("noSessionInfo");
+				}
 
 				return results;
 			}
 
+			boolean hasConstraint = constraint != null && constraint.length() > 0;
 
-			synchronized (mLock) {
-				Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
-				if (torrent == null) {
-					return results;
-				}
-				final List listFiles = MapUtils.getMapList(torrent, "files", null);
-				final List listFileStats = MapUtils.getMapList(torrent, "fileStats",
-						null);
-				//					System.out.println("listFiles=" + listFiles);
-				if (listFiles == null) {
-					return results;
-				}
-				System.out.println("listFiles=" + listFiles.size());
-				if (listFileStats != null) {
-					List mergedFileMaps = new ArrayList();
-					for (int i = 0; i < listFiles.size() && i < listFileStats.size(); i++) {
-						try {
-							Map mapFile = (Map) listFiles.get(i);
-							Map mapFileStats = (Map) listFileStats.get(i);
+			Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
+			List<?> listPeers = MapUtils.getMapList(torrent, "peers", null);
+			if (listPeers == null || listPeers.size() == 0) {
+				//System.out.println("performFIlter noPeers " + torrent);
 
-							Map map = new HashMap(mapFile);
-							map.putAll(mapFileStats);
-							mergedFileMaps.add(map);
-						} catch (Throwable t) {
-							VuzeEasyTracker.getInstance(context).logError(context, t);
-							t.printStackTrace();
-						}
-
-					}
-					results.values = mergedFileMaps;
-					results.count = mergedFileMaps.size();
-				} else {
-					results.values = new ArrayList(listFiles);
-					results.count = listFiles.size();
-				}
-
+				return results;
 			}
+			if (!hasConstraint && filterMode < 0) {
+				synchronized (mLock) {
+					results.values = torrent;
+					results.count = listPeers.size();
+				}
+				if (AndroidUtils.DEBUG) {
+					System.out.println("doall=" + results.count);
+				}
+			} else {
+				/*
+				// might need to be LinkedHashMap to keep order if filter must be by order
+				Map<?, Map<?, ?>> mapCopy = new HashMap<Object, Map<?, ?>>(mapOriginal);
 
-			System.out.println("performFIlter End");
+				System.out.println("doSome2=" + mapCopy.size());
+
+				if (hasConstraint) {
+					String constraintString = constraint.toString().toLowerCase();
+
+					synchronized (mLock) {
+						for (Iterator iterator = mapCopy.keySet().iterator(); iterator.hasNext();) {
+							Object key = iterator.next();
+							Map map = mapCopy.get(key);
+
+							String name = MapUtils.getMapString(map, TransmissionVars.TORRENT_FIELD_NAME, "").toLowerCase();
+							if (!name.contains(constraintString)) {
+								iterator.remove();
+							}
+						}
+					}
+				}
+
+				System.out.println("doSome2=" + mapCopy.size());
+
+				results.values = mapCopy.keySet();
+				results.count = mapCopy.size();
+				*/
+			}
+			if (AndroidUtils.DEBUG) {
+				System.out.println("performFIlter End");
+			}
 			return results;
 		}
 
@@ -241,7 +233,19 @@ public class FilesAdapter
 		protected void publishResults(CharSequence constraint, FilterResults results) {
 			{
 				synchronized (mLock) {
-					displayList = (List<Object>) results.values;
+					Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
+					if (torrent == null) {
+						return;
+					}
+					final List listPeers = MapUtils.getMapList(torrent, "peers", null);
+					//					System.out.println("listPeers=" + listPeers);
+					if (listPeers == null) {
+						return;
+					}
+					if (AndroidUtils.DEBUG) {
+						System.out.println("listPeers=" + listPeers.size());
+					}
+					displayList = new ArrayList(listPeers);
 
 					doSort();
 				}
@@ -336,7 +340,7 @@ public class FilesAdapter
 	 */
 	@Override
 	public int getCount() {
-		return displayList == null ? 0 : displayList.size();
+		return displayList.size();
 	}
 
 	/* (non-Javadoc)

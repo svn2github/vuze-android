@@ -39,22 +39,28 @@ import android.util.Log;
 import com.aelitis.azureus.util.JSONUtils;
 import com.vuze.android.remote.AndroidUtils;
 
+/**
+ * Connects to URL, decodes JSON results
+ * 
+ */
 public class RestJsonClient
 {
+	private static final String TAG = "RPC";
+
 	public static Object connect(String url)
 			throws RPCException {
-		return connect(url, null, null, null);
+		return connect("", url, null, null, null);
 	}
 
-	public static Map connect(String url, Map<?, ?> jsonPost, Header[] headers,
+	public static Map<?, ?> connect(String id, String url, Map<?, ?> jsonPost, Header[] headers,
 			UsernamePasswordCredentials creds)
 			throws RPCException {
 		if (AndroidUtils.DEBUG) {
-			Log.d(null, "Execute " + url);
+			Log.d(TAG, id + "] Execute " + url);
 		}
 		long now = System.currentTimeMillis();
 
-		Map json = Collections.EMPTY_MAP;
+		Map<?, ?> json = Collections.EMPTY_MAP;
 
 		try {
 
@@ -73,7 +79,7 @@ public class RestJsonClient
 				HttpPost post = (HttpPost) httpRequest;
 				String postString = JSONUtils.encodeToJSON(jsonPost);
 				if (AndroidUtils.DEBUG) {
-					Log.d(null, "  Post: " + postString);
+					Log.d(TAG, id + "]  Post: " + postString);
 				}
 				post.setEntity(new StringEntity(postString));
 				post.setHeader("Accept", "application/json");
@@ -94,7 +100,7 @@ public class RestJsonClient
 
 			long then = System.currentTimeMillis();
 			if (AndroidUtils.DEBUG) {
-				Log.d(null, "  conn ->" + (then - now) + "ms");
+				Log.d(TAG, id + "]  conn ->" + (then - now) + "ms");
 			}
 
 			now = then;
@@ -123,21 +129,16 @@ public class RestJsonClient
   						sb.append(c, 0, read);
   				}
 					then = System.currentTimeMillis();
-  				json = JSONUtils.decodeJSON(sb.toString());
 					if (AndroidUtils.DEBUG) {
-						Log.d(null, "  read ->" + (then - now) + "ms");
+						Log.d(TAG, id + "]  read ->" + (then - now) + "ms");
 					}
 					now = then;
 
 					// 9775 files
 					// 33xx-3800 for simple; 22xx for GSON 2.2.4; 18xx-19xx for fastjson 1.1.34
 //					json = JSONUtils.decodeJSON(br);
+  				json = JSONUtils.decodeJSON(sb.toString());
 
-					then = System.currentTimeMillis();
-					if (AndroidUtils.DEBUG) {
-						Log.d(null, "  parse ->" + (then - now) + "ms");
-					}
-					now = then;
 
 				} catch (Exception pe) {
 
@@ -149,7 +150,7 @@ public class RestJsonClient
 						String line = sb.subSequence(0, Math.min(128, sb.length())).toString();
   
   					if (AndroidUtils.DEBUG) {
-  						Log.d(null, "line: " + line);
+  						Log.d(TAG, id + "]line: " + line);
   					}
   					Header contentType = entity.getContentType();
   					if (line.startsWith("<")
@@ -172,7 +173,7 @@ public class RestJsonClient
 				}
 
 				if (AndroidUtils.DEBUG) {
-//					Log.d(null, "JSON Result: " + json);
+//					Log.d(TAG, id + "]JSON Result: " + json);
 				}
 
 			}
@@ -184,7 +185,7 @@ public class RestJsonClient
 
 		if (AndroidUtils.DEBUG) {
 			long then = System.currentTimeMillis();
-			Log.d(null, "  parse ->" + (then - now) + "ms");
+			Log.d(TAG, id + "]  parse ->" + (then - now) + "ms");
 		}
 		return json;
 	}

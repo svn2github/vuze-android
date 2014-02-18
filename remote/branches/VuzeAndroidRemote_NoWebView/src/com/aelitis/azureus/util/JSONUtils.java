@@ -102,6 +102,20 @@ public class JSONUtils
 		}
 	}
 
+	private static Map encodeMap(Map map) {
+		for (Object key : map.keySet()) {
+			Object value = map.get(key);
+			if (value instanceof Map) {
+				encodeMap((Map) value);
+				continue;
+			}
+			if (value != null && value.getClass().isArray()) {
+				value =  Arrays.asList((Object[]) value);
+				map.put(key, value);
+			}
+		}
+		return map;
+	}
 
 	public static String encodeToJSON(Map map) {
 		return JSON.toJSONString(map);

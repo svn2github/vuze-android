@@ -1,4 +1,4 @@
-package com.vuze.android.remote.activity;
+package com.vuze.android.remote.fragment;
 
 import java.util.List;
 
@@ -9,6 +9,7 @@ import android.widget.ListView;
 
 import com.vuze.android.remote.R;
 import com.vuze.android.remote.SessionInfo;
+import com.vuze.android.remote.SetTorrentIdListener;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class PeersFragment
@@ -59,9 +60,13 @@ public class PeersFragment
 		return view;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
+	 */
 	public void setTorrentID(SessionInfo sessionInfo, long id) {
 		this.sessionInfo = sessionInfo;
 		torrentID = id;
+		
 		//Map<?, ?> torrent = sessionInfo.getTorrent(id);
 		//System.out.println("torrent is " + torrent);
 		if (adapter != null) {

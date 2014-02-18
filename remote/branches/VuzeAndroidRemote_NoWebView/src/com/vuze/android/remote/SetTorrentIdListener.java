@@ -1,6 +1,5 @@
-package com.vuze.android.remote.activity;
+package com.vuze.android.remote;
 
-import com.vuze.android.remote.SessionInfo;
 
 public interface SetTorrentIdListener
 {

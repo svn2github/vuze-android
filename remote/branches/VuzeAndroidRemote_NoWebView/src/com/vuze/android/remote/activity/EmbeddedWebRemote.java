@@ -62,7 +62,6 @@ import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent.DeleteTorrentD
 import com.vuze.android.remote.dialog.DialogFragmentFilterBy.FilterByDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentOpenTorrent.OpenTorrentDialogListener;
-import com.vuze.android.remote.dialog.DialogFragmentSessionSettings.SessionSettingsListener;
 import com.vuze.android.remote.dialog.DialogFragmentSortBy.SortByDialogListener;
 import com.vuze.android.remote.rpc.RPC;
 import com.vuze.android.remote.rpc.RPCException;
@@ -70,7 +69,7 @@ import com.vuze.android.remote.rpc.RPCException;
 public class EmbeddedWebRemote
 	extends FragmentActivity
 	implements OpenTorrentDialogListener, FilterByDialogListener,
-	SortByDialogListener, SessionSettingsListener, MoveDataDialogListener,
+	SortByDialogListener, MoveDataDialogListener,
 	DeleteTorrentDialogListener
 {
 	private WebView myWebView;
@@ -253,7 +252,7 @@ public class EmbeddedWebRemote
 			String ac = extras.getString("com.vuze.android.remote.ac");
 			String user = extras.getString("com.vuze.android.remote.user");
 
-			AppPreferences appPreferences = new AppPreferences(this);
+			AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
 			remoteProfile = appPreferences.getRemote(ac);
 			if (remoteProfile == null) {
 				remoteProfile = new RemoteProfile(user, ac);
@@ -779,7 +778,7 @@ public class EmbeddedWebRemote
 				return;
 			}
 
-			AppPreferences appPreferences = new AppPreferences(this);
+			AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
 			remoteProfile.setLastUsedOn(System.currentTimeMillis());
 			if (remember) {
 				appPreferences.setLastRemote(ac);
@@ -1417,7 +1416,7 @@ public class EmbeddedWebRemote
 
 	private void saveProfileIfRemember() {
 		if (remember) {
-			AppPreferences appPreferences = new AppPreferences(this);
+			AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
 			appPreferences.addRemoteProfile(remoteProfile);
 		}
 	}
@@ -1526,10 +1525,6 @@ public class EmbeddedWebRemote
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see com.vuze.android.remote.dialog.DialogFragmentSessionSettings.SessionSettingsListener#sessionSettingsChanged(com.vuze.android.remote.SessionSettings)
-	 */
-	@Override
 	public void sessionSettingsChanged(SessionSettings newSettings) {
 
 		if (sessionSettings == null) {

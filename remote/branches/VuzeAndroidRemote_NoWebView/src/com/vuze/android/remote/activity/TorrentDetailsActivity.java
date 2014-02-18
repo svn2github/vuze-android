@@ -11,7 +11,9 @@ import android.view.MenuItem;
 import android.view.Window;
 
 import com.vuze.android.remote.R;
+import com.vuze.android.remote.SessionInfo;
 import com.vuze.android.remote.SessionInfoManager;
+import com.vuze.android.remote.fragment.TorrentDetailsFragment;
 
 public class TorrentDetailsActivity
 	extends FragmentActivity
@@ -44,15 +46,16 @@ public class TorrentDetailsActivity
 		}
 		setContentView(R.layout.activity_torrent_detail);
 
-		TorrentDetailsFragment articleFrag = (TorrentDetailsFragment) getSupportFragmentManager().findFragmentById(
+		long torrentID = extras.getLong("TorrentID");
+		String remoteProfileID = extras.getString(SessionInfoManager.BUNDLE_KEY);
+		SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID);
+
+		TorrentDetailsFragment detailsFrag = (TorrentDetailsFragment) getSupportFragmentManager().findFragmentById(
 				R.id.fragment2);
 
-		if (articleFrag != null) {
-			long torrentID = extras.getLong("TorrentID");
-			String remoteProfileID = extras.getString("RemoteProfileID");
-			System.out.println("torrentID = " + torrentID);
-			articleFrag.sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID);
-			articleFrag.setTorrentIDs(new long[] {
+		if (detailsFrag != null) {
+			sessionInfo.addRpcAvailableListener(detailsFrag);
+			detailsFrag.setTorrentIDs(new long[] {
 				torrentID
 			});
 		}

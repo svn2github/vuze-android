@@ -8,13 +8,17 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 
 import android.util.Log;
 
+import com.aelitis.azureus.util.JSONUtils;
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.AndroidUtils;
+import com.vuze.android.remote.SessionInfo;
 import com.vuze.android.remote.TransmissionVars;
 
 @SuppressWarnings("rawtypes")
 public class TransmissionRPC
 {
+	private static final String TAG = "RPC";
+
 	private String rpcURL;
 
 	private UsernamePasswordCredentials creds;
@@ -31,27 +35,51 @@ public class TransmissionRPC
 
 	private List<TorrentListReceivedListener> torrentListReceivedListeners = new ArrayList<TorrentListReceivedListener>();
 
-	public TransmissionRPC(String rpcURL, String username, String ac,
-			final SessionSettingsReceivedListener l) {
+	private List<SessionSettingsReceivedListener> sessionSettingsReceivedListeners = new ArrayList<SessionSettingsReceivedListener>();
+
+	protected Map latestSessionSettings;
+
+	public TransmissionRPC(String rpcURL, String username, String ac) {
 		if (username != null) {
 			creds = new UsernamePasswordCredentials(username, ac);
 		}
 
 		this.rpcURL = rpcURL;
 
-		getSession(ac, new ReplyMapReceivedListener() {
+		updateSessionSettings(ac);
+	}
+
+	public void getSessionStats(ReplyMapReceivedListener l) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "session-stats");
+		sendRequest("session-stats", map, l);
+	}
+
+	private void updateSessionSettings(String id) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "session-get");
+		sendRequest(id, map, new ReplyMapReceivedListener() {
 
 			@Override
 			public void rpcSuccess(String id, Map map) {
-				rpcVersion = MapUtils.getMapInt(map, "rpc-version", -1);
-				rpcVersionAZ = MapUtils.getMapInt(map, "az-rpc-version", -1);
-				if (rpcVersionAZ < 0 && map.containsKey("az-version")) {
-					rpcVersionAZ = 0;
+				synchronized (sessionSettingsReceivedListeners) {
+					latestSessionSettings = map;
+					rpcVersion = MapUtils.getMapInt(map, "rpc-version", -1);
+					rpcVersionAZ = MapUtils.getMapInt(map, "az-rpc-version", -1);
+					if (rpcVersionAZ < 0 && map.containsKey("az-version")) {
+						rpcVersionAZ = 0;
+					}
+					if (rpcVersionAZ >= 1) { // TODO: 2
+						hasFileCountField = true;
+					}
+					if (AndroidUtils.DEBUG) {
+						Log.d(TAG, "Received Session-Get. "
+								+ map);
+					}
+					for (SessionSettingsReceivedListener l : sessionSettingsReceivedListeners) {
+						l.sessionPropertiesUpdated(map);
+					}
 				}
-				if (rpcVersionAZ >= 2) {
-					hasFileCountField = true;
-				}
-				l.sessionPropertiesUpdated(map);
 			}
 
 			@Override
@@ -62,12 +90,6 @@ public class TransmissionRPC
 			public void rpcError(String id, Exception e) {
 			}
 		});
-	}
-
-	public void getSession(String id, final ReplyMapReceivedListener l) {
-		Map<String, Object> map = new HashMap<String, Object>();
-		map.put("method", "session-get");
-		sendRequest(id, map, l);
 	}
 
 	public void addTorrentByUrl(String url, boolean addPaused,
@@ -129,7 +151,8 @@ public class TransmissionRPC
 		getTorrents(null, getBasicTorrentFieldIDs(), l);
 	}
 
-	private void getTorrents(Object ids, List<String> fields, final TorrentListReceivedListener l) {
+	private void getTorrents(Object ids, List<String> fields,
+			final TorrentListReceivedListener l) {
 
 		Map<String, Object> map = new HashMap<String, Object>(2);
 		map.put("method", "torrent-get");
@@ -143,7 +166,7 @@ public class TransmissionRPC
 			mapArguments.put("ids", ids);
 		}
 
-		sendRequest("getTorrents", map, new ReplyMapReceivedListener() {
+		sendRequest("getTorrents " + ids, map, new ReplyMapReceivedListener() {
 
 			@SuppressWarnings({
 				"unchecked",
@@ -164,7 +187,8 @@ public class TransmissionRPC
 						}
 						map.put(
 								TransmissionVars.TORRENT_FIELD_FILE_COUNT,
-								MapUtils.getMapList(map, TransmissionVars.TORRENT_FIELD_PRIORITIES,
+								MapUtils.getMapList(map,
+										TransmissionVars.TORRENT_FIELD_PRIORITIES,
 										Collections.EMPTY_LIST).size());
 					}
 				}
@@ -189,9 +213,10 @@ public class TransmissionRPC
 
 	private void sendRequest(final String id, final Map data,
 			final ReplyMapReceivedListener l) {
-		if (id == null || data == null || l == null) {
+		if (id == null || data == null) {
 			if (AndroidUtils.DEBUG) {
-				System.err.println("sendRequest(" + id + "," + data + "," + l + ")");
+				System.err.println("sendRequest(" + id + ","
+						+ JSONUtils.encodeToJSON(data) + "," + l + ")");
 			}
 			return;
 		}
@@ -201,21 +226,26 @@ public class TransmissionRPC
 			public void run() {
 				data.put("random", Math.random());
 				try {
-					Map reply = RestJsonClient.connect(rpcURL, data, headers, creds);
+					Map reply = RestJsonClient.connect(id, rpcURL, data, headers, creds);
 
 					String result = MapUtils.getMapString(reply, "result", "");
-					if (result.equals("success")) {
-						l.rpcSuccess(id,
-								MapUtils.getMapMap(reply, "arguments", Collections.EMPTY_MAP));
-					} else {
-						l.rpcFailure(id, result);
+					if (l != null) {
+						if (result.equals("success")) {
+							l.rpcSuccess(id,
+									MapUtils.getMapMap(reply, "arguments", Collections.EMPTY_MAP));
+						} else {
+							if (AndroidUtils.DEBUG) {
+								Log.d(null, id + "]rpcFailure: " + result);
+							}
+							l.rpcFailure(id, result);
+						}
 					}
 				} catch (RPCException e) {
 					HttpResponse httpResponse = e.getHttpResponse();
 					if (httpResponse != null
 							&& httpResponse.getStatusLine().getStatusCode() == 409) {
 						if (AndroidUtils.DEBUG) {
-							Log.d(null, "409: retrying");
+							Log.d(TAG, "409: retrying");
 						}
 						Header header = httpResponse.getFirstHeader("X-Transmission-Session-Id");
 						headers = new Header[] {
@@ -224,7 +254,9 @@ public class TransmissionRPC
 						sendRequest(id, data, l);
 						return;
 					}
-					l.rpcError(id, e);
+					if (l != null) {
+						l.rpcError(id, e);
+					}
 					if (AndroidUtils.DEBUG) {
 						e.printStackTrace();
 					}
@@ -250,6 +282,7 @@ public class TransmissionRPC
 			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_UPLOAD_RATIO);
 			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_DATE_ADDED);
 			basicTorrentFieldIDs.add("speedHistory");
+			basicTorrentFieldIDs.add("leftUntilDone");
 			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_STATUS); // TransmissionVars.TR_STATUS_*
 		}
 
@@ -269,23 +302,22 @@ public class TransmissionRPC
 	public void getRecentTorrents(TorrentListReceivedListener l) {
 		getTorrents("recently-active", getBasicTorrentFieldIDs(), l);
 	}
-	
+
 	public void getTorrentFileInfo(Object ids, TorrentListReceivedListener l) {
 		List<String> fieldIDs = getBasicTorrentFieldIDs();
 		fieldIDs.add("files");
 		fieldIDs.add("fileStats");
-		
+
 		getTorrents(ids, fieldIDs, l);
 	}
 
 	public void getTorrentPeerInfo(Object ids, TorrentListReceivedListener l) {
 		List<String> fieldIDs = getBasicTorrentFieldIDs();
 		fieldIDs.add("peers");
-		
+
 		getTorrents(ids, fieldIDs, l);
 	}
 
-	
 	public void simpleRpcCall(String method, ReplyMapReceivedListener l) {
 		simpleRpcCall(method, null, l);
 	}
@@ -325,6 +357,11 @@ public class TransmissionRPC
 		sendRequest("startTorrents", map, l);
 	}
 
+	/**
+	 * To ensure session torrent list is fully up to date, 
+	 * you should be using {@link SessionInfo#addTorrentListReceivedListener(TorrentListReceivedListener)}
+	 * instead of this one.
+	 */
 	public void addTorrentListReceivedListener(TorrentListReceivedListener l) {
 		synchronized (torrentListReceivedListeners) {
 			if (!torrentListReceivedListeners.contains(l)) {
@@ -336,6 +373,25 @@ public class TransmissionRPC
 	public void removeTorrentListReceivedListener(TorrentListReceivedListener l) {
 		synchronized (torrentListReceivedListeners) {
 			torrentListReceivedListeners.remove(l);
+		}
+	}
+
+	public void addSessionSettingsReceivedListener(
+			SessionSettingsReceivedListener l) {
+		synchronized (sessionSettingsReceivedListeners) {
+			if (!sessionSettingsReceivedListeners.contains(l)) {
+				sessionSettingsReceivedListeners.add(l);
+				if (latestSessionSettings != null) {
+					l.sessionPropertiesUpdated(latestSessionSettings);
+				}
+			}
+		}
+	}
+
+	public void removeSessionSettingsReceivedListener(
+			SessionSettingsReceivedListener l) {
+		synchronized (sessionSettingsReceivedListeners) {
+			sessionSettingsReceivedListeners.remove(l);
 		}
 	}
 
@@ -351,7 +407,9 @@ public class TransmissionRPC
 		Map<String, Object> mapArguments = new HashMap<String, Object>();
 		map.put("arguments", mapArguments);
 
-		mapArguments.put("ids", new long[] { id });
+		mapArguments.put("ids", new long[] {
+			id
+		});
 		mapArguments.put("move", true);
 		mapArguments.put("location", newLocation);
 
@@ -369,7 +427,9 @@ public class TransmissionRPC
 		if (id instanceof Object[] || id instanceof Collection) {
 			mapArguments.put("ids", id);
 		} else {
-			mapArguments.put("ids", new Object[] { id });
+			mapArguments.put("ids", new Object[] {
+				id
+			});
 		}
 		mapArguments.put("delete-local-data", deleteData);
 
@@ -382,9 +442,15 @@ public class TransmissionRPC
 
 		map.put("arguments", changes);
 
-
 		sendRequest("session-get", map, null);
 	}
 
-}
+	public int getRPCVersion() {
+		return rpcVersion;
+	}
 
+	public int getRPCVersionAZ() {
+		return rpcVersionAZ;
+	}
+
+}

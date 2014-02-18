@@ -17,6 +17,9 @@
 
 package com.vuze.android.remote.dialog;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import android.app.Activity;
 import android.app.AlertDialog.Builder;
 import android.app.Dialog;
@@ -35,13 +38,6 @@ public class DialogFragmentSessionSettings
 	extends DialogFragment
 {
 
-	public interface SessionSettingsListener
-	{
-		public void sessionSettingsChanged(SessionSettings settings);
-	}
-
-	private SessionSettingsListener mListener;
-
 	private EditText textUL;
 
 	private EditText textDL;
@@ -54,13 +50,21 @@ public class DialogFragmentSessionSettings
 
 	private CompoundButton chkRefresh;
 
-	private SessionSettings settings;
+	private SessionSettings originalSettings;
+
+	private SessionInfo sessionInfo;
 
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
 		Bundle arguments = getArguments();
 
-		settings = (SessionSettings) arguments.getSerializable(SessionSettings.class.getName());
+		String id = arguments.getString(SessionInfoManager.BUNDLE_KEY);
+		if (id != null) {
+			sessionInfo = SessionInfoManager.getSessionInfo(id);
+			originalSettings = sessionInfo.getSessionSettings();
+		} else {
+			return null;
+		}
 
 		AlertDialogBuilder alertDialogBuilder = AndroidUtils.createAlertDialogBuilder(
 				getActivity(), R.layout.dialog_session_settings);
@@ -85,11 +89,11 @@ public class DialogFragmentSessionSettings
 		final View view = alertDialogBuilder.view;
 
 		textUL = (EditText) view.findViewById(R.id.rp_tvUL);
-		textUL.setText("" + settings.getUlSpeed());
+		textUL.setText("" + originalSettings.getUlSpeed());
 		textDL = (EditText) view.findViewById(R.id.rp_tvDL);
-		textDL.setText("" + settings.getDlSpeed());
+		textDL.setText("" + originalSettings.getDlSpeed());
 		textRefresh = (EditText) view.findViewById(R.id.rpUpdateInterval);
-		textRefresh.setText("" + settings.getRefreshInterval());
+		textRefresh.setText("" + originalSettings.getRefreshInterval());
 
 		boolean check;
 		ViewGroup viewGroup;
@@ -101,7 +105,7 @@ public class DialogFragmentSessionSettings
 				setGroupEnabled(viewGroup, isChecked);
 			}
 		});
-		check = settings.isULAuto();
+		check = originalSettings.isULAuto();
 		viewGroup = (ViewGroup) view.findViewById(R.id.rp_ULArea);
 		setGroupEnabled(viewGroup, check);
 		chkUL.setChecked(check);
@@ -113,7 +117,7 @@ public class DialogFragmentSessionSettings
 				setGroupEnabled(viewGroup, isChecked);
 			}
 		});
-		check = settings.isDLAuto();
+		check = originalSettings.isDLAuto();
 		viewGroup = (ViewGroup) view.findViewById(R.id.rp_DLArea);
 		setGroupEnabled(viewGroup, check);
 		chkDL.setChecked(check);
@@ -125,7 +129,7 @@ public class DialogFragmentSessionSettings
 				setGroupEnabled(viewGroup, isChecked);
 			}
 		});
-		check = settings.isRefreshIntervalIsEnabled();
+		check = originalSettings.isRefreshIntervalIsEnabled();
 		viewGroup = (ViewGroup) view.findViewById(R.id.rp_UpdateIntervalArea);
 		setGroupEnabled(viewGroup, check);
 		chkRefresh.setChecked(check);
@@ -140,26 +144,16 @@ public class DialogFragmentSessionSettings
 		}
 	}
 
-	@Override
-	public void onAttach(Activity activity) {
-		super.onAttach(activity);
-
-		if (activity instanceof SessionSettingsListener) {
-			mListener = (SessionSettingsListener) activity;
-		}
-	}
-
 	protected void saveAndClose() {
-		if (mListener != null) {
-			SessionSettings settings = new SessionSettings();
-			settings.setRefreshIntervalEnabled(chkRefresh.isChecked());
-			settings.setULIsAuto(chkUL.isChecked());
-			settings.setDLIsAuto(chkDL.isChecked());
-			settings.setDlSpeed(parseLong(textDL.getText().toString()));
-			settings.setUlSpeed(parseLong(textUL.getText().toString()));
-			settings.setRefreshInterval(parseLong(textRefresh.getText().toString()));
-			mListener.sessionSettingsChanged(settings);
-		}
+		SessionSettings newSettings = new SessionSettings();
+		newSettings.setRefreshIntervalEnabled(chkRefresh.isChecked());
+		newSettings.setULIsAuto(chkUL.isChecked());
+		newSettings.setDLIsAuto(chkDL.isChecked());
+		newSettings.setDlSpeed(parseLong(textDL.getText().toString()));
+		newSettings.setUlSpeed(parseLong(textUL.getText().toString()));
+		newSettings.setRefreshInterval(parseLong(textRefresh.getText().toString()));
+		
+		sessionInfo.updateSessionSettings(newSettings);
 	}
 	
 	long parseLong(String s) {

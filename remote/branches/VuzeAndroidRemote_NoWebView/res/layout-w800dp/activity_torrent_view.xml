@@ -65,24 +65,32 @@
     <LinearLayout
     	android:layout_width="match_parent"
     	android:layout_height="wrap_content"
-    	android:orientation="horizontal"
-    	android:weightSum="2" android:baselineAligned="false" >
+    	android:baselineAligned="false"
+    	android:orientation="horizontal" >
 
         <fragment
         	android:id="@+id/fragment1"
-        	android:name="com.vuze.android.remote.activity.TorrentListFragment"
+        	android:name="com.vuze.android.remote.fragment.TorrentListFragment"
         	android:layout_width="0dp"
         	android:layout_height="match_parent"
         	android:layout_weight="1"
         	tools:layout="@layout/frag_torrent_list" />
 
-        <fragment
-        	android:id="@+id/fragment2"
-        	android:name="com.vuze.android.remote.activity.TorrentDetailsFragment"
+        <FrameLayout
+        	android:id="@+id/fragment2_container"
         	android:layout_width="0dp"
         	android:layout_height="match_parent"
         	android:layout_weight="1"
-        	tools:layout="@layout/frag_torrent_details" />
+        	android:visibility="gone" >
+
+            <fragment
+            	android:id="@+id/fragment2"
+            	android:name="com.vuze.android.remote.fragment.TorrentDetailsFragment"
+            	android:layout_width="match_parent"
+            	android:layout_height="match_parent"
+            	tools:layout="@layout/frag_torrent_details" />
+
+        </FrameLayout>
 
     </LinearLayout>
 

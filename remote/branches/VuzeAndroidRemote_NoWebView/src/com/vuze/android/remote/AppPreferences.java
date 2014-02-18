@@ -47,7 +47,11 @@ public class AppPreferences
 
 	private Context context;
 
-	public AppPreferences(Context context) {
+	protected static AppPreferences createAppPreferences(Context context) {
+		return new AppPreferences(context);
+	}
+
+	private AppPreferences(Context context) {
 		this.context = context;
 		preferences = context.getSharedPreferences("AndroidRemote",
 				Activity.MODE_PRIVATE);
@@ -61,7 +65,7 @@ public class AppPreferences
 
 				String lastUsed = (String) mapConfig.get(KEY_LASTUSED);
 				if (lastUsed != null) {
-  				Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
+					Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 					if (mapRemotes != null) {
 						Map mapRemote = (Map) mapRemotes.get(lastUsed);
 						if (mapRemote != null) {
@@ -130,14 +134,14 @@ public class AppPreferences
 				Map mapConfig = JSONUtils.decodeJSON(config);
 
 				if (mapConfig != null) {
-  				Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
-  				if (mapRemotes != null) {
-  					for (Object val : mapRemotes.values()) {
-  						if (val instanceof Map) {
-  							listRemotes.add(new RemoteProfile((Map) val));
-  						}
-  					}
-  				}
+					Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
+					if (mapRemotes != null) {
+						for (Object val : mapRemotes.values()) {
+							if (val instanceof Map) {
+								listRemotes.add(new RemoteProfile((Map) val));
+							}
+						}
+					}
 				}
 			}
 		} catch (Throwable t) {

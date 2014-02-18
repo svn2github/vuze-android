@@ -273,6 +273,13 @@ public class TransmissionVars
 
 	public static final String TORRENT_FIELD_DATE_ADDED = "addedDate";
 
+	public static final String TR_SESSION_STATS_DOWNLOAD_SPEED = "downloadSpeed";
+
+	public static final String TR_SESSION_STATS_UPLOAD_SPEED = "uploadSpeed";
+
+	public static final String TR_SESSION_STATS_TORRENT_COUNT = "torrentCount";	
+
+
 	public static long convertVuzePriority(int priority) {
 		return priority == 0 ? TransmissionVars.TR_PRI_NORMAL
 				: priority < 0 ? TransmissionVars.TR_PRI_LOW

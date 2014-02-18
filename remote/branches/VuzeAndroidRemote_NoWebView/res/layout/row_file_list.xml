@@ -64,7 +64,8 @@
 		android:focusable="false"
 		android:focusableInTouchMode="false"
 		android:minHeight="30dp"
-		android:minWidth="60dp" />
+		android:minWidth="60dp"
+		android:visibility="gone" />
 
 	<TextView
 		android:id="@+id/filerow_state"
@@ -84,7 +85,7 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_alignParentBottom="true"
-		android:layout_alignRight="@+id/filerow_dl"
+		android:layout_alignParentRight="true"
 		android:layout_below="@+id/filerow_name"
 		android:gravity="bottom"
 		android:text="20M of 128MB"

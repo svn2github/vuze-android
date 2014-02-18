@@ -59,7 +59,7 @@
 		android:layout_alignParentBottom="true"
 		android:layout_alignParentRight="true"
 		android:layout_below="@+id/torrentrow_name"
-		android:minHeight="20dp" />
+		android:minHeight="30dp" />
 
 	<TextView
 		android:id="@+id/torrentrow_upspeed"

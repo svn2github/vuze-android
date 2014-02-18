@@ -17,15 +17,21 @@
 
 package com.vuze.android.remote;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import com.aelitis.azureus.util.MapUtils;
+import com.vuze.android.remote.activity.MetaSearch;
 import com.vuze.android.remote.dialog.DialogFragmentMoveData;
+import com.vuze.android.remote.dialog.DialogFragmentSessionSettings;
 
-import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.*;
 import android.app.AlertDialog.Builder;
 import android.content.*;
 import android.content.DialogInterface.OnClickListener;
@@ -45,6 +51,12 @@ import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
 
+/**
+ * Some generic Android Utility methods.
+ * <p>
+ * Some utility methods specific to this app and requireing Android API.
+ * Should, and probably should be in their own class.
+ */
 public class AndroidUtils
 {
 	public static final boolean DEBUG = true;
@@ -408,6 +420,85 @@ public class AndroidUtils
 		bundle.putStringArrayList("history", history);
 		dlg.setArguments(bundle);
 		dlg.show(fm, "MoveDataDialog");
+	}
+
+	public static boolean executeSearch(String search, Context context) {
+		return executeSearch(search, context, null, null);
+	}
+
+	public static boolean executeSearch(String search, Context context,
+			RemoteProfile remoteProfile, String rpcRoot) {
+		Intent myIntent = new Intent(Intent.ACTION_SEARCH);
+		myIntent.setClass(context, MetaSearch.class);
+		if (remoteProfile.getRemoteType() == RemoteProfile.TYPE_LOOKUP) {
+			Bundle bundle = new Bundle();
+			bundle.putString("com.vuze.android.remote.searchsource", rpcRoot);
+			bundle.putString("com.vuze.android.remote.ac", remoteProfile.getAC());
+			myIntent.putExtra(SearchManager.APP_DATA, bundle);
+		}
+		myIntent.putExtra(SearchManager.QUERY, search);
+	
+		context.startActivity(myIntent);
+		return true;
+	}
+
+	public static void showSessionSettings(FragmentManager fm,
+			SessionInfo sessionInfo) {
+		if (sessionInfo == null) {
+			return;
+		}
+		DialogFragmentSessionSettings dlg = new DialogFragmentSessionSettings();
+		Bundle bundle = new Bundle();
+		String id = sessionInfo.getRemoteProfile().getID();
+		bundle.putString(SessionInfoManager.BUNDLE_KEY, id);
+		dlg.setArguments(bundle);
+		dlg.show(fm, "SessionSettings");
+	}
+
+	public static boolean isURLAlive(String URLName) {
+		try {
+			HttpURLConnection.setFollowRedirects(false);
+			HttpURLConnection con = (HttpURLConnection) new URL(URLName).openConnection();
+			con.setConnectTimeout(2000);
+			con.setReadTimeout(2000);
+			con.setRequestMethod("HEAD");
+			con.getResponseCode();
+			//	Log.d(null, "conn result=" + con.getResponseCode() + ";" + con.getResponseMessage());
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	public static byte[] readInputStreamAsByteArray(InputStream is)
+			throws IOException {
+		int available = is.available();
+		if (available <= 0) {
+			available = 32 * 1024;
+		}
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(available);
+	
+		byte[] buffer = new byte[32 * 1024];
+	
+		try {
+			while (true) {
+	
+				int len = is.read(buffer);
+	
+				if (len <= 0) {
+	
+					break;
+				}
+	
+				baos.write(buffer, 0, len);
+			}
+	
+			return (baos.toByteArray());
+	
+		} finally {
+	
+			is.close();
+		}
 	}
 
 }

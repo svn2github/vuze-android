@@ -1,21 +1,20 @@
-package com.vuze.android.remote.activity;
-
-import java.util.HashMap;
-import java.util.Map;
+package com.vuze.android.remote.fragment;
 
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.vuze.android.remote.SessionInfo;
+import com.vuze.android.remote.SetTorrentIdListener;
 
 public class TorrentDetailsPagerAdapter
 	extends FragmentPagerAdapter
 {
 
-	private Map<Integer, Fragment> mPageReferenceMap;
+	private SparseArray<Fragment> pageReferences;
 
 	private SessionInfo sessionInfo;
 
@@ -23,38 +22,43 @@ public class TorrentDetailsPagerAdapter
 
 	public TorrentDetailsPagerAdapter(FragmentManager fm) {
 		super(fm);
-		mPageReferenceMap = new HashMap<Integer, Fragment>();
+		pageReferences = new SparseArray<Fragment>();
 	}
 
 	@Override
 	public Fragment getItem(int position) {
+		Fragment fragment;
 		switch (position) {
 			case 1:
-				PeersFragment peersFragment = new PeersFragment();
-				peersFragment.setTorrentID(sessionInfo, torrentID);
-				mPageReferenceMap.put(position, peersFragment);
-				return peersFragment;
+				fragment = new PeersFragment();
+				break;
 			default:
-				FilesFragment filesFragment = new FilesFragment();
-				filesFragment.setTorrentID(sessionInfo, torrentID);
-				mPageReferenceMap.put(position, filesFragment);
-				return filesFragment;
+				fragment = new FilesFragment();
 		}
+
+		if (sessionInfo != null) {
+			if (fragment instanceof SetTorrentIdListener) {
+				((SetTorrentIdListener) fragment).setTorrentID(sessionInfo, torrentID);
+			}
+		}
+		pageReferences.put(position, fragment);
+		return fragment;
 	}
 
+	@SuppressWarnings("deprecation")
 	public void destroyItem(View container, int position, Object object) {
 		super.destroyItem(container, position, object);
-		mPageReferenceMap.remove(position);
+		pageReferences.remove(position);
 	}
 
 	@Override
 	public void destroyItem(ViewGroup container, int position, Object object) {
 		super.destroyItem(container, position, object);
-		mPageReferenceMap.remove(position);
+		pageReferences.remove(position);
 	}
 
 	public Fragment getFragment(int key) {
-		return mPageReferenceMap.get(key);
+		return pageReferences.get(key);
 	}
 
 	@Override
@@ -78,8 +82,18 @@ public class TorrentDetailsPagerAdapter
 	}
 
 	public void setSelection(SessionInfo sessionInfo, long torrentID) {
+		if (sessionInfo == null) {
+			return;
+		}
 		this.sessionInfo = sessionInfo;
 		this.torrentID = torrentID;
+
+		for (int i = 0, nsize = pageReferences.size(); i < nsize; i++) {
+			Fragment fragment = pageReferences.valueAt(i);
+			if (fragment instanceof SetTorrentIdListener) {
+				((SetTorrentIdListener) fragment).setTorrentID(sessionInfo, torrentID);
+			}
+		}
 	}
 
 }

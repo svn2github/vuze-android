@@ -128,7 +128,7 @@ public class DialogFragmentGenericRemoteProfile
 		remoteProfile.setPort(parseInt(textPort.getText().toString()));
 		remoteProfile.setHost(textHost.getText().toString());
 
-		AppPreferences appPreferences = new AppPreferences(getActivity());
+		AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
 		appPreferences.addRemoteProfile(remoteProfile);
 		
 		if (mListener != null) {

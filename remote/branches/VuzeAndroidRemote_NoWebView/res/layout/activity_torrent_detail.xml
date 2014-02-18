@@ -8,7 +8,7 @@
 
 	<fragment
 		android:id="@+id/fragment2"
-		android:name="com.vuze.android.remote.activity.TorrentDetailsFragment"
+		android:name="com.vuze.android.remote.fragment.TorrentDetailsFragment"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		tools:layout="@layout/frag_torrent_details" />

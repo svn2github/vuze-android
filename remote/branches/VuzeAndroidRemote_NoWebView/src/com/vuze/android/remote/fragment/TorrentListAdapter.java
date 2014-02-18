@@ -1,4 +1,4 @@
-package com.vuze.android.remote.activity;
+package com.vuze.android.remote.fragment;
 
 import java.text.NumberFormat;
 import java.util.*;
@@ -7,6 +7,7 @@ import org.gudy.azureus2.core3.util.DisplayFormatters;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,7 +16,7 @@ import android.widget.*;
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 
-public class TorrentAdapter
+public class TorrentListAdapter
 	extends BaseAdapter
 	implements Filterable
 {
@@ -30,6 +31,8 @@ public class TorrentAdapter
 	public final static int FILTERBY_STOPPED = 2;
 
 	public static final boolean DEBUG = AndroidUtils.DEBUG;
+
+	private static final String TAG = "TorrentListAdapter";
 
 	static class ViewHolder
 	{
@@ -69,7 +72,7 @@ public class TorrentAdapter
 
 	private SessionInfo sessionInfo;
 
-	public TorrentAdapter(Context context) {
+	public TorrentListAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
 		displayList = new ArrayList<Object>();
@@ -145,6 +148,7 @@ public class TorrentAdapter
 			holder.tvName.setText(MapUtils.getMapString(item, "name", "??"));
 		}
 		float pctDone = MapUtils.getMapFloat(item, "percentDone", 0f);
+
 		if (holder.tvProgress != null) {
 			NumberFormat format = NumberFormat.getPercentInstance();
 			format.setMaximumFractionDigits(1);
@@ -262,7 +266,7 @@ public class TorrentAdapter
 	{
 		private int filterMode;
 
-		private CharSequence constraint;
+		private String constraint;
 
 		public void setFilterMode(int filterMode) {
 			this.filterMode = filterMode;
@@ -270,8 +274,8 @@ public class TorrentAdapter
 		}
 
 		@Override
-		protected FilterResults performFiltering(CharSequence constraint) {
-			this.constraint = constraint;
+		protected FilterResults performFiltering(CharSequence _constraint) {
+			this.constraint = _constraint == null ? null : _constraint.toString().toLowerCase();
 			FilterResults results = new FilterResults();
 
 			if (sessionInfo == null) {
@@ -280,98 +284,57 @@ public class TorrentAdapter
 
 			boolean hasConstraint = constraint != null && constraint.length() > 0;
 
-			LinkedHashMap<Object, Map<?, ?>> mapOriginal = sessionInfo.getTorrentList();
+			Object[] listTorrents = sessionInfo.getTorrentListKeys();
+			ArrayList<Object> listKeys = new ArrayList<Object>();
+			Collections.addAll(listKeys, listTorrents);
+
 			if (!hasConstraint && filterMode < 0) {
 				synchronized (mLock) {
-					results.values = mapOriginal.keySet();
-					results.count = mapOriginal.size();
+					results.values = listKeys;
+					results.count = listKeys.size();
 				}
 				if (DEBUG) {
-					System.out.println("doall=" + results.count);
+					System.out.println("filtering " + results.count);
 				}
 			} else {
-				// might need to be LinkedHashMap to keep order if filter must be by order
-				Map<?, Map<?, ?>> mapCopy = new HashMap<Object, Map<?, ?>>(mapOriginal);
-
 				if (DEBUG) {
-					System.out.println("doSome1=" + mapCopy.size());
+					System.out.println("filtering " + listKeys.size());
 				}
 
 				if (filterMode >= 0 && filterMode != FILTERBY_ALL) {
 					synchronized (mLock) {
-						for (Iterator iterator = mapCopy.keySet().iterator(); iterator.hasNext();) {
+						for (Iterator iterator = listKeys.iterator(); iterator.hasNext();) {
 							Object key = iterator.next();
-							Map map = mapCopy.get(key);
 
-							switch (filterMode) {
-								case FILTERBY_ACTIVE:
-									long dlRate = MapUtils.getMapLong(map,
-											TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD, -1);
-									long ulRate = MapUtils.getMapLong(map,
-											TransmissionVars.TORRENT_FIELD_RATE_UPLOAD, -1);
-									if (ulRate <= 0 && dlRate <= 0) {
-										iterator.remove();
-									}
-									break;
-
-								case FILTERBY_COMPLETE: {
-									float pctDone = MapUtils.getMapFloat(map,
-											TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
-									if (pctDone < 1.0f) {
-										iterator.remove();
-									}
-									break;
-								}
-								case FILTERBY_INCOMPLETE: {
-									float pctDone = MapUtils.getMapFloat(map,
-											TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
-									if (pctDone >= 1.0f) {
-										iterator.remove();
-									}
-									break;
-								}
-								case FILTERBY_STOPPED: {
-									int status = MapUtils.getMapInt(map,
-											TransmissionVars.TORRENT_FIELD_STATUS,
-											TransmissionVars.TR_STATUS_STOPPED);
-									if (status != TransmissionVars.TR_STATUS_STOPPED) {
-										iterator.remove();
-									}
-									break;
-								}
+							if (!filterCheck(filterMode, key)) {
+								iterator.remove();
 							}
 						}
 					}
 				}
 
 				if (DEBUG) {
-					System.out.println("doSome2=" + mapCopy.size());
+					System.out.println("type filtered to " + listKeys.size());
 				}
 
 				if (hasConstraint) {
-					String constraintString = constraint.toString().toLowerCase();
-
 					synchronized (mLock) {
-						for (Iterator iterator = mapCopy.keySet().iterator(); iterator.hasNext();) {
+						for (Iterator iterator = listKeys.iterator(); iterator.hasNext();) {
 							Object key = iterator.next();
-							Map map = mapCopy.get(key);
 
-							String name = MapUtils.getMapString(map,
-									TransmissionVars.TORRENT_FIELD_NAME, "").toLowerCase();
-							if (!name.contains(constraintString)) {
+							if (!constraintCheck(constraint, key)) {
 								iterator.remove();
 							}
 						}
 					}
 
 					if (DEBUG) {
-						System.out.println("doSome3=" + mapCopy.size());
+						System.out.println("text filtered to " + listKeys.size());
 					}
 				}
 
-
-				results.values = mapCopy.keySet();
-				results.count = mapCopy.size();
+				results.values = listKeys;
+				results.count = listKeys.size();
 
 			}
 			return results;
@@ -385,8 +348,8 @@ public class TorrentAdapter
 				notifyDataSetInvalidated();
 			} else {
 				synchronized (mLock) {
-					if (results.values instanceof Collection) {
-						displayList = new ArrayList<Object>((Collection<?>) results.values);
+					if (results.values instanceof List) {
+						displayList = (List) results.values;
 						doSort();
 					}
 				}
@@ -397,17 +360,80 @@ public class TorrentAdapter
 
 	public void refreshDisplayList() {
 		if (sessionInfo != null) {
+			TorrentFilter filter = getFilter();
 			// How does this work with filters?
 			Object[] keys = sessionInfo.getTorrentListKeys();
 			synchronized (mLock) {
 				for (Object key : keys) {
-					if (!displayList.contains(key)) {
+					if (!displayList.contains(key)
+							&& constraintCheck(filter.constraint, key)
+							&& filterCheck(filter.filterMode, key)) {
 						displayList.add(key);
 					}
 				}
 			}
 		}
 		doSort();
+	}
+
+	public boolean constraintCheck(CharSequence constraint, Object key) {
+		if (constraint == null || constraint.length() == 0) {
+			return true;
+		}
+		Map map = sessionInfo.getTorrent(key);
+		if (map == null) {
+			return false;
+		}
+
+		String name = MapUtils.getMapString(map,
+				TransmissionVars.TORRENT_FIELD_NAME, "").toLowerCase();
+		return name.contains(constraint);
+	}
+
+	private boolean filterCheck(int filterMode, Object key) {
+		Map map = sessionInfo.getTorrent(key);
+		if (map == null) {
+			return false;
+		}
+
+		switch (filterMode) {
+			case FILTERBY_ACTIVE:
+				long dlRate = MapUtils.getMapLong(map,
+						TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD, -1);
+				long ulRate = MapUtils.getMapLong(map,
+						TransmissionVars.TORRENT_FIELD_RATE_UPLOAD, -1);
+				if (ulRate <= 0 && dlRate <= 0) {
+					return false;
+				}
+				break;
+
+			case FILTERBY_COMPLETE: {
+				float pctDone = MapUtils.getMapFloat(map,
+						TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
+				if (pctDone < 1.0f) {
+					return false;
+				}
+				break;
+			}
+			case FILTERBY_INCOMPLETE: {
+				float pctDone = MapUtils.getMapFloat(map,
+						TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
+				if (pctDone >= 1.0f) {
+					return false;
+				}
+				break;
+			}
+			case FILTERBY_STOPPED: {
+				int status = MapUtils.getMapInt(map,
+						TransmissionVars.TORRENT_FIELD_STATUS,
+						TransmissionVars.TR_STATUS_STOPPED);
+				if (status != TransmissionVars.TR_STATUS_STOPPED) {
+					return false;
+				}
+				break;
+			}
+		}
+		return true;
 	}
 
 	public void setSort(String[] fieldIDs, Boolean[] sortOrderAsc) {
@@ -439,14 +465,20 @@ public class TorrentAdapter
 
 	private void doSort() {
 		if (sessionInfo == null) {
+			if (DEBUG) {
+				Log.d(TAG, "doSort skipped: No sessionInfo");
+			}
 			return;
 		}
 		if (comparator == null && sortFieldIDs == null) {
+			if (DEBUG) {
+				Log.d(TAG, "doSort skipped: no comparator and no sort");
+			}
 			return;
 		}
-		System.out.println("sort: " + Arrays.asList(sortFieldIDs) + "/" + Arrays.asList(sortOrderAsc));
+		System.out.println("sort: " + Arrays.asList(sortFieldIDs) + "/"
+				+ Arrays.asList(sortOrderAsc));
 		synchronized (mLock) {
-			final LinkedHashMap<Object, Map<?, ?>> mapOriginal = sessionInfo.getTorrentList();
 			Collections.sort(displayList, new Comparator<Object>() {
 				@SuppressWarnings({
 					"unchecked",
@@ -454,8 +486,8 @@ public class TorrentAdapter
 				})
 				@Override
 				public int compare(Object lhs, Object rhs) {
-					Map<?, ?> mapLHS = mapOriginal.get(lhs);
-					Map<?, ?> mapRHS = mapOriginal.get(rhs);
+					Map<?, ?> mapLHS = sessionInfo.getTorrent(lhs);
+					Map<?, ?> mapRHS = sessionInfo.getTorrent(rhs);
 
 					if (mapLHS == null || mapRHS == null) {
 						return 0;
@@ -507,8 +539,8 @@ public class TorrentAdapter
 		if (sessionInfo == null) {
 			return new HashMap();
 		}
-		LinkedHashMap<Object, Map<?, ?>> mapOriginal = sessionInfo.getTorrentList();
-		return mapOriginal.get(displayList.get(position));
+		Object key = displayList.get(position);
+		return sessionInfo.getTorrent(key);
 	}
 
 	/* (non-Javadoc)

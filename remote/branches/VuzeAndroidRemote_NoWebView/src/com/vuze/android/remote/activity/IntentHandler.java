@@ -65,7 +65,7 @@ public class IntentHandler
 			System.out.println("IntentHandler intent = " + intent);
 		}
 
-		appPreferences = new AppPreferences(getApplicationContext());
+		appPreferences = VuzeRemoteApp.getAppPreferences();
 
 		Uri data = intent.getData();
 		if (data != null) {

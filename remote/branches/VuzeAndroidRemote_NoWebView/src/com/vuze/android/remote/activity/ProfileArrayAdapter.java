@@ -12,9 +12,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.vuze.android.remote.AppPreferences;
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.RemoteProfile;
+import com.vuze.android.remote.*;
 
 public class ProfileArrayAdapter
 	extends ArrayAdapter<RemoteProfile>
@@ -64,7 +62,7 @@ public class ProfileArrayAdapter
 	}
 
 	public void refreshList() {
-		AppPreferences appPreferences = new AppPreferences(context);
+		AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
 
 		RemoteProfile[] remotes = appPreferences.getRemotes();
 		clear();

@@ -69,7 +69,7 @@ public class LoginActivity
 			System.out.println("LoginActivity intent = " + getIntent());
 		}
 
-		appPreferences = new AppPreferences(getApplicationContext());
+		appPreferences = VuzeRemoteApp.getAppPreferences();
 
 		setContentView(R.layout.activity_login);
 
