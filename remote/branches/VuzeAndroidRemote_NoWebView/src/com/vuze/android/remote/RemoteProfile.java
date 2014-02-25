@@ -157,6 +157,10 @@ public class RemoteProfile
 	public void setHost(String host) {
 		mapRemote.put(ID_HOST, host);
 	}
+	
+	public boolean isLocalHost() {
+		return "localhost".equals(getHost());
+	}
 
 	public int getRemoteType() {
 		return remoteType;

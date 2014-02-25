@@ -7,6 +7,9 @@ import org.gudy.azureus2.core3.util.DisplayFormatters;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -51,6 +54,8 @@ public class TorrentListAdapter
 		TextView tvDlRate;
 
 		TextView tvStatus;
+
+		TextView tvTags;
 	}
 
 	private Context context;
@@ -128,6 +133,7 @@ public class TorrentListAdapter
 			viewHolder.tvUlRate = (TextView) rowView.findViewById(R.id.torrentrow_upspeed);
 			viewHolder.tvDlRate = (TextView) rowView.findViewById(R.id.torrentrow_downspeed);
 			viewHolder.tvStatus = (TextView) rowView.findViewById(R.id.torrentrow_state);
+			viewHolder.tvTags = (TextView) rowView.findViewById(R.id.torrentrow_tags);
 
 			rowView.setTag(viewHolder);
 		}
@@ -200,12 +206,16 @@ public class TorrentListAdapter
 			}
 		}
 		if (holder.tvStatus != null) {
-			int status = MapUtils.getMapInt(item,
-					TransmissionVars.TORRENT_FIELD_STATUS,
-					TransmissionVars.TR_STATUS_STOPPED);
 			long error = MapUtils.getMapLong(item, "error",
 					TransmissionVars.TR_STAT_OK);
-			if (error == TransmissionVars.TR_STAT_OK) {
+			List mapTagUIDs = MapUtils.getMapList(item, "tag-uids", null);
+			StringBuilder text = new StringBuilder();
+
+			if (mapTagUIDs == null) {
+
+				int status = MapUtils.getMapInt(item,
+						TransmissionVars.TORRENT_FIELD_STATUS,
+						TransmissionVars.TR_STATUS_STOPPED);
 				int id;
 				switch (status) {
 					case TransmissionVars.TR_STATUS_CHECK_WAIT:
@@ -238,16 +248,112 @@ public class TorrentListAdapter
 						break;
 				}
 				if (id >= 0) {
-					holder.tvStatus.setText(id);
-				} else {
-					holder.tvStatus.setText("");
+					text.append(context.getString(id));
 				}
 			} else {
+
+				for (Object o : mapTagUIDs) {
+					String name = null;
+					int type = 0;
+					if (o instanceof Number) {
+						Map mapTag = sessionInfo.getTag(((Number) o).longValue());
+						if (mapTag != null) {
+							name = MapUtils.getMapString(mapTag, "name", null);
+							type = MapUtils.getMapInt(mapTag, "type", 0);
+						}
+					}
+					if (type != 2) {
+						continue;
+					}
+					if (name == null) {
+						name = o.toString();
+					}
+					if (text.length() > 0) {
+						text.append(" ");
+					}
+					text.append("| ");
+					text.append(name);
+					text.append(" |");
+				}
+			}
+
+			if (error != TransmissionVars.TR_STAT_OK) {
 				// error
 				// TODO: parse error and add error type to message
 				String errorString = MapUtils.getMapString(item, "errorString", "");
-				holder.tvStatus.setText(errorString);
+				if (text.length() > 0) {
+					text.append("\n");
+				}
+				text.append(errorString);
 			}
+			SpannableString ss = new SpannableString(text);
+			String string = text.toString();
+			Resources res = context.getResources();
+			AndroidUtils.setSpanBetweenTokens(ss, string, "|",
+					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_2)),
+					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_2)));
+			holder.tvStatus.setText(ss);
+		}
+
+		if (holder.tvTags != null) {
+			List mapTagUIDs = MapUtils.getMapList(item, "tag-uids", null);
+			StringBuilder sb = new StringBuilder();
+			if (mapTagUIDs != null) {
+				for (Object o : mapTagUIDs) {
+					String name = null;
+					int type = 0;
+					long color = -1;
+					if (o instanceof Number) {
+						Map mapTag = sessionInfo.getTag(((Number) o).longValue());
+						if (mapTag != null) {
+							type = MapUtils.getMapInt(mapTag, "type", 0);
+							if (type == 2) {
+								continue;
+							}
+							if (type == 1) {
+								boolean canBePublic = MapUtils.getMapBoolean(mapTag, "canBePublic", false);
+								if (!canBePublic) {
+									continue;
+								}
+							}
+							name = MapUtils.getMapString(mapTag, "name", null);
+							String htmlColor = MapUtils.getMapString(mapTag, "color", null);
+							if (htmlColor != null && htmlColor.startsWith("#")) {
+								color = Long.decode("0x" + htmlColor.substring(1));
+							}
+						}
+					}
+					if (name == null) {
+						name = o.toString();
+					}
+					if (sb.length() > 0) {
+						sb.append(" ");
+					}
+					if (type > 3) {
+						type = 3;
+					}
+					String token = "~" + type + "~";
+					sb.append(token);
+					sb.append(" ");
+					sb.append(name);
+					sb.append(" ");
+					sb.append(token);
+				}
+			}
+			SpannableString ss = new SpannableString(sb);
+			String string = sb.toString();
+			Resources res = context.getResources();
+			AndroidUtils.setSpanBetweenTokens(ss, string, "~0~",
+					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_0)),
+					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_0)));
+			AndroidUtils.setSpanBetweenTokens(ss, string, "~1~",
+					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_cat)),
+					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_cat)));
+			AndroidUtils.setSpanBetweenTokens(ss, string, "~3~",
+					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_manualtag)),
+					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_manualtag)));
+
+			holder.tvTags.setText(ss);
 		}
 
 		return rowView;
@@ -264,18 +370,19 @@ public class TorrentListAdapter
 	public class TorrentFilter
 		extends Filter
 	{
-		private int filterMode;
+		private long filterMode;
 
 		private String constraint;
 
-		public void setFilterMode(int filterMode) {
+		public void setFilterMode(long filterMode) {
 			this.filterMode = filterMode;
 			filter(constraint);
 		}
 
 		@Override
 		protected FilterResults performFiltering(CharSequence _constraint) {
-			this.constraint = _constraint == null ? null : _constraint.toString().toLowerCase();
+			this.constraint = _constraint == null ? null
+					: _constraint.toString().toLowerCase();
 			FilterResults results = new FilterResults();
 
 			if (sessionInfo == null) {
@@ -390,13 +497,29 @@ public class TorrentListAdapter
 		return name.contains(constraint);
 	}
 
-	private boolean filterCheck(int filterMode, Object key) {
+	private boolean filterCheck(long filterMode, Object key) {
 		Map map = sessionInfo.getTorrent(key);
 		if (map == null) {
 			return false;
 		}
 
-		switch (filterMode) {
+		if (filterMode > 10) {
+			List listTagUIDs = MapUtils.getMapList(map, "tag-uids", null);
+			if (listTagUIDs != null) {
+				for (Object o : listTagUIDs) {
+					if (o instanceof Long) {
+						Long tagUID = (Long) o;
+						if (tagUID == filterMode) {
+							return true;
+						}
+					}
+				}
+			}
+			
+			return false;
+		}
+		
+		switch ((int) filterMode) {
 			case FILTERBY_ACTIVE:
 				long dlRate = MapUtils.getMapLong(map,
 						TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD, -1);

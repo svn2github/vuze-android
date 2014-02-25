@@ -64,6 +64,10 @@ public class PeersFragment
 	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
 	 */
 	public void setTorrentID(SessionInfo sessionInfo, long id) {
+		if (torrentID != id && adapter != null) {
+			adapter.clearList();
+		}
+
 		this.sessionInfo = sessionInfo;
 		torrentID = id;
 		
@@ -75,7 +79,7 @@ public class PeersFragment
 		sessionInfo.getRpc().getTorrentPeerInfo(id,
 				new TorrentListReceivedListener() {
 					@Override
-					public void rpcTorrentListReceived(List listTorrents) {
+					public void rpcTorrentListReceived(List<?> listTorrents) {
 						if (adapter != null) {
 							getActivity().runOnUiThread(new Runnable() {
 								@Override

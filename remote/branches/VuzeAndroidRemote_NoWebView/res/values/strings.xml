@@ -37,6 +37,7 @@
 	<string name="action_stop_all">Stop All</string>
 	<string name="action_add_torrent">Add</string>
 	<string name="action_sel_start">Start</string>
+	<string name="action_sel_launch">Launch</string>
 	<string name="action_sel_stop">Stop</string>
 	<string name="action_sel_move">Reposition</string>
 	<string name="action_sel_remove">Remove</string>
@@ -74,7 +75,8 @@
 	<string name="search_box_hint">Find Torrents&#8230;</string>
 	<string name="no_network_connection">No Network Connection</string>
 	<string name="no_file_chooser">No suitable File Manager was found</string>
-	<string name="button_browse">Browse&#8230;</string>
+	<string name="no_intent">No suitable application was found to launch</string>
+		<string name="button_browse">Browse&#8230;</string>
 	<string name="error_remote_not_found">Unable to connect to your remote client.  It does not appear to be running.</string>
 	<string name="error_connecting">Error Connecting</string>
 	<string name="button_continue">Continue</string>
@@ -83,6 +85,7 @@
 <![CDATA[
 <p>&middot; <a href="https://trac.transmissionbt.com/browser/trunk/web">Transmission Web UI</a>, GPLv2</p>
 <p>&middot; <a href="https://code.google.com/p/json-simple/">Simple JSON</a>, Apache License v2</p>
+<p>&middot; <a href="https://github.com/nhnopensource/android-pull-to-refresh">nhnopensource / android-pull-to-refresh</a>, Apache License v2, (c) 2011, 2012 Chris Banes, (c) 2013 Naver Business Platform Corp.</p>
 ]]>
 	</string>
 	<string name="about_thanks_header">Portions of this app thanks to:</string>
@@ -120,6 +123,7 @@ If you have any feature ideas, or would like to vote on what gets worked on next
 	<string name="action_add_vuze_profile">New Vuze Remote</string>
 	<string name="last_used_ago">Last connected %s</string>
 	<string name="last_used_never">Never connected</string>
+	<string name="last_updated">Last updated %s</string>
 
 	<plurals name="torrent_row_info">
 		<item quantity="one">1 File</item>
@@ -136,10 +140,14 @@ If you have any feature ideas, or would like to vote on what gets worked on next
 	<string name="torrent_status_seed">Seeding</string>
 	<string name="local_name">Local Vuze on %s</string>
 	<string name="dialog_delete_datatoo">Remove downloaded files as well</string>
-	<string name="multi_select_tip">Tap &amp; Hold to Multi-Select</string>
+	<string name="multi_select_tip">Tap &amp; Hold to multi-select. <i>DONE</i> to de-select.</string>
 	<string name="files_row_size">%1$s of %2$s downloaded</string>
-
 	<string name="torrent_file_priority_high">High Priority</string>
 	<string name="torrent_file_priority_low">Low Priority</string>
 	<string name="torrent_file_priority_normal"></string>
+	<string name="context_torrent_title">Torrent Actions</string>
+	<string name="context_file_title">File Actions</string>
+	<string name="context_torrent_subtitle_selected">%1$d selected</string>
+	<string name="action_sel_save">Save to Device</string>
+		
 </resources>

@@ -17,39 +17,55 @@
 
 package com.vuze.android.remote;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.aelitis.azureus.util.MapUtils;
-import com.vuze.android.remote.activity.MetaSearch;
-import com.vuze.android.remote.dialog.DialogFragmentMoveData;
-import com.vuze.android.remote.dialog.DialogFragmentSessionSettings;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpProtocolParams;
 
+import android.annotation.TargetApi;
 import android.app.*;
 import android.app.AlertDialog.Builder;
 import android.content.*;
 import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnDismissListener;
 import android.content.res.Resources;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.text.Html;
+import android.text.SpannableString;
 import android.text.method.LinkMovementMethod;
+import android.text.style.CharacterStyle;
+import android.text.style.ImageSpan;
 import android.util.Log;
 import android.view.*;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.aelitis.azureus.util.MapUtils;
+import com.vuze.android.remote.activity.MetaSearch;
+import com.vuze.android.remote.dialog.DialogFragmentMoveData;
+import com.vuze.android.remote.dialog.DialogFragmentSessionSettings;
 
 /**
  * Some generic Android Utility methods.
@@ -367,11 +383,11 @@ public class AndroidUtils
 
 	public static class ValueStringArray
 	{
-		public int values[];
+		public long values[];
 
 		public String strings[];
 
-		public ValueStringArray(int[] value, String[] string) {
+		public ValueStringArray(long[] value, String[] string) {
 			this.values = value;
 			this.strings = string;
 		}
@@ -381,8 +397,8 @@ public class AndroidUtils
 	public static ValueStringArray getValueStringArray(Resources resources, int id) {
 		String[] stringArray = resources.getStringArray(id);
 		String[] strings = new String[stringArray.length];
-		int[] values = new int[stringArray.length];
-		
+		long[] values = new long[stringArray.length];
+
 		for (int i = 0; i < stringArray.length; i++) {
 			String[] s = stringArray[i].split(",");
 			values[i] = Integer.parseInt(s[0]);
@@ -392,7 +408,8 @@ public class AndroidUtils
 	}
 
 	@SuppressWarnings("rawtypes")
-	public static void openMoveDataDialog(Map mapTorrent, SessionInfo sessionInfo, FragmentManager fm) {
+	public static void openMoveDataDialog(Map mapTorrent,
+			SessionInfo sessionInfo, FragmentManager fm) {
 		DialogFragmentMoveData dlg = new DialogFragmentMoveData();
 		Bundle bundle = new Bundle();
 		if (mapTorrent == null) {
@@ -437,7 +454,7 @@ public class AndroidUtils
 			myIntent.putExtra(SearchManager.APP_DATA, bundle);
 		}
 		myIntent.putExtra(SearchManager.QUERY, search);
-	
+
 		context.startActivity(myIntent);
 		return true;
 	}
@@ -477,28 +494,198 @@ public class AndroidUtils
 			available = 32 * 1024;
 		}
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(available);
-	
+
 		byte[] buffer = new byte[32 * 1024];
-	
+
 		try {
 			while (true) {
-	
+
 				int len = is.read(buffer);
-	
+
 				if (len <= 0) {
-	
+
 					break;
 				}
-	
+
 				baos.write(buffer, 0, len);
 			}
-	
+
 			return (baos.toByteArray());
-	
+
 		} finally {
-	
+
 			is.close();
 		}
 	}
 
+	public static void setSpanBetweenTokens(SpannableString ss, String text,
+			String token, CharacterStyle... cs) {
+		// Start and end refer to the points where the span will apply
+		int tokenLen = token.length();
+		int base = 0;
+
+		while (true) {
+			int start = text.indexOf(token, base);
+			int end = text.indexOf(token, start + tokenLen);
+
+			if (start < 0 || end < 0) {
+				break;
+			}
+
+			base = end + tokenLen;
+
+			for (CharacterStyle c : cs) {
+				ss.setSpan(CharacterStyle.wrap(c), start + tokenLen, end, 0);
+			}
+
+			Drawable blankDrawable = new Drawable() {
+
+				@Override
+				public void setColorFilter(ColorFilter cf) {
+				}
+
+				@Override
+				public void setAlpha(int alpha) {
+				}
+
+				@Override
+				public int getOpacity() {
+					return 0;
+				}
+
+				@Override
+				public void draw(Canvas canvas) {
+				}
+			};
+
+			// because AbsoluteSizeSpan(0) doesn't work on older versions
+			ss.setSpan(new ImageSpan(blankDrawable), start, start + tokenLen, 0);
+			ss.setSpan(new ImageSpan(blankDrawable), end, end + tokenLen, 0);
+		}
+	}
+
+	public static void invalidateOptionsMenuHC(final Activity activity,
+			final ActionMode mActionMode) {
+		if (activity == null) {
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				ActivityCompat.invalidateOptionsMenu(activity);
+				invalidateActionMode();
+			}
+
+			@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+			private void invalidateActionMode() {
+				if (mActionMode != null) {
+					mActionMode.invalidate();
+				}
+			}
+		});
+	}
+
+	// From FileUtil.java
+	public static void copyFile(final InputStream _source, final File _dest,
+			boolean _close_input_stream)
+
+			throws IOException {
+		FileOutputStream dest = null;
+
+		boolean close_input = _close_input_stream;
+
+		try {
+			dest = new FileOutputStream(_dest);
+
+			close_input = false;
+
+			copyFile(_source, dest, close_input);
+
+		} finally {
+
+			try {
+				if (close_input) {
+
+					_source.close();
+				}
+			} catch (IOException e) {
+			}
+
+			if (dest != null) {
+
+				dest.close();
+			}
+		}
+	}
+
+	// From FileUtil.java
+	public static void copyFile(InputStream is, OutputStream os,
+			boolean closeInputStream)
+
+			throws IOException {
+		try {
+
+			if (!(is instanceof BufferedInputStream)) {
+
+				is = new BufferedInputStream(is);
+			}
+
+			byte[] buffer = new byte[65536 * 2];
+
+			while (true) {
+
+				int len = is.read(buffer);
+
+				if (len == -1) {
+
+					break;
+				}
+
+				os.write(buffer, 0, len);
+			}
+		} finally {
+			try {
+				if (closeInputStream) {
+					is.close();
+				}
+			} catch (IOException e) {
+
+			}
+
+			os.close();
+		}
+	}
+
+	public static void copyUrlToFile(String uri, File outFile) {
+		
+		BasicHttpParams basicHttpParams = new BasicHttpParams();
+		HttpProtocolParams.setUserAgent(basicHttpParams, "Vuze Android Remote");
+		DefaultHttpClient httpclient = new DefaultHttpClient(basicHttpParams);
+
+		// Prepare a request object
+		HttpRequestBase httpRequest = new HttpGet(uri);
+
+		// Execute the request
+		HttpResponse response;
+
+		try {
+			response = httpclient.execute(httpRequest);
+
+			HttpEntity entity = response.getEntity();
+			if (entity != null) {
+
+				// A Simple JSON Response Read
+				InputStream is = entity.getContent();
+				copyFile(is, outFile, true);
+			}
+
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
 }

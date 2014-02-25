@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
-	android:layout_width="wrap_content"
-	android:layout_height="wrap_content"
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent"
 	android:orientation="vertical"
 	tools:context=".activity.TorrentListFragment" >
 
@@ -19,12 +19,15 @@
     	<requestFocus />
     </EditText>
 
-    <ListView
-    	android:id="@android:id/list"
-    	android:layout_width="match_parent"
-    	android:layout_height="wrap_content"
-    	android:choiceMode="multipleChoice" >
+<!--     <com.markupartist.android.widget.PullToRefreshListView> -->
 
-    </ListView>
+    <com.handmark.pulltorefresh.library.PullToRefreshListView
+    	xmlns:ptr="http://schemas.android.com/apk/res-auto"
+    	android:id="@android:id/list"
+    	android:layout_width="fill_parent"
+    	android:layout_height="fill_parent"
+    	ptr:ptrAnimationStyle="flip"
+    	ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
+    	android:choiceMode="multipleChoice" />
 
 </LinearLayout>

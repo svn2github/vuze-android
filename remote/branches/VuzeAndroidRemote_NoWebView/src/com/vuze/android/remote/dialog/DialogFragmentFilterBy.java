@@ -17,6 +17,8 @@
 
 package com.vuze.android.remote.dialog;
 
+import java.util.*;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -25,6 +27,7 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 
+import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.ValueStringArray;
 
@@ -33,7 +36,7 @@ public class DialogFragmentFilterBy
 {
 	public interface FilterByDialogListener
 	{
-		void filterBy(int val, String item, boolean save);
+		void filterBy(long val, String item, boolean save);
 	}
 
 	public static void openFilterByDialog(Fragment fragment) {
@@ -42,12 +45,63 @@ public class DialogFragmentFilterBy
 		dlg.show(fragment.getFragmentManager(), "OpenFilterDialog");
 	}
 
+	public static void openFilterByDialog(
+			Fragment fragment, String id) {
+		DialogFragmentFilterBy dlg = new DialogFragmentFilterBy();
+		dlg.setTargetFragment(fragment, 0);
+		Bundle bundle = new Bundle();
+		bundle.putString(SessionInfoManager.BUNDLE_KEY, id);
+		dlg.setArguments(bundle);
+		dlg.show(fragment.getFragmentManager(), "OpenFilterDialog");
+	}
+
 	private FilterByDialogListener mListener;
+	private ValueStringArray filterByList;
 
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
-		final ValueStringArray filterByList = AndroidUtils.getValueStringArray(
-				getResources(), R.array.filterby_list);
+		Bundle arguments = getArguments();
+
+		String id = arguments == null ? null : arguments.getString(SessionInfoManager.BUNDLE_KEY);
+		if (id != null) {
+			SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(id);
+			List tags = sessionInfo.getTags();
+			if (tags != null && tags.size() > 0) {
+				TreeMap<String, Long> map = new TreeMap<String, Long>();
+				for (Object o : tags) {
+					if (o instanceof Map) {
+						Map mapTag = (Map) o;
+						long uid = MapUtils.getMapLong(mapTag, "uid", 0);
+						String name = MapUtils.getMapString(mapTag, "name", "??");
+						int type = MapUtils.getMapInt(mapTag, "type", 0);
+						if (type == 3) {
+							// type-name will be "Manual" :(
+							name = "Tag: " + name;
+						} else {
+  						String typeName = MapUtils.getMapString(mapTag, "type-name", null);
+  						if (typeName != null) {
+  							name = typeName + ": " + name;
+  						}
+						}
+						map.put(name, uid);
+					}
+				}
+				
+				long[] vals = new long[map.size()];
+				String[] strings = map.keySet().toArray(new String[0]);
+				for (int i = 0; i < vals.length; i++) {
+					vals[i] = map.get(strings[i]);
+				}
+				
+				filterByList = new ValueStringArray(vals, strings);
+			}
+			
+		}
+		
+		if (filterByList == null) {
+			filterByList = AndroidUtils.getValueStringArray(
+					getResources(), R.array.filterby_list);
+		}
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 		builder.setTitle(R.string.filterby_title);
@@ -87,4 +141,5 @@ public class DialogFragmentFilterBy
 		super.onStop();
 		VuzeEasyTracker.getInstance(this).activityStop(this);
 	}
+
 }

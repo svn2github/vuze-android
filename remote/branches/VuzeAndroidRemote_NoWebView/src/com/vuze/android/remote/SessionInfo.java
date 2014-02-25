@@ -61,6 +61,8 @@ public class SessionInfo
 	List<SessionInfoListener> availabilityListeners = new ArrayList<SessionInfoListener>();
 
 	private Map mapSessionStats;
+	
+	private Map<Long,Map<?,?>> mapTags;
 
 	protected SessionInfo(TransmissionRPC rpc, RemoteProfile _remoteProfile,
 			boolean rememberSettingChanges) {
@@ -114,6 +116,34 @@ public class SessionInfo
 
 				if (!uiReady) {
 					uiReady = true;
+					
+					getRpc().simpleRpcCall("tags-get-list", new ReplyMapReceivedListener() {
+						
+						@Override
+						public void rpcSuccess(String id, Map optionalMap) {
+							List tagList = MapUtils.getMapList(optionalMap, "tags", null);
+							if (tagList == null) {
+								mapTags = null;
+								return;
+							}
+							mapTags = new HashMap<Long, Map<?,?>>();
+							for (Object tag : tagList) {
+								if (tag instanceof Map) {
+									Map mapTag = (Map) tag;
+									mapTags.put(MapUtils.getMapLong(mapTag, "uid", 0), mapTag);
+								}
+							}
+						}
+						
+						@Override
+						public void rpcFailure(String id, String message) {
+						}
+						
+						@Override
+						public void rpcError(String id, Exception e) {
+						}
+					});
+					
 					initRefreshHandler();
 					for (SessionInfoListener l : availabilityListeners) {
 						l.uiReady();
@@ -122,6 +152,20 @@ public class SessionInfo
 			}
 		});
 
+	}
+	
+	public Map getTag(Long uid) {
+		if (mapTags == null) {
+			return null;
+		}
+		return mapTags.get(uid);
+	}
+	
+	public List getTags() {
+		if (mapTags == null) {
+			return null;
+		}
+		return new ArrayList(mapTags.values());
 	}
 
 	/**

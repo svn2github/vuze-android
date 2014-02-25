@@ -2,7 +2,9 @@ package com.vuze.android.remote.fragment;
 
 import java.util.Map;
 
+import android.app.Activity;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
@@ -11,8 +13,17 @@ import android.view.*;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.activity.TorrentDetailsActivity;
+import com.vuze.android.remote.activity.TorrentViewActivity;
 import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent;
+import com.vuze.android.remote.fragment.TorrentListFragment.OnTorrentSelectedListener;
 
+/**
+ * Torrent Details Fragment<br>
+ * - Contains {@link PeersFragment}, {@link FilesFragment}<br>
+ * - Contained in {@link TorrentViewActivity} for wide screens<br>
+ * - Contained in {@link TorrentDetailsActivity} for narrow screens<br>
+ */
 public class TorrentDetailsFragment
 	extends Fragment implements SessionInfoListener
 {
@@ -22,7 +33,7 @@ public class TorrentDetailsFragment
 
 	private SessionInfo sessionInfo;
 
-	private long[] ids;
+	private long[] torrentIDs;
 
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
@@ -47,7 +58,7 @@ public class TorrentDetailsFragment
 
 			@Override
 			public void onPageSelected(int arg0) {
-				setTorrentIDs(ids);
+				setTorrentIDs(torrentIDs);
 			}
 		});
 
@@ -69,21 +80,21 @@ public class TorrentDetailsFragment
 	}
 
 	public void setTorrentIDs(long[] newIDs) {
-		this.ids = newIDs;
+		this.torrentIDs = newIDs;
 		getActivity().runOnUiThread(new Runnable() {
 			public void run() {
-				if (ids == null || ids.length != 1) {
-					ids = null;
+				if (torrentIDs == null || torrentIDs.length != 1) {
+					torrentIDs = null;
 					setHasOptionsMenu(false);
 				} else {
 					setHasOptionsMenu(true);
-					pagerAdapter.setSelection(sessionInfo, ids[0]);
+					pagerAdapter.setSelection(sessionInfo, torrentIDs[0]);
 					int currentItem = mViewPager.getCurrentItem();
 					System.out.println("currentItem = " + currentItem);
 					Fragment item = pagerAdapter.getFragment(currentItem);
 					System.out.println("frag = " + item);
 					if (item instanceof SetTorrentIdListener) {
-						((SetTorrentIdListener) item).setTorrentID(sessionInfo, ids[0]);
+						((SetTorrentIdListener) item).setTorrentID(sessionInfo, torrentIDs[0]);
 					}
 				}
 			}
@@ -92,8 +103,9 @@ public class TorrentDetailsFragment
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		inflater.inflate(R.menu.menu_context_torrent_details, menu);
+		System.out.println("td.onCreateOptionsMenu");
 		super.onCreateOptionsMenu(menu, inflater);
-		inflater.inflate(R.menu.menu_context, menu);
 	}
 
 	@Override
@@ -105,47 +117,47 @@ public class TorrentDetailsFragment
 	}
 
 	protected boolean handleMenu(int itemId) {
-		if (sessionInfo == null || ids == null) {
+		if (sessionInfo == null || torrentIDs == null) {
 			return false;
 		}
 		switch (itemId) {
 			case R.id.action_sel_remove: {
-				Map<?, ?> map = sessionInfo.getTorrent(ids[0]);
+				Map<?, ?> map = sessionInfo.getTorrent(torrentIDs[0]);
 				long id = MapUtils.getMapLong(map, "id", -1);
 				String name = MapUtils.getMapString(map, "name", "");
 				DialogFragmentDeleteTorrent.open(getFragmentManager(), name, id);
 				return true;
 			}
 			case R.id.action_sel_start: {
-				sessionInfo.getRpc().startTorrents(ids, false, null);
+				sessionInfo.getRpc().startTorrents(torrentIDs, false, null);
 				return true;
 			}
 			case R.id.action_sel_forcestart: {
-				sessionInfo.getRpc().startTorrents(ids, true, null);
+				sessionInfo.getRpc().startTorrents(torrentIDs, true, null);
 				return true;
 			}
 			case R.id.action_sel_stop: {
-				sessionInfo.getRpc().stopTorrents(ids, null);
+				sessionInfo.getRpc().stopTorrents(torrentIDs, null);
 				return true;
 			}
 			case R.id.action_sel_relocate:
-				AndroidUtils.openMoveDataDialog(sessionInfo.getTorrent(ids[0]),
+				AndroidUtils.openMoveDataDialog(sessionInfo.getTorrent(torrentIDs[0]),
 						sessionInfo, getFragmentManager());
 				return true;
 			case R.id.action_sel_move_top: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-top", ids, null);
+				sessionInfo.getRpc().simpleRpcCall("queue-move-top", torrentIDs, null);
 				return true;
 			}
 			case R.id.action_sel_move_up: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-up", ids, null);
+				sessionInfo.getRpc().simpleRpcCall("queue-move-up", torrentIDs, null);
 				return true;
 			}
 			case R.id.action_sel_move_down: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-down", ids, null);
+				sessionInfo.getRpc().simpleRpcCall("queue-move-down", torrentIDs, null);
 				return true;
 			}
 			case R.id.action_sel_move_bottom: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-bottom", ids, null);
+				sessionInfo.getRpc().simpleRpcCall("queue-move-bottom", torrentIDs, null);
 				return true;
 			}
 		}
@@ -156,20 +168,24 @@ public class TorrentDetailsFragment
 	public void onPrepareOptionsMenu(Menu menu) {
 		super.onPrepareOptionsMenu(menu);
 
-		if (sessionInfo == null || ids == null) {
+		if (sessionInfo == null || torrentIDs == null) {
 			return;
 		}
-		Map<?, ?> torrent = sessionInfo.getTorrent(ids[0]);
+		Map<?, ?> torrent = sessionInfo.getTorrent(torrentIDs[0]);
 		int status = MapUtils.getMapInt(torrent,
 				TransmissionVars.TORRENT_FIELD_STATUS,
 				TransmissionVars.TR_STATUS_STOPPED);
 		boolean canStart = status == TransmissionVars.TR_STATUS_STOPPED;
 		boolean canStop = status != TransmissionVars.TR_STATUS_STOPPED;
 		MenuItem menuStart = menu.findItem(R.id.action_sel_start);
-		menuStart.setVisible(canStart);
+		if (menuStart != null) {
+			menuStart.setVisible(canStart);
+		}
 
 		MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
-		menuStop.setVisible(canStop);
+		if (menuStop != null) {
+			menuStop.setVisible(canStop);
+		}
 
 		AndroidUtils.fixupMenuAlpha(menu);
 	}
@@ -177,8 +193,8 @@ public class TorrentDetailsFragment
 	@Override
 	public void transmissionRpcAvailable(SessionInfo _sessionInfo) {
 		sessionInfo = _sessionInfo;
-		if (ids != null) {
-			setTorrentIDs(ids);
+		if (torrentIDs != null) {
+			setTorrentIDs(torrentIDs);
 		}
 	}
 

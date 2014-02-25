@@ -39,7 +39,7 @@ public class FilesAdapter
 	private FileFilter filter;
 
 	/** List of they keys of all entries displayed, in the display order */
-	private List<Object> displayList;
+	private List<Object> displayList = new ArrayList<Object>(0);
 
 	public Object mLock = new Object();
 
@@ -209,7 +209,7 @@ public class FilesAdapter
 				}
 				System.out.println("listFiles=" + listFiles.size());
 				if (listFileStats != null) {
-					List mergedFileMaps = new ArrayList();
+					List<Map> mergedFileMaps = new ArrayList<Map>();
 					for (int i = 0; i < listFiles.size() && i < listFileStats.size(); i++) {
 						try {
 							Map mapFile = (Map) listFiles.get(i);
@@ -242,6 +242,10 @@ public class FilesAdapter
 			{
 				synchronized (mLock) {
 					displayList = (List<Object>) results.values;
+					
+					if (displayList == null) {
+						displayList = new ArrayList<Object>();
+					}
 
 					doSort();
 				}
@@ -361,6 +365,13 @@ public class FilesAdapter
 	@Override
 	public long getItemId(int position) {
 		return position;
+	}
+
+	public void clearList() {
+		synchronized (mLock) {
+			displayList.clear();
+		}
+		notifyDataSetChanged();
 	}
 
 }

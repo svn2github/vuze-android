@@ -354,8 +354,8 @@ public class PeersAdapter
 		return (Map<?, ?>) displayList.get(position);
 	}
 
-	public void setTorrentID(long torrentID) {
-		this.torrentID = torrentID;
+	public void setTorrentID(long id) {
+		this.torrentID = id;
 		getFilter().filter("");
 	}
 
@@ -367,4 +367,10 @@ public class PeersAdapter
 		return position;
 	}
 
+	public void clearList() {
+		synchronized (mLock) {
+			displayList.clear();
+		}
+		notifyDataSetChanged();
+	}
 }

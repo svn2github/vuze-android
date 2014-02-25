@@ -878,7 +878,7 @@ public class EmbeddedWebRemote
 			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
 				// Inflate a menu resource providing context menu items
 				MenuInflater inflater = mode.getMenuInflater();
-				inflater.inflate(R.menu.menu_context, menu);
+				inflater.inflate(R.menu.menu_context_torrent_details, menu);
 				return true;
 			}
 
@@ -1322,7 +1322,7 @@ public class EmbeddedWebRemote
 		super.onCreateContextMenu(menu, v, menuInfo);
 
 		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.menu_context, menu);
+		inflater.inflate(R.menu.menu_context_torrent_details, menu);
 	}
 
 	@Override
@@ -1400,7 +1400,7 @@ public class EmbeddedWebRemote
 	}
 
 	@Override
-	public void filterBy(final int filterMode, final String name, boolean save) {
+	public void filterBy(final long filterMode, final String name, boolean save) {
 		runJavaScript("filterText", "transmission.setFilterMode(" + filterMode
 				+ ");");
 		runOnUiThread(new Runnable() {

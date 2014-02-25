@@ -116,10 +116,10 @@ public class LoginActivity
 		SpannableString ss = new SpannableString(s);
 		String string = s.toString();
 
-		setSpanBetweenTokens(ss, string, "##",
+		AndroidUtils.setSpanBetweenTokens(ss, string, "##",
 				new BackgroundColorSpan(res.getColor(R.color.login_text_color)),
 				new ForegroundColorSpan(res.getColor(R.color.login_link_color)));
-		setSpanBetweenTokens(ss, string, "!!",
+		AndroidUtils.setSpanBetweenTokens(ss, string, "!!",
 				new BackgroundColorSpan(res.getColor(R.color.login_text_color)),
 				new ForegroundColorSpan(res.getColor(R.color.login_link_color)));
 
@@ -148,43 +148,6 @@ public class LoginActivity
 		tvLoginGuide.setText(ss);
 	}
 
-	public static void setSpanBetweenTokens(SpannableString ss, String text,
-			String token, CharacterStyle... cs) {
-		// Start and end refer to the points where the span will apply
-		int tokenLen = token.length();
-		int start = text.indexOf(token);
-		int end = text.indexOf(token, start + tokenLen);
-
-		if (start > -1 && end > -1) {
-			for (CharacterStyle c : cs) {
-				ss.setSpan(c, start + tokenLen, end, 0);
-			}
-
-			Drawable blankDrawable = new Drawable() {
-
-				@Override
-				public void setColorFilter(ColorFilter cf) {
-				}
-
-				@Override
-				public void setAlpha(int alpha) {
-				}
-
-				@Override
-				public int getOpacity() {
-					return 0;
-				}
-
-				@Override
-				public void draw(Canvas canvas) {
-				}
-			};
-
-			// because AbsoluteSizeSpan(0) doesn't work on older versions
-			ss.setSpan(new ImageSpan(blankDrawable), start, start + tokenLen, 0);
-			ss.setSpan(new ImageSpan(blankDrawable), end, end + tokenLen, 0);
-		}
-	}
 
 	@Override
 	public void onConfigurationChanged(Configuration newConfig) {

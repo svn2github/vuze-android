@@ -65,7 +65,7 @@
 		android:id="@+id/torrentrow_upspeed"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:layout_alignBottom="@+id/torrentRow_speed_graph"
+		android:layout_above="@+id/torrentrow_tags"
 		android:layout_alignRight="@+id/torrentRow_speed_graph"
 		android:text="↑ 0 kB/s"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
@@ -76,6 +76,8 @@
 		android:layout_height="wrap_content"
 		android:layout_alignRight="@+id/torrentRow_speed_graph"
 		android:layout_alignTop="@+id/torrentRow_speed_graph"
+		android:layout_marginBottom="2dp"
+		android:text="0 kB/s"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 	<LinearLayout
@@ -85,7 +87,6 @@
 		android:layout_alignLeft="@id/torrentrow_progress"
 		android:layout_alignRight="@id/torrentrow_progress"
 		android:layout_alignTop="@id/torrentrow_progress"
-		android:layout_below="@+id/torrentRow_speed_graph"
 		android:gravity="center_vertical"
 		android:orientation="vertical" >
 
@@ -107,5 +108,14 @@
 			android:textSize="12sp" />
 
 	</LinearLayout>
+
+	<TextView
+		android:id="@+id/torrentrow_tags"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignLeft="@+id/torrentrow_info"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentRight="true"
+		android:layout_below="@+id/torrentrow_info" />
 
 </com.android.music.CheckableRelativeLayout>
