@@ -11,4 +11,25 @@
 		android:icon="@drawable/ic_menu_save"
 		android:showAsAction="ifRoom"
 		android:title="@string/action_sel_save"/>
+	<item
+		android:id="@+id/action_sel_priority_up"
+		android:icon="@drawable/ic_menu_priority_up"
+		android:showAsAction="ifRoom"
+		android:title="@string/action_sel_priority_up"/>
+	<item
+		android:id="@+id/action_sel_priority_down"
+		android:icon="@drawable/ic_menu_priority_down"
+		android:showAsAction="ifRoom"
+		android:title="@string/action_sel_priority_down"/>
+	<item
+		android:id="@+id/action_sel_unwanted"
+		android:icon="@drawable/ic_menu_delete"
+		android:showAsAction="ifRoom"
+		android:title="@string/action_sel_unwanted"/>
+	<item
+		android:id="@+id/action_sel_wanted"
+		android:icon="@drawable/ic_menu_want"
+		android:showAsAction="ifRoom"
+		android:title="@string/action_sel_wanted"/>
+	
 </menu>

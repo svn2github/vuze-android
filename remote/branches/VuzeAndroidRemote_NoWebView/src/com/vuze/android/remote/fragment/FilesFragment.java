@@ -2,6 +2,7 @@ package com.vuze.android.remote.fragment;
 
 import java.io.File;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import android.annotation.TargetApi;
@@ -10,7 +11,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -26,9 +26,24 @@ import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class FilesFragment
 	extends Fragment
-	implements SetTorrentIdListener
+	implements SetTorrentIdListener, TorrentListReceivedListener
 {
 	protected static final String TAG = "FilesFragment";
+
+	/**
+	 * Launching an Intent without a Mime will result in a different list
+	 * of apps then one including the Mime type.  Sometimes one is better than
+	 * the other, especially with URLs :(
+	 * 
+	 * Pros for setting MIME:
+	 * - In theory should provide more apps
+	 * 
+	 * Cons for setting MIME:
+	 * - the Web browser will not show as an app, but rather a
+	 * html viewer app, if you are lucky
+	 * - A lot of apps that accept MIME types can't handle URLs and fail
+	 */
+	protected static final boolean tryLaunchWithMimeFirst = false;
 
 	private ListView listview;
 
@@ -57,7 +72,18 @@ public class FilesFragment
 		if (activity instanceof ActionModeBeingReplacedListener) {
 			mCallback = (ActionModeBeingReplacedListener) activity;
 		}
+	}
 
+	@Override
+	public void onPause() {
+		sessionInfo.removeTorrentListReceivedListener(this);
+		super.onPause();
+	}
+
+	@Override
+	public void onResume() {
+		sessionInfo.addTorrentListReceivedListener(this);
+		super.onResume();
 	}
 
 	@Override
@@ -107,7 +133,6 @@ public class FilesFragment
 				if (isChecked) {
 
 				}
-				System.out.println("click: " + position + "/" + id);
 				selectedFileIndex = isChecked ? position : -1;
 
 				if (mActionMode == null) {
@@ -118,6 +143,8 @@ public class FilesFragment
 					//listview.setItemChecked(position, false);
 					lastIdClicked = -1;
 				} else {
+					showContextualActions();
+
 					lastIdClicked = id;
 				}
 
@@ -146,25 +173,8 @@ public class FilesFragment
 		if (adapter != null) {
 			adapter.setSessionInfo(sessionInfo);
 		}
-		sessionInfo.getRpc().getTorrentFileInfo(id,
-				new TorrentListReceivedListener() {
-					@Override
-					public void rpcTorrentListReceived(List<?> listTorrents) {
-						if (adapter != null) {
-							FragmentActivity activity = getActivity();
-							if (activity == null) {
-								return;
-							}
-							activity.runOnUiThread(new Runnable() {
-								@Override
-								public void run() {
-									adapter.setTorrentID(torrentID);
-								}
-							});
-						}
-						System.out.println("DS CHANGED FILE " + adapter);
-					}
-				});
+		// getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
+		sessionInfo.getRpc().getTorrentFileInfo(id, null);
 	}
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -191,11 +201,12 @@ public class FilesFragment
 
 				boolean isComplete = false;
 				Map<?, ?> mapFile = getSelectedFile();
+				Map<?, ?> mapFileStats = getSelectedFileStats();
 				if (mapFile != null) {
 					long bytesCompleted = MapUtils.getMapLong(mapFile, "bytesCompleted",
 							0);
 					long length = MapUtils.getMapLong(mapFile, "length", -1);
-					System.out.println("mapFIle=" + mapFile);
+					//System.out.println("mapFIle=" + mapFile);
 					isComplete = bytesCompleted == length;
 				}
 
@@ -216,6 +227,30 @@ public class FilesFragment
 					}
 				}
 
+				int priority = MapUtils.getMapInt(mapFileStats,
+						TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+						TransmissionVars.TR_PRI_NORMAL);
+				MenuItem menuPriorityUp = menu.findItem(R.id.action_sel_priority_up);
+				if (menuPriorityUp != null) {
+					menuPriorityUp.setEnabled(!isComplete
+							&& priority < TransmissionVars.TR_PRI_HIGH);
+				}
+				MenuItem menuPriorityDown = menu.findItem(R.id.action_sel_priority_down);
+				if (menuPriorityDown != null) {
+					menuPriorityDown.setEnabled(!isComplete
+							&& priority > TransmissionVars.TR_PRI_LOW);
+				}
+
+				boolean wanted = MapUtils.getMapBoolean(mapFileStats, "wanted", true);
+				MenuItem menuUnwant = menu.findItem(R.id.action_sel_unwanted);
+				if (menuUnwant != null) {
+					menuUnwant.setVisible(wanted);
+				}
+				MenuItem menuWant = menu.findItem(R.id.action_sel_wanted);
+				if (menuWant != null) {
+					menuWant.setVisible(!wanted);
+				}
+
 				AndroidUtils.fixupMenuAlpha(menu);
 
 				return true;
@@ -233,116 +268,56 @@ public class FilesFragment
 						if (selectedFile == null) {
 							return false;
 						}
-						System.out.println("selectedFile: " + selectedFile);
-
-						String fullPath = MapUtils.getMapString(selectedFile, "fullPath",
-								null);
-						if (fullPath != null && fullPath.length() > 0) {
-							File file = new File(fullPath);
-							if (file.exists()) {
-								Uri uri = Uri.fromFile(file);
-								Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-								try {
-									startActivity(intent);
-								} catch (android.content.ActivityNotFoundException ex) {
-
-								}
-								System.out.println("Started " + uri);
-								return true;
-							} else {
-								if (AndroidUtils.DEBUG) {
-									Log.d(TAG, "Launch: File Not Found: " + fullPath);
-								}
-							}
-						}
-
-						String contentURL = MapUtils.getMapString(selectedFile,
-								"contentURL", null);
-						if (contentURL != null && contentURL.length() > 0) {
-							Uri uri = Uri.parse(contentURL);
-							Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-
-							String extension = MimeTypeMap.getFileExtensionFromUrl(contentURL);
-							String mimetype = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-									extension);
-							if (mimetype != null) {
-								intent.setType(mimetype);
-							}
-
-							try {
-								startActivity(intent);
-								if (AndroidUtils.DEBUG) {
-									System.out.println("Started " + uri);
-								}
-							} catch (android.content.ActivityNotFoundException ex) {
-								if (AndroidUtils.DEBUG) {
-									Log.d(TAG, "no intent for view. " + ex.toString());
-								}
-
-								if (mimetype != null) {
-									try {
-										Intent intent2 = new Intent(Intent.ACTION_VIEW, uri);
-										startActivity(intent2);
-										if (AndroidUtils.DEBUG) {
-											System.out.println("Started (no mime set) " + uri);
-										}
-										return true;
-									} catch (android.content.ActivityNotFoundException ex2) {
-										if (AndroidUtils.DEBUG) {
-											Log.d(TAG, "no intent for view. " + ex2.toString());
-										}
-									}
-								}
-
-								Toast.makeText(getActivity().getApplicationContext(),
-										getActivity().getResources().getString(R.string.no_intent),
-										Toast.LENGTH_SHORT).show();
-							}
-							return true;
-						}
-
-						return true;
+						return launchFile(selectedFile);
 					}
 					case R.id.action_sel_save: {
 						Map<?, ?> selectedFile = getSelectedFile();
-						if (selectedFile == null) {
-							return false;
-						}
+						return saveFile(selectedFile);
+					}
+					case R.id.action_sel_wanted: {
+						sessionInfo.getRpc().setWantState(torrentID, new long[] {
+							selectedFileIndex
+						}, true, null);
+						return true;
+					}
+					case R.id.action_sel_unwanted: {
+						// TODO: Delete Prompt
+						sessionInfo.getRpc().setWantState(torrentID, new long[] {
+							selectedFileIndex
+						}, false, null);
+						return true;
+					}
+					case R.id.action_sel_priority_up: {
+						Map<?, ?> selectedFile = getSelectedFileStats();
+						int priority = MapUtils.getMapInt(selectedFile,
+								TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+								TransmissionVars.TR_PRI_NORMAL);
 
-						if (sessionInfo == null) {
-							return false;
-						}
-						if (sessionInfo.getRemoteProfile().isLocalHost()) {
-							return false;
-						}
-						final String contentURL = MapUtils.getMapString(selectedFile,
-								"contentURL", null);
-						if (contentURL != null && contentURL.length() > 0) {
-							final File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-							final File outFile = new File(directory, MapUtils.getMapString(
-									selectedFile, "name", "foo.txt"));
-
-							new Thread(new Runnable() {
-
-								@Override
-								public void run() {
-									AndroidUtils.copyUrlToFile(contentURL, outFile);
-									FragmentActivity activity = getActivity();
-									if (activity == null) {
-										return;
-									}
-									activity.runOnUiThread(new Runnable() {
-										@Override
-										public void run() {
-											Toast.makeText(getActivity().getApplicationContext(),
-													"Saved " + outFile.getName(), Toast.LENGTH_SHORT).show();
-										}
-									});
-								}
-							}).start();
-
+						if (priority >= TransmissionVars.TR_PRI_HIGH) {
 							return true;
+						} else {
+							priority += 1;
 						}
+						sessionInfo.getRpc().setFilePriority(torrentID, new long[] {
+							selectedFileIndex
+						}, priority, null);
+						return true;
+					}
+					case R.id.action_sel_priority_down: {
+						Map<?, ?> selectedFile = getSelectedFileStats();
+						int priority = MapUtils.getMapInt(selectedFile,
+								TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+								TransmissionVars.TR_PRI_NORMAL);
+
+						if (priority <= TransmissionVars.TR_PRI_LOW) {
+							return true;
+						} else {
+							priority -= 1;
+						}
+						sessionInfo.getRpc().setFilePriority(torrentID, new long[] {
+							selectedFileIndex
+						}, priority, null);
+						return true;
 					}
 				}
 				return false;
@@ -371,6 +346,123 @@ public class FilesFragment
 		};
 	}
 
+	protected boolean saveFile(Map<?, ?> selectedFile) {
+		if (selectedFile == null) {
+			return false;
+		}
+		if (sessionInfo == null) {
+			return false;
+		}
+		if (sessionInfo.getRemoteProfile().isLocalHost()) {
+			return false;
+		}
+		final String contentURL = MapUtils.getMapString(selectedFile, "contentURL",
+				null);
+		if (contentURL == null || contentURL.length() == 0) {
+			return false;
+		}
+		final File directory = AndroidUtils.getDownloadDir();
+		final File outFile = new File(directory, MapUtils.getMapString(
+				selectedFile, "name", "foo.txt"));
+
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				AndroidUtils.copyUrlToFile(contentURL, outFile);
+				FragmentActivity activity = getActivity();
+				if (activity == null) {
+					return;
+				}
+				activity.runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						Toast.makeText(getActivity().getApplicationContext(),
+								"Saved " + outFile.getName(), Toast.LENGTH_SHORT).show();
+					}
+				});
+			}
+		}).start();
+
+		return true;
+	}
+
+	@SuppressWarnings("unused")
+	protected boolean launchFile(Map<?, ?> selectedFile) {
+
+		String fullPath = MapUtils.getMapString(selectedFile, "fullPath", null);
+		if (fullPath != null && fullPath.length() > 0) {
+			File file = new File(fullPath);
+			if (file.exists()) {
+				Uri uri = Uri.fromFile(file);
+				Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+				try {
+					startActivity(intent);
+				} catch (android.content.ActivityNotFoundException ex) {
+
+				}
+				if (AndroidUtils.DEBUG) {
+					System.out.println("Started " + uri);
+				}
+				return true;
+			} else {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "Launch: File Not Found: " + fullPath);
+				}
+			}
+		}
+
+		String contentURL = MapUtils.getMapString(selectedFile, "contentURL", null);
+		if (contentURL != null && contentURL.length() > 0) {
+			Uri uri = Uri.parse(contentURL);
+			Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+
+			String extension = MimeTypeMap.getFileExtensionFromUrl(contentURL).toLowerCase(
+					Locale.US);
+			String mimetype = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+					extension);
+			if (mimetype != null && tryLaunchWithMimeFirst) {
+				intent.setType(mimetype);
+			}
+
+			try {
+				startActivity(intent);
+				if (AndroidUtils.DEBUG) {
+					System.out.println("Started " + uri + " MIME: " + intent.getType());
+				}
+			} catch (android.content.ActivityNotFoundException ex) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "no intent for view. " + ex.toString());
+				}
+
+				if (mimetype != null) {
+					try {
+						Intent intent2 = new Intent(Intent.ACTION_VIEW, uri);
+						if (!tryLaunchWithMimeFirst) {
+							intent.setType(mimetype);
+						}
+						startActivity(intent2);
+						if (AndroidUtils.DEBUG) {
+							System.out.println("Started (no mime set) " + uri);
+						}
+						return true;
+					} catch (android.content.ActivityNotFoundException ex2) {
+						if (AndroidUtils.DEBUG) {
+							Log.d(TAG, "no intent for view. " + ex2.toString());
+						}
+					}
+				}
+
+				Toast.makeText(getActivity().getApplicationContext(),
+						getActivity().getResources().getString(R.string.no_intent),
+						Toast.LENGTH_SHORT).show();
+			}
+			return true;
+		}
+
+		return true;
+	}
+
 	protected Map<?, ?> getSelectedFile() {
 		Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
 		if (torrent == null) {
@@ -389,24 +481,46 @@ public class FilesFragment
 		return null;
 	}
 
+	protected Map<?, ?> getSelectedFileStats() {
+		Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
+		if (torrent == null) {
+			return null;
+		}
+		List<?> listFiles = MapUtils.getMapList(torrent, "fileStats", null);
+		if (listFiles == null || selectedFileIndex < 0
+				|| selectedFileIndex >= listFiles.size()) {
+			return null;
+		}
+		Object object = listFiles.get(selectedFileIndex);
+		if (object instanceof Map<?, ?>) {
+			Map<?, ?> map = (Map<?, ?>) object;
+			return map;
+		}
+		return null;
+	}
+
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	protected boolean showContextualActions() {
 		if (mActionMode != null) {
+			Map<?, ?> selectedFile = getSelectedFile();
+			String name = MapUtils.getMapString(selectedFile, "name", null);
+			mActionMode.setSubtitle(name);
+
 			mActionMode.invalidate();
 			return false;
 		}
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			if (mCallback != null) {
-				mCallback.setActionModeBeingReplaced(true);
-			}
-			// Start the CAB using the ActionMode.Callback defined above
-			mActionMode = getActivity().startActionMode(mActionModeCallback);
-			mActionMode.setTitle(R.string.context_file_title);
-			mActionMode.setSubtitle(null);
-			if (mCallback != null) {
-				mCallback.setActionModeBeingReplaced(false);
-			}
+		if (mCallback != null) {
+			mCallback.setActionModeBeingReplaced(true);
+		}
+		// Start the CAB using the ActionMode.Callback defined above
+		mActionMode = getActivity().startActionMode(mActionModeCallback);
+		mActionMode.setTitle(R.string.context_file_title);
+		Map<?, ?> selectedFile = getSelectedFile();
+		String name = MapUtils.getMapString(selectedFile, "name", null);
+		mActionMode.setSubtitle(name);
+		if (mCallback != null) {
+			mCallback.setActionModeBeingReplaced(false);
 		}
 		return true;
 	}
@@ -416,5 +530,49 @@ public class FilesFragment
 		if (mActionMode != null) {
 			mActionMode.finish();
 		}
+	}
+
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.rpc.TorrentListReceivedListener#rpcTorrentListReceived(java.util.List)
+	 */
+	@SuppressWarnings("rawtypes")
+	@Override
+	public void rpcTorrentListReceived(final List<?> listTorrents) {
+		FragmentActivity activity = getActivity();
+		if (activity == null) {
+			return;
+		}
+		boolean found = false;
+		for (Object item : listTorrents) {
+			if (!(item instanceof Map)) {
+				continue;
+			}
+			Map mapTorrent = (Map) item;
+			Object key = mapTorrent.get("id");
+
+			if (key instanceof Number) {
+				found = ((Number) key).longValue() == torrentID;
+				if (found) {
+					if (AndroidUtils.DEBUG) {
+						Log.d(TAG, "TorrentListReceived, contains torrent #" + torrentID);
+					}
+					break;
+				}
+			}
+		}
+		if (!found) {
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "TorrentListReceived, does not contain torretn #"
+						+ torrentID);
+			}
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				adapter.setTorrentID(torrentID);
+				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
+			}
+		});
 	}
 }

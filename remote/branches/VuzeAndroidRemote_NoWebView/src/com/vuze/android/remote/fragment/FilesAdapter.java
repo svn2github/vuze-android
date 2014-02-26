@@ -374,4 +374,7 @@ public class FilesAdapter
 		notifyDataSetChanged();
 	}
 
+	public void refreshList() {
+		getFilter().filter("");
+	}
 }

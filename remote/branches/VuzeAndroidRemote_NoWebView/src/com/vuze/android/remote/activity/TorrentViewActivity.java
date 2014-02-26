@@ -46,6 +46,7 @@ import com.aelitis.azureus.util.JSONUtils;
 import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.NetworkState.NetworkStateListener;
 import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent.DeleteTorrentDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
 import com.vuze.android.remote.dialog.*;
@@ -67,7 +68,7 @@ public class TorrentViewActivity
 	implements OpenTorrentDialogListener, MoveDataDialogListener,
 	SessionSettingsChangedListener, TorrentAddedReceivedListener,
 	DeleteTorrentDialogListener, OnTorrentSelectedListener, SessionInfoListener,
-	ActionModeBeingReplacedListener
+	ActionModeBeingReplacedListener, NetworkStateListener
 {
 	private SearchView mSearchView;
 
@@ -92,12 +93,6 @@ public class TorrentViewActivity
 
 	private RemoteProfile remoteProfile;
 
-	private boolean wifiConnected;
-
-	private boolean isOnline;
-
-	private BroadcastReceiver mConnectivityReceiver;
-
 	private boolean remember;
 
 	private boolean disableRefreshButton;
@@ -111,6 +106,8 @@ public class TorrentViewActivity
 	private View view;
 
 	private boolean isLocalHost;
+
+	private boolean uiReady = false;
 
 	/**
 	 * Used to capture the File Chooser results from {@link DialogFragmentOpenTorrent}
@@ -177,22 +174,6 @@ public class TorrentViewActivity
 		tvDownSpeed = (TextView) findViewById(R.id.wvDnSpeed);
 		tvCenter = (TextView) findViewById(R.id.wvCenter);
 
-		// register BroadcastReceiver on network state changes
-		mConnectivityReceiver = new BroadcastReceiver() {
-			public void onReceive(Context context, Intent intent) {
-				String action = intent.getAction();
-				if (!action.equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
-					return;
-				}
-				setWifiConnected(AndroidUtils.isWifiConnected(context));
-				setOnline(AndroidUtils.isOnline(context), false);
-			}
-		};
-		setOnline(AndroidUtils.isOnline(getApplicationContext()), true);
-		final IntentFilter mIFNetwork = new IntentFilter();
-		mIFNetwork.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-		registerReceiver(mConnectivityReceiver, mIFNetwork);
-
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
 			// old style menu
 			registerForContextMenu(view);
@@ -221,7 +202,7 @@ public class TorrentViewActivity
 		setTitle(remoteProfile.getNick());
 
 		isLocalHost = remoteProfile.isLocalHost();
-		if (!isOnline && !isLocalHost) {
+		if (!VuzeRemoteApp.getNetworkState().isOnline() && !isLocalHost) {
 			AndroidUtils.showConnectionError(this, R.string.no_network_connection,
 					false);
 			return;
@@ -265,6 +246,7 @@ public class TorrentViewActivity
 			Log.d(null, "UI READY");
 		}
 
+		uiReady  = true;
 		// first time: track RPC version
 		page = "RPC v" + rpc.getRPCVersion() + "/" + rpc.getRPCVersionAZ();
 
@@ -274,16 +256,13 @@ public class TorrentViewActivity
 					ui_showOldRPCDialog();
 				}
 
-				if (!isOnline && !isLocalHost) {
-					pauseUI();
-				}
 				String dataString = getIntent().getDataString();
 				if (dataString != null) {
 					openTorrent(getIntent().getData());
 				}
 
 				setProgressBarIndeterminateVisibility(false);
-				if (tvCenter != null && isOnline) {
+				if (tvCenter != null && VuzeRemoteApp.getNetworkState().isOnline()) {
 					tvCenter.setText("");
 				}
 
@@ -298,46 +277,6 @@ public class TorrentViewActivity
 		VuzeEasyTracker.getInstance(this).activityStart(this);
 	}
 
-	protected void setWifiConnected(boolean wifiConnected) {
-		if (this.wifiConnected == wifiConnected) {
-			return;
-		}
-		this.wifiConnected = wifiConnected;
-	}
-
-	protected void setOnline(boolean isOnline, final boolean initialValue) {
-		if (DEBUG) {
-			Log.d(null, "set Online to " + isOnline);
-		}
-		if (this.isOnline == isOnline && !initialValue) {
-			return;
-		}
-		this.isOnline = isOnline;
-		runOnUiThread(new Runnable() {
-			@SuppressLint("NewApi")
-			public void run() {
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-					invalidateOptionsMenu();
-				}
-				if (TorrentViewActivity.this.isOnline) {
-					if (!initialValue && tvCenter != null) {
-						tvCenter.setText("");
-					}
-					if (!isLocalHost) {
-						resumeUI();
-					}
-				} else {
-					if (tvCenter != null) {
-						System.out.println("NONO");
-						tvCenter.setText(R.string.no_network_connection);
-					}
-					if (!isLocalHost) {
-						pauseUI();
-					}
-				}
-			}
-		});
-	}
 
 	@Override
 	protected void onNewIntent(Intent intent) {
@@ -472,20 +411,14 @@ public class TorrentViewActivity
 
 	@Override
 	protected void onPause() {
+		VuzeRemoteApp.getNetworkState().removeListener(this);
 		super.onPause();
-		pauseUI();
-	}
-
-	private void pauseUI() {
 	}
 
 	@Override
 	protected void onResume() {
+		VuzeRemoteApp.getNetworkState().addListener(this);
 		super.onResume();
-		resumeUI();
-	}
-
-	private void resumeUI() {
 	}
 
 	@Override
@@ -499,11 +432,6 @@ public class TorrentViewActivity
 
 	@Override
 	protected void onDestroy() {
-		if (mConnectivityReceiver != null) {
-			unregisterReceiver(mConnectivityReceiver);
-			mConnectivityReceiver = null;
-		}
-
 		super.onDestroy();
 		if (DEBUG) {
 			Log.d(null, "EWR onDestroy");
@@ -723,7 +651,7 @@ public class TorrentViewActivity
 
 		MenuItem menuSearch = menu.findItem(R.id.action_search);
 		if (menuSearch != null) {
-			menuSearch.setEnabled(isOnline);
+			menuSearch.setEnabled(VuzeRemoteApp.getNetworkState().isOnline());
 		}
 
 		AndroidUtils.fixupMenuAlpha(menu);
@@ -936,5 +864,30 @@ public class TorrentViewActivity
   			((ActionModeBeingReplacedListener) fragment).actionModeBeingReplacedDone();
   		}
 		}
+	}
+
+	@Override
+	public void onlineStateChanged(final boolean isOnline) {
+		runOnUiThread(new Runnable() {
+			@SuppressLint("NewApi")
+			public void run() {
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					invalidateOptionsMenu();
+				}
+				if (isOnline) {
+					if (uiReady && tvCenter != null) {
+						tvCenter.setText("");
+					}
+				} else {
+					if (tvCenter != null) {
+						tvCenter.setText(R.string.no_network_connection);
+					}
+				}
+			}
+		});
+	}
+
+	@Override
+	public void wifiConnectionChanged(boolean isWifiConnected) {
 	}
 }

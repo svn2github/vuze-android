@@ -4,7 +4,7 @@ import java.util.Map;
 
 public interface ReplyMapReceivedListener
 {
-	public void rpcSuccess(String id, Map optionalMap);
+	public void rpcSuccess(String id, Map<?, ?> optionalMap);
 
 	public void rpcError(String id, Exception e);
 

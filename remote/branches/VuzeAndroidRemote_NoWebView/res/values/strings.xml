@@ -149,5 +149,9 @@ If you have any feature ideas, or would like to vote on what gets worked on next
 	<string name="context_file_title">File Actions</string>
 	<string name="context_torrent_subtitle_selected">%1$d selected</string>
 	<string name="action_sel_save">Save to Device</string>
-		
+	<string name="action_sel_priority_up">Increase Priority</string>
+	<string name="action_sel_priority_down">Decrease Priority</string>
+	<string name="action_sel_wanted">Want File</string>
+	<string name="action_sel_unwanted">Do not want</string>
+			
 </resources>
