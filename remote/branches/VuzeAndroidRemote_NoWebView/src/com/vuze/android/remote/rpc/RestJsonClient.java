@@ -46,6 +46,8 @@ import com.vuze.android.remote.AndroidUtils;
 public class RestJsonClient
 {
 	private static final String TAG = "RPC";
+	
+	private static final boolean DEBUG_DETAILED = false;
 
 	public static Object connect(String url)
 			throws RPCException {
@@ -99,11 +101,12 @@ public class RestJsonClient
 			response = httpclient.execute(httpRequest);
 
 			long then = System.currentTimeMillis();
-			if (AndroidUtils.DEBUG) {
-				Log.d(TAG, id + "]  conn ->" + (then - now) + "ms");
+			if (DEBUG_DETAILED) {
+  			if (AndroidUtils.DEBUG) {
+  				Log.d(TAG, id + "]  conn ->" + (then - now) + "ms");
+  			}
+  			now = then;
 			}
-
-			now = then;
 
 			HttpEntity entity = response.getEntity();
 
@@ -128,11 +131,13 @@ public class RestJsonClient
   						}
   						sb.append(c, 0, read);
   				}
-					then = System.currentTimeMillis();
-					if (AndroidUtils.DEBUG) {
-						Log.d(TAG, id + "]  read ->" + (then - now) + "ms");
-					}
-					now = then;
+  				if (DEBUG_DETAILED) {
+  					then = System.currentTimeMillis();
+  					if (AndroidUtils.DEBUG) {
+  						Log.d(TAG, id + "]  read ->" + (then - now) + "ms");
+  					}
+  					now = then;
+  				}
 
 					// 9775 files
 					// 33xx-3800 for simple; 22xx for GSON 2.2.4; 18xx-19xx for fastjson 1.1.34
@@ -185,7 +190,7 @@ public class RestJsonClient
 
 		if (AndroidUtils.DEBUG) {
 			long then = System.currentTimeMillis();
-			Log.d(TAG, id + "]  parse ->" + (then - now) + "ms");
+			Log.d(TAG, id + "]  " + (DEBUG_DETAILED ? "parse" : "received in")  +" ->" + (then - now) + "ms");
 		}
 		return json;
 	}
