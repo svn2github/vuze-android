@@ -28,7 +28,6 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
@@ -46,10 +45,7 @@ import android.graphics.ColorFilter;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
-import android.os.BatteryManager;
-import android.os.Build;
-import android.os.Bundle;
+import android.os.*;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.text.Html;
@@ -657,7 +653,7 @@ public class AndroidUtils
 	}
 
 	public static void copyUrlToFile(String uri, File outFile) {
-		
+
 		BasicHttpParams basicHttpParams = new BasicHttpParams();
 		HttpProtocolParams.setUserAgent(basicHttpParams, "Vuze Android Remote");
 		DefaultHttpClient httpclient = new DefaultHttpClient(basicHttpParams);
@@ -687,5 +683,17 @@ public class AndroidUtils
 			e.printStackTrace();
 		}
 
+	}
+
+	public static File getDownloadDir() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO) {
+			return getDownloadDir_Froyo();
+		}
+		return new File(Environment.getExternalStorageDirectory() + "/downloads");
+	}
+
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	private static File getDownloadDir_Froyo() {
+		return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 	}
 }
