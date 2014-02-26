@@ -24,15 +24,25 @@ public class TransmissionRPC
 
 		private final long[] ids;
 
+		private List<String> fields;
+
 		private ReplyMapReceivedListenerWithRefresh(ReplyMapReceivedListener l,
 				long[] ids) {
 			this.l = l;
 			this.ids = ids;
+			this.fields = getBasicTorrentFieldIDs();
+		}
+
+		private ReplyMapReceivedListenerWithRefresh(ReplyMapReceivedListener l,
+				long[] ids, List<String> fields) {
+			this.l = l;
+			this.ids = ids;
+			this.fields = fields;
 		}
 
 		@Override
 		public void rpcSuccess(String id, Map optionalMap) {
-			getTorrents(ids, getBasicTorrentFieldIDs(), null);
+			getTorrents(ids, fields, null);
 			if (l != null) {
 				l.rpcSuccess(id, optionalMap);
 			}
@@ -201,49 +211,51 @@ public class TransmissionRPC
 			mapArguments.put("ids", ids);
 		}
 
-		sendRequest("getTorrents " + ids, map, new ReplyMapReceivedListener() {
+		sendRequest(
+				"getTorrents " + ids + "/" + (fields == null ? "null" : fields.size()),
+				map, new ReplyMapReceivedListener() {
 
-			@SuppressWarnings({
-				"unchecked",
-			})
-			@Override
-			public void rpcSuccess(String id, Map optionalMap) {
-				List list = MapUtils.getMapList(optionalMap, "torrents",
-						Collections.EMPTY_LIST);
-				if (hasFileCountField == null || !hasFileCountField) {
-					for (Object o : list) {
-						if (!(o instanceof Map)) {
-							continue;
+					@SuppressWarnings({
+						"unchecked",
+					})
+					@Override
+					public void rpcSuccess(String id, Map optionalMap) {
+						List list = MapUtils.getMapList(optionalMap, "torrents",
+								Collections.EMPTY_LIST);
+						if (hasFileCountField == null || !hasFileCountField) {
+							for (Object o : list) {
+								if (!(o instanceof Map)) {
+									continue;
+								}
+								Map map = (Map) o;
+								if (map.containsKey(TransmissionVars.TORRENT_FIELD_FILE_COUNT)) {
+									hasFileCountField = true;
+									continue;
+								}
+								map.put(
+										TransmissionVars.TORRENT_FIELD_FILE_COUNT,
+										MapUtils.getMapList(map,
+												TransmissionVars.TORRENT_FIELD_PRIORITIES,
+												Collections.EMPTY_LIST).size());
+							}
 						}
-						Map map = (Map) o;
-						if (map.containsKey(TransmissionVars.TORRENT_FIELD_FILE_COUNT)) {
-							hasFileCountField = true;
-							continue;
+						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
+						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
+							torrentListReceivedListener.rpcTorrentListReceived(list);
 						}
-						map.put(
-								TransmissionVars.TORRENT_FIELD_FILE_COUNT,
-								MapUtils.getMapList(map,
-										TransmissionVars.TORRENT_FIELD_PRIORITIES,
-										Collections.EMPTY_LIST).size());
+						if (l != null) {
+							l.rpcTorrentListReceived(list);
+						}
 					}
-				}
-				TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
-				for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
-					torrentListReceivedListener.rpcTorrentListReceived(list);
-				}
-				if (l != null) {
-					l.rpcTorrentListReceived(list);
-				}
-			}
 
-			@Override
-			public void rpcFailure(String id, String message) {
-			}
+					@Override
+					public void rpcFailure(String id, String message) {
+					}
 
-			@Override
-			public void rpcError(String id, Exception e) {
-			}
-		});
+					@Override
+					public void rpcError(String id, Exception e) {
+					}
+				});
 	}
 
 	private void sendRequest(final String id, final Map data,
@@ -339,12 +351,15 @@ public class TransmissionRPC
 		getTorrents("recently-active", getBasicTorrentFieldIDs(), l);
 	}
 
-	public void getTorrentFileInfo(Object ids, TorrentListReceivedListener l) {
+	private List<String> getFileInfoFields() {
 		List<String> fieldIDs = getBasicTorrentFieldIDs();
 		fieldIDs.add("files");
 		fieldIDs.add("fileStats");
+		return fieldIDs;
+	}
 
-		getTorrents(ids, fieldIDs, l);
+	public void getTorrentFileInfo(Object ids, TorrentListReceivedListener l) {
+		getTorrents(ids, getFileInfoFields(), l);
 	}
 
 	public void getTorrentPeerInfo(Object ids, TorrentListReceivedListener l) {
@@ -379,8 +394,8 @@ public class TransmissionRPC
 			map.put("arguments", mapArguments);
 			mapArguments.put("ids", ids);
 		}
-		sendRequest("startTorrents", map, new ReplyMapReceivedListenerWithRefresh(l,
-				ids));
+		sendRequest("startTorrents", map, new ReplyMapReceivedListenerWithRefresh(
+				l, ids));
 	}
 
 	public void stopTorrents(final long[] ids, final ReplyMapReceivedListener l) {
@@ -393,6 +408,57 @@ public class TransmissionRPC
 		}
 		sendRequest("stopTorrents", map, new ReplyMapReceivedListenerWithRefresh(l,
 				ids));
+	}
+
+	public void setFilePriority(long torrentID, long[] fileIndexes, int priority,
+			final ReplyMapReceivedListener l) {
+		long[] ids = {
+			torrentID
+		};
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "torrent-set");
+		Map<String, Object> mapArguments = new HashMap<String, Object>();
+		map.put("arguments", mapArguments);
+		mapArguments.put("ids", ids);
+
+		String key;
+		switch (priority) {
+			case TransmissionVars.TR_PRI_HIGH:
+				key = "priority-high";
+				break;
+
+			case TransmissionVars.TR_PRI_NORMAL:
+				key = "priority-normal";
+				break;
+
+			case TransmissionVars.TR_PRI_LOW:
+				key = "priority-low";
+				break;
+
+			default:
+				return;
+		}
+
+		mapArguments.put(key, fileIndexes);
+
+		sendRequest("setFilePriority", map,
+				new ReplyMapReceivedListenerWithRefresh(l, ids, getFileInfoFields()));
+	}
+
+	public void setWantState(long torrentID, long[] fileIndexes, boolean wanted,
+			final ReplyMapReceivedListener l) {
+		long[] ids = {
+			torrentID
+		};
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "torrent-set");
+		Map<String, Object> mapArguments = new HashMap<String, Object>();
+		map.put("arguments", mapArguments);
+		mapArguments.put("ids", ids);
+		mapArguments.put(wanted ? "files-wanted" : "files-unwanted", fileIndexes);
+
+		sendRequest("setWantState", map, new ReplyMapReceivedListenerWithRefresh(l,
+				ids, getFileInfoFields()));
 	}
 
 	/**
