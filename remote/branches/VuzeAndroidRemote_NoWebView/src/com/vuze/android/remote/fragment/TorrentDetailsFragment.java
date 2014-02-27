@@ -38,7 +38,6 @@ public class TorrentDetailsFragment
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
 
-		setHasOptionsMenu(false);
 		View view = inflater.inflate(R.layout.frag_torrent_details, container,
 				false);
 
@@ -65,6 +64,7 @@ public class TorrentDetailsFragment
 		PagerTabStrip pts = (PagerTabStrip) view.findViewById(R.id.pager_title_strip);
 		pts.setTextSpacing(0);
 
+		setHasOptionsMenu(false);
 
 		return view;
 	}

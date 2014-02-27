@@ -11,7 +11,7 @@
 				android:dashGap="3dp"
 				android:dashWidth="0.5dp"
 				android:width="0.5dp"
-				android:color="#00F080" />
+				android:color="@color/ringdots" />
 		</shape>
 	</item>
 	<item android:id="@android:id/progress">

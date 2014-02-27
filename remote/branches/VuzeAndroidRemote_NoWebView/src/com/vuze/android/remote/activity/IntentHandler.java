@@ -101,12 +101,12 @@ public class IntentHandler
 		}
 
 		RemoteProfile[] remotes = appPreferences.getRemotes();
-		
+
 		if (RPC.isLocalAvailable()) {
 			if (AndroidUtils.DEBUG) {
 				Log.d(null, "Local Vuze Detected");
 			}
-			
+
 			boolean alreadyAdded = false;
 			for (RemoteProfile remoteProfile : remotes) {
 				if ("localhost".equals(remoteProfile.getHost())) {
@@ -118,13 +118,15 @@ public class IntentHandler
 				if (AndroidUtils.DEBUG) {
 					Log.d(null, "Adding localhost profile..");
 				}
-  			RemoteProfile localProfile = new RemoteProfile(RemoteProfile.TYPE_NORMAL);
-  			localProfile.setHost("localhost");
-  			localProfile.setNick(getString(R.string.local_name, android.os.Build.MODEL));
-  			RemoteProfile[] newRemotes = new RemoteProfile[remotes.length + 1];
-  			newRemotes[0] = localProfile;
-  			System.arraycopy(remotes, 0, newRemotes, 1, remotes.length);
-  			remotes = newRemotes;
+				RemoteProfile localProfile = new RemoteProfile(
+						RemoteProfile.TYPE_NORMAL);
+				localProfile.setHost("localhost");
+				localProfile.setNick(getString(R.string.local_name,
+						android.os.Build.MODEL));
+				RemoteProfile[] newRemotes = new RemoteProfile[remotes.length + 1];
+				newRemotes[0] = localProfile;
+				System.arraycopy(remotes, 0, newRemotes, 1, remotes.length);
+				remotes = newRemotes;
 			}
 		}
 		int numRemotes = remotes.length;
@@ -132,9 +134,8 @@ public class IntentHandler
 		if (!forceOpen) {
 			if (numRemotes == 0) {
 				// New User: Send them to Login (Account Creation)
-				Intent myIntent = new Intent();
-				myIntent.setClass(this, LoginActivity.class);
-				myIntent.setAction(Intent.ACTION_VIEW);
+				Intent myIntent = new Intent(Intent.ACTION_VIEW, null, this,
+						LoginActivity.class);
 				myIntent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION
 						| Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
 

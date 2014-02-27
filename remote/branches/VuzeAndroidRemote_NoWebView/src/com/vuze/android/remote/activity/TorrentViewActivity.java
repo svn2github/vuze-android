@@ -17,7 +17,9 @@
 
 package com.vuze.android.remote.activity;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 import org.gudy.azureus2.core3.util.DisplayFormatters;
@@ -29,7 +31,6 @@ import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.*;
 import android.content.DialogInterface.OnClickListener;
-import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -51,9 +52,7 @@ import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent.DeleteTorrentD
 import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
 import com.vuze.android.remote.dialog.*;
 import com.vuze.android.remote.dialog.DialogFragmentOpenTorrent.OpenTorrentDialogListener;
-import com.vuze.android.remote.fragment.ActionModeBeingReplacedListener;
-import com.vuze.android.remote.fragment.TorrentDetailsFragment;
-import com.vuze.android.remote.fragment.TorrentListFragment;
+import com.vuze.android.remote.fragment.*;
 import com.vuze.android.remote.fragment.TorrentListFragment.OnTorrentSelectedListener;
 import com.vuze.android.remote.rpc.*;
 
@@ -199,7 +198,11 @@ public class TorrentViewActivity
 				remoteProfile = new RemoteProfile(user, ac);
 			}
 		}
-		setTitle(remoteProfile.getNick());
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			setTitle(remoteProfile.getNick());
+		} else {
+			setSubtitle(remoteProfile.getNick());
+		}
 
 		isLocalHost = remoteProfile.isLocalHost();
 		if (!VuzeRemoteApp.getNetworkState().isOnline() && !isLocalHost) {
@@ -228,6 +231,14 @@ public class TorrentViewActivity
 
 	}
 
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private void setSubtitle(String name) {
+		ActionBar actionBar = getActionBar();
+		if (actionBar != null) {
+			actionBar.setSubtitle(name);
+		}
+	}
+
 	protected void ui_showOldRPCDialog() {
 		if (isFinishing()) {
 			return;
@@ -246,7 +257,7 @@ public class TorrentViewActivity
 			Log.d(null, "UI READY");
 		}
 
-		uiReady  = true;
+		uiReady = true;
 		// first time: track RPC version
 		page = "RPC v" + rpc.getRPCVersion() + "/" + rpc.getRPCVersionAZ();
 
@@ -276,7 +287,6 @@ public class TorrentViewActivity
 		super.onStart();
 		VuzeEasyTracker.getInstance(this).activityStart(this);
 	}
-
 
 	@Override
 	protected void onNewIntent(Intent intent) {
@@ -801,12 +811,8 @@ public class TorrentViewActivity
 				R.id.fragment2);
 		View fragmentView = findViewById(R.id.fragment2_container);
 
-		System.out.println("onTorrentSelectedListener: " + ids);
-		try {
-			//			int o = 0/ 0 ;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		System.out.println("onTorrentSelectedListener: " + Arrays.toString(ids)
+				+ ";multi?" + inMultiMode + ";" + detailFrag);
 		if (detailFrag != null) {
 			// If article frag is available, we're in two-pane layout...
 
@@ -818,12 +824,14 @@ public class TorrentViewActivity
 			}
 			detailFrag.setTorrentIDs(ids);
 		} else if (ids != null && ids.length == 1 && !inMultiMode) {
-			Intent intent = new Intent(getApplicationContext(),
+			torrentListFragment.finishActionMode();
+
+			Intent intent = new Intent(Intent.ACTION_VIEW, null, this,
 					TorrentDetailsActivity.class);
+			intent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
 			intent.putExtra("TorrentID", ids[0]);
 			intent.putExtra("RemoteProfileID", remoteProfile.getID());
 			startActivity(intent);
-			torrentListFragment.finishActionMode();
 		}
 	}
 
@@ -847,22 +855,22 @@ public class TorrentViewActivity
 	@Override
 	public void setActionModeBeingReplaced(boolean beingReplaced) {
 		for (int id : fragmentIDS) {
-  		Fragment fragment = getSupportFragmentManager().findFragmentById(id);
-  
-  		if (fragment instanceof ActionModeBeingReplacedListener) {
-  			((ActionModeBeingReplacedListener) fragment).setActionModeBeingReplaced(beingReplaced);
-  		}
+			Fragment fragment = getSupportFragmentManager().findFragmentById(id);
+
+			if (fragment instanceof ActionModeBeingReplacedListener) {
+				((ActionModeBeingReplacedListener) fragment).setActionModeBeingReplaced(beingReplaced);
+			}
 		}
 	}
 
 	@Override
 	public void actionModeBeingReplacedDone() {
 		for (int id : fragmentIDS) {
-  		Fragment fragment = getSupportFragmentManager().findFragmentById(id);
-  
-  		if (fragment instanceof ActionModeBeingReplacedListener) {
-  			((ActionModeBeingReplacedListener) fragment).actionModeBeingReplacedDone();
-  		}
+			Fragment fragment = getSupportFragmentManager().findFragmentById(id);
+
+			if (fragment instanceof ActionModeBeingReplacedListener) {
+				((ActionModeBeingReplacedListener) fragment).actionModeBeingReplacedDone();
+			}
 		}
 	}
 

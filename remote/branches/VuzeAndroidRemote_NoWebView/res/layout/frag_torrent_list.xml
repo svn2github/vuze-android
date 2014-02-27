@@ -26,8 +26,9 @@
     	android:id="@android:id/list"
     	android:layout_width="fill_parent"
     	android:layout_height="fill_parent"
+    	android:choiceMode="multipleChoice"
     	ptr:ptrAnimationStyle="flip"
     	ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
-    	android:choiceMode="multipleChoice" />
+    	tools:ignore="MissingRegistered" />
 
 </LinearLayout>

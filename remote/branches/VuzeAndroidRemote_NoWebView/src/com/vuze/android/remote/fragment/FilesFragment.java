@@ -76,13 +76,17 @@ public class FilesFragment
 
 	@Override
 	public void onPause() {
-		sessionInfo.removeTorrentListReceivedListener(this);
+		if (sessionInfo != null) {
+			sessionInfo.removeTorrentListReceivedListener(this);
+		}
 		super.onPause();
 	}
 
 	@Override
 	public void onResume() {
-		sessionInfo.addTorrentListReceivedListener(this);
+		if (sessionInfo != null) {
+			sessionInfo.addTorrentListReceivedListener(this);
+		}
 		super.onResume();
 	}
 

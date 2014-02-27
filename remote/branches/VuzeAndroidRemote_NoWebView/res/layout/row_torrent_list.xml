@@ -3,8 +3,10 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:background="@drawable/list_selector"
-	android:padding="10dp"
-	android:paddingLeft="0dp" >
+	android:paddingBottom="10dp"
+	android:paddingLeft="5dp"
+	android:paddingRight="5dp"
+	android:paddingTop="10dp" >
 
 	<TextView
 		android:id="@+id/torrentrow_name"
@@ -13,18 +15,10 @@
 		android:layout_alignParentRight="true"
 		android:layout_alignParentTop="true"
 		android:layout_toRightOf="@+id/torrentrow_progress"
+		android:ellipsize="end"
+		android:maxLines="4"
 		android:text="Torrent Name"
 		android:textAppearance="?android:attr/textAppearanceLarge" />
-
-	<TextView
-		android:id="@+id/torrentrow_state"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_alignLeft="@+id/torrentrow_name"
-		android:layout_below="@+id/torrentrow_name"
-		android:layout_toLeftOf="@+id/torrentRow_speed_graph"
-		android:text="Torrent State"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 	<ProgressBar
 		android:id="@+id/torrentrow_progress"
@@ -46,38 +40,19 @@
 		android:id="@+id/torrentrow_info"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:layout_alignLeft="@+id/torrentrow_state"
-		android:layout_below="@+id/torrentrow_state"
-		android:layout_toLeftOf="@+id/torrentRow_speed_graph"
-		android:text="5 Files, 128MB"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
-
-	<ImageView
-		android:id="@+id/torrentRow_speed_graph"
-		android:layout_width="100dp"
-		android:layout_height="wrap_content"
-		android:layout_alignParentBottom="true"
+		android:layout_alignLeft="@+id/torrentrow_name"
 		android:layout_alignParentRight="true"
 		android:layout_below="@+id/torrentrow_name"
-		android:minHeight="30dp" />
+		android:text="5 Files, 128MB"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 	<TextView
 		android:id="@+id/torrentrow_upspeed"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:layout_above="@+id/torrentrow_tags"
-		android:layout_alignRight="@+id/torrentRow_speed_graph"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentRight="true"
 		android:text="↑ 0 kB/s"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
-
-	<TextView
-		android:id="@+id/torrentrow_downspeed"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_alignRight="@+id/torrentRow_speed_graph"
-		android:layout_alignTop="@+id/torrentRow_speed_graph"
-		android:layout_marginBottom="2dp"
-		android:text="0 kB/s"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 	<LinearLayout
@@ -106,16 +81,36 @@
 			android:gravity="center"
 			android:text="1m"
 			android:textSize="12sp" />
-
 	</LinearLayout>
+
+	<TextView
+		android:id="@+id/torrentrow_downspeed"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_above="@+id/torrentrow_upspeed"
+		android:layout_alignParentRight="true"
+		android:text="0 kB/s"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
+
+	<TextView
+		android:id="@+id/torrentrow_state"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignLeft="@+id/torrentrow_info"
+		android:layout_alignParentRight="true"
+		android:layout_below="@+id/torrentrow_info"
+		android:lineSpacingExtra="1dp"
+		android:text="Torrent State"
+		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 	<TextView
 		android:id="@+id/torrentrow_tags"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:layout_alignLeft="@+id/torrentrow_info"
-		android:layout_alignParentBottom="true"
-		android:layout_alignParentRight="true"
-		android:layout_below="@+id/torrentrow_info" />
+		android:layout_alignLeft="@+id/torrentrow_state"
+		android:layout_below="@+id/torrentrow_state"
+		android:layout_marginTop="1dp"
+		android:layout_toLeftOf="@+id/torrentrow_upspeed"
+		android:lineSpacingExtra="1dp" />
 
 </com.android.music.CheckableRelativeLayout>

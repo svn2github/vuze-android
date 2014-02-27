@@ -340,20 +340,26 @@ public class TorrentListAdapter
 					sb.append(token);
 				}
 			}
-			SpannableString ss = new SpannableString(sb);
-			String string = sb.toString();
-			Resources res = context.getResources();
-			AndroidUtils.setSpanBetweenTokens(ss, string, "~0~",
-					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_0)),
-					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_0)));
-			AndroidUtils.setSpanBetweenTokens(ss, string, "~1~",
-					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_cat)),
-					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_cat)));
-			AndroidUtils.setSpanBetweenTokens(ss, string, "~3~",
-					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_manualtag)),
-					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_manualtag)));
-
-			holder.tvTags.setText(ss);
+			if (sb.length() == 0) {
+				holder.tvTags.setVisibility(View.GONE);
+				holder.tvTags.setText(null);
+			} else {
+  			SpannableString ss = new SpannableString(sb);
+  			String string = sb.toString();
+  			Resources res = context.getResources();
+  			AndroidUtils.setSpanBetweenTokens(ss, string, "~0~",
+  					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_0)),
+  					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_0)));
+  			AndroidUtils.setSpanBetweenTokens(ss, string, "~1~",
+  					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_cat)),
+  					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_cat)));
+  			AndroidUtils.setSpanBetweenTokens(ss, string, "~3~",
+  					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_manualtag)),
+  					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_manualtag)));
+  
+  			holder.tvTags.setText(ss);
+				holder.tvTags.setVisibility(View.VISIBLE);
+			}
 		}
 
 		return rowView;

@@ -1,23 +1,32 @@
 package com.vuze.android.remote.activity;
 
+import java.util.Map;
+
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.MenuItem;
 import android.view.Window;
 
+import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.R;
 import com.vuze.android.remote.SessionInfo;
 import com.vuze.android.remote.SessionInfoManager;
 import com.vuze.android.remote.fragment.TorrentDetailsFragment;
+import com.vuze.android.remote.fragment.TorrentListFragment;
 
+/**
+ * Activity to hold {@link TorrentListFragment}.  Used for narrow screens.
+ */
 public class TorrentDetailsActivity
 	extends FragmentActivity
 {
+	private long torrentID;
+	private SessionInfo sessionInfo;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -31,6 +40,10 @@ public class TorrentDetailsActivity
 			return;
 		}
 
+		torrentID = extras.getLong("TorrentID");
+		String remoteProfileID = extras.getString(SessionInfoManager.BUNDLE_KEY);
+		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID);
+		
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
 		}
@@ -38,17 +51,7 @@ public class TorrentDetailsActivity
 			setupIceCream();
 		}
 
-		if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-			// If the screen is now in landscape mode, we can show the
-			// dialog in-line with the list so we don't need this activity.
-			finish();
-			return;
-		}
 		setContentView(R.layout.activity_torrent_detail);
-
-		long torrentID = extras.getLong("TorrentID");
-		String remoteProfileID = extras.getString(SessionInfoManager.BUNDLE_KEY);
-		SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID);
 
 		TorrentDetailsFragment detailsFrag = (TorrentDetailsFragment) getSupportFragmentManager().findFragmentById(
 				R.id.fragment2);
@@ -76,6 +79,14 @@ public class TorrentDetailsActivity
 		if (actionBar == null) {
 			System.err.println("actionBar is null");
 			return;
+		}
+
+		Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
+		if (mapTorrent != null) {
+			String name = MapUtils.getMapString(mapTorrent, "name", null);
+			if (name != null) {
+				actionBar.setSubtitle(name);
+			}
 		}
 
 		// enable ActionBar app icon to behave as action to toggle nav drawer

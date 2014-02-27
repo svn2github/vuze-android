@@ -7,7 +7,6 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.os.*;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.text.Editable;
@@ -45,7 +44,8 @@ public class TorrentListFragment
 {
 	public interface OnTorrentSelectedListener
 	{
-		public void onTorrentSelectedListener(TorrentListFragment torrentListFragment, long[] ids, boolean inMultiMode);
+		public void onTorrentSelectedListener(
+				TorrentListFragment torrentListFragment, long[] ids, boolean inMultiMode);
 	}
 
 	private OnTorrentSelectedListener mCallback;
@@ -166,7 +166,6 @@ public class TorrentListFragment
 
 		View view = inflater.inflate(R.layout.frag_torrent_list, container, false);
 
-		setHasOptionsMenu(true);
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
 		}
@@ -301,7 +300,8 @@ public class TorrentListFragment
 				}
 
 				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(TorrentListFragment.this, getSelectedIDs(), false);
+					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
+							getSelectedIDs(), false);
 				}
 
 				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
@@ -344,6 +344,8 @@ public class TorrentListFragment
 			public void afterTextChanged(Editable s) {
 			}
 		});
+
+		setHasOptionsMenu(true);
 
 		return view;
 	}
@@ -444,6 +446,7 @@ public class TorrentListFragment
 		return null;
 	}
 
+	/*
 	private void clearChecked() {
 		SparseBooleanArray checked = listview.getCheckedItemPositions();
 		int size = checked.size(); // number of name-value pairs in the array
@@ -455,11 +458,11 @@ public class TorrentListFragment
 			}
 		}
 	}
+	*/
 
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.rpc.TorrentListReceivedListener#rpcTorrentListReceived(java.util.List)
 	 */
-	@SuppressWarnings("rawtypes")
 	@Override
 	public void rpcTorrentListReceived(final List<?> listTorrents) {
 		lastUpdated = System.currentTimeMillis();
@@ -554,7 +557,7 @@ public class TorrentListFragment
 
 				MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
 				menuStop.setVisible(canStop);
-				
+
 				TorrentListFragment.this.onPrepareOptionsMenu(menu);
 
 				AndroidUtils.fixupMenuAlpha(menu);
@@ -588,7 +591,8 @@ public class TorrentListFragment
 					}
 				});
 				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(TorrentListFragment.this, new long[] {}, false);
+					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
+							new long[] {}, false);
 				}
 			}
 
@@ -598,11 +602,14 @@ public class TorrentListFragment
 				if (DEBUG) {
 					System.out.println("MULTI:CHECK CHANGE");
 				}
-				
-				String subtitle = getResources().getString(R.string.context_torrent_subtitle_selected, getCheckedItemCount(listview));
+
+				String subtitle = getResources().getString(
+						R.string.context_torrent_subtitle_selected,
+						getCheckedItemCount(listview));
 				mode.setSubtitle(subtitle);
 				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(TorrentListFragment.this, getSelectedIDs(), true);
+					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
+							getSelectedIDs(), true);
 				}
 				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
 			}
@@ -624,7 +631,8 @@ public class TorrentListFragment
 		}
 		switch (itemId) {
 			case R.id.action_filterby:
-				DialogFragmentFilterBy.openFilterByDialog(this, sessionInfo.getRemoteProfile().getID());
+				DialogFragmentFilterBy.openFilterByDialog(this,
+						sessionInfo.getRemoteProfile().getID());
 				return true;
 			case R.id.action_filter:
 				boolean newVisibility = filterEditText.getVisibility() != View.VISIBLE;
@@ -724,7 +732,7 @@ public class TorrentListFragment
 				// Inflate a menu resource providing context menu items
 				MenuInflater inflater = mode.getMenuInflater();
 				inflater.inflate(R.menu.menu_context_torrent_details, menu);
-				
+
 				return true;
 			}
 
@@ -753,9 +761,9 @@ public class TorrentListFragment
 				menuStop.setVisible(canStop);
 
 				TorrentListFragment.this.onPrepareOptionsMenu(menu);
-				
+
 				AndroidUtils.fixupMenuAlpha(menu);
-				
+
 				return true;
 			}
 
@@ -775,17 +783,17 @@ public class TorrentListFragment
 				mActionMode = null;
 
 				if (!actionModeBeingReplaced) {
-  				listview.clearChoices();
-  				// Not sure why ListView doesn't invalidate by default
-  				adapter.notifyDataSetInvalidated();
-  				if (mCallback != null) {
-  					mCallback.onTorrentSelectedListener(TorrentListFragment.this, new long[] {}, false);
-  				}
+					listview.clearChoices();
+					// Not sure why ListView doesn't invalidate by default
+					adapter.notifyDataSetInvalidated();
+					if (mCallback != null) {
+						mCallback.onTorrentSelectedListener(TorrentListFragment.this,
+								new long[] {}, false);
+					}
 				}
 			}
 		};
 	}
-	
 
 	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
@@ -932,7 +940,7 @@ public class TorrentListFragment
 			System.out.println("actionmode: will rebuild? " + rebuildActionMode);
 		}
 	}
-	
+
 	@Override
 	public void actionModeBeingReplacedDone() {
 		System.out.println("actionmode: done. will rebuild? " + rebuildActionMode);

@@ -23,5 +23,5 @@
 	<color name="fg_tag_type_cat">#000</color>
 	<color name="fg_tag_type_2">#000</color>
 	<color name="fg_tag_type_manualtag">#000</color>
-
+	<color name="ringdots">#A0003050</color>
 </resources>
