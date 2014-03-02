@@ -54,7 +54,6 @@ import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.CharacterStyle;
 import android.text.style.ImageSpan;
-import android.text.style.ParagraphStyle;
 import android.util.Log;
 import android.view.*;
 import android.widget.TextView;
