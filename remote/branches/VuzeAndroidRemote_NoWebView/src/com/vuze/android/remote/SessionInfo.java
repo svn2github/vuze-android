@@ -169,6 +169,7 @@ public class SessionInfo
 		if (mapTags == null) {
 			return null;
 		}
+		// TODO: if .get is null, maybe repull tag list?
 		return mapTags.get(uid);
 	}
 
