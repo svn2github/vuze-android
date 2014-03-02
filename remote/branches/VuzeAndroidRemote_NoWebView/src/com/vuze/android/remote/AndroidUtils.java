@@ -40,8 +40,8 @@ import android.content.*;
 import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnDismissListener;
 import android.content.res.Resources;
-import android.graphics.Canvas;
-import android.graphics.ColorFilter;
+import android.graphics.*;
+import android.graphics.Paint.Align;
 import android.graphics.drawable.Drawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -50,9 +50,11 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.text.Html;
 import android.text.SpannableString;
+import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.CharacterStyle;
 import android.text.style.ImageSpan;
+import android.text.style.ParagraphStyle;
 import android.util.Log;
 import android.view.*;
 import android.widget.TextView;
@@ -557,6 +559,79 @@ public class AndroidUtils
 			// because AbsoluteSizeSpan(0) doesn't work on older versions
 			ss.setSpan(new ImageSpan(blankDrawable), start, start + tokenLen, 0);
 			ss.setSpan(new ImageSpan(blankDrawable), end, end + tokenLen, 0);
+		}
+	}
+
+	public static void setSpanBubbles(SpannableString ss, String text,
+			String token, final TextPaint p, final int borderColor,
+			final int textColor, final int fillColor) {
+		// Start and end refer to the points where the span will apply
+		int tokenLen = token.length();
+		int base = 0;
+
+		while (true) {
+			int start = text.indexOf(token, base);
+			int end = text.indexOf(token, start + tokenLen);
+
+			if (start < 0 || end < 0) {
+				break;
+			}
+
+			base = end + tokenLen;
+
+			final String word = text.substring(start + tokenLen, end);
+
+			Drawable imgDrawable = new Drawable() {
+
+				@Override
+				public void setColorFilter(ColorFilter cf) {
+				}
+
+				@Override
+				public void setAlpha(int alpha) {
+				}
+
+				@Override
+				public int getOpacity() {
+					return 255;
+				}
+
+				@Override
+				public void draw(Canvas canvas) {
+					Rect bounds = getBounds();
+
+					p.setTextAlign(Align.CENTER);
+					p.setColor(textColor);
+					canvas.drawText(word, bounds.left + bounds.width() / 2, bounds.top
+							- p.ascent() + (int) (bounds.height() * 0.1), p);
+
+					Paint paintLine = new Paint();
+
+					int strokeWidth = 2;
+
+					float wIndent = bounds.height() * 0.01f;
+					float hIndent = bounds.height() * 0.03f;
+
+					RectF rectF = new RectF(bounds.left + wIndent, bounds.top + hIndent,
+							bounds.right - (wIndent * 2), bounds.bottom - (hIndent * 2));
+					paintLine.setStyle(Paint.Style.FILL);
+					paintLine.setColor(fillColor);
+					canvas.drawRoundRect(rectF, bounds.height() / 3, bounds.height() / 3,
+							paintLine);
+
+					paintLine.setStrokeWidth(strokeWidth);
+					paintLine.setStyle(Paint.Style.STROKE);
+					paintLine.setColor(borderColor);
+					canvas.drawRoundRect(rectF, bounds.height() / 3, bounds.height() / 3,
+							paintLine);
+				}
+			};
+
+			float w = p.measureText(word + "  ");
+			float h = p.descent() - p.ascent();
+			imgDrawable.setBounds(0, 0, (int) w, (int) (h * 1.2));
+
+			ss.setSpan(new ImageSpan(imgDrawable), start, end + tokenLen, 0);
 		}
 	}
 
