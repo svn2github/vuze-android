@@ -135,8 +135,12 @@ public class TorrentListFragment
 			sortBy(sortBy, sortOrder, false);
 		}
 
-		int filterBy = remoteProfile.getFilterBy();
-		if (filterBy >= 0) {
+		long filterBy = remoteProfile.getFilterBy();
+		if (filterBy > 10) {
+			Map<?, ?> tag = sessionInfo.getTag(filterBy);
+			
+			filterBy(filterBy, MapUtils.getMapString(tag, "name", "fooo"), false);
+		} else if (filterBy >= 0) {
 			final ValueStringArray filterByList = AndroidUtils.getValueStringArray(
 					getResources(), R.array.filterby_list);
 			for (int i = 0; i < filterByList.values.length; i++) {
