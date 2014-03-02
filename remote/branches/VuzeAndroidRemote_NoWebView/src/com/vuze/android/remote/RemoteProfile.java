@@ -198,8 +198,8 @@ public class RemoteProfile
 		mapSort.put(ID_SORT_ORDER, sortOrderAsc);
 	}
 
-	public int getFilterBy() {
-		return MapUtils.getMapInt(mapRemote, ID_FILTER_BY, -1);
+	public long getFilterBy() {
+		return MapUtils.getMapLong(mapRemote, ID_FILTER_BY, -1);
 	}
 
 	public void setFilterBy(long filterBy) {
