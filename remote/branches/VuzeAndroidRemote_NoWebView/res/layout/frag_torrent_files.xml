@@ -10,8 +10,20 @@
     	android:layout_alignParentBottom="true"
     	android:layout_alignParentLeft="true"
     	android:layout_alignParentRight="true"
-    	android:layout_alignParentTop="true" >
+    	android:layout_alignParentTop="true"
+    	android:layout_alignWithParentIfMissing="true"
+    	android:layout_margin="0dp" >
 
     </ListView>
+
+    <ProgressBar
+    	android:id="@+id/files_pb"
+    	style="?android:attr/progressBarStyleHorizontal"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_alignParentLeft="true"
+    	android:layout_alignParentRight="true"
+    	android:layout_alignParentTop="true"
+    	android:indeterminate="true" />
 
 </RelativeLayout>

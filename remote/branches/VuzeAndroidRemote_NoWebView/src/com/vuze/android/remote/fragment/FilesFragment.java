@@ -58,6 +58,10 @@ public class FilesFragment
 	private Callback mActionModeCallback;
 
 	protected ActionMode mActionMode;
+	
+	private Object mLock = new Object();
+	
+	private int numProgresses = 0;
 
 	public FilesFragment() {
 		super();
@@ -65,13 +69,69 @@ public class FilesFragment
 
 	private ActionModeBeingReplacedListener mCallback;
 
+	private Activity activity;
+
+	private ProgressBar progressBar;
+
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
+		this.activity = activity;
+		
+		if (torrentID >= 0) {
+  		// getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
+			showProgressBar();
+  		sessionInfo.getRpc().getTorrentFileInfo(torrentID, null);
+		}
 
 		if (activity instanceof ActionModeBeingReplacedListener) {
 			mCallback = (ActionModeBeingReplacedListener) activity;
 		}
+	}
+
+	private void showProgressBar() {
+		synchronized (mLock) {
+			numProgresses++;
+		}
+		FragmentActivity activity = getActivity();
+		if (activity == null || progressBar == null) {
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				FragmentActivity activity = getActivity();
+				if (activity == null) {
+					return;
+				}
+				progressBar.setVisibility(View.VISIBLE);
+			}
+		});
+	}
+
+	private void hideProgressBar() {
+		synchronized (mLock) {
+			numProgresses--;
+			if (numProgresses <= 0) {
+				numProgresses = 0;
+			} else {
+				return;
+			}
+		}
+		FragmentActivity activity = getActivity();
+		if (activity == null || progressBar == null) {
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				FragmentActivity activity = getActivity();
+				if (activity == null) {
+					return;
+				}
+				progressBar.setVisibility(View.GONE);
+			}
+		});
 	}
 
 	@Override
@@ -120,6 +180,8 @@ public class FilesFragment
 
 		View view = inflater.inflate(R.layout.frag_torrent_files, container, false);
 
+		progressBar = (ProgressBar) view.findViewById(R.id.files_pb);
+		
 		listview = (ListView) view.findViewById(R.id.files_list);
 
 		listview.setItemsCanFocus(false);
@@ -177,8 +239,11 @@ public class FilesFragment
 		if (adapter != null) {
 			adapter.setSessionInfo(sessionInfo);
 		}
-		// getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
-		sessionInfo.getRpc().getTorrentFileInfo(id, null);
+		if (activity != null) {
+  		// getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
+			showProgressBar();
+  		sessionInfo.getRpc().getTorrentFileInfo(id, null);
+		}
 	}
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -279,6 +344,7 @@ public class FilesFragment
 						return saveFile(selectedFile);
 					}
 					case R.id.action_sel_wanted: {
+						showProgressBar();
 						sessionInfo.getRpc().setWantState(torrentID, new long[] {
 							selectedFileIndex
 						}, true, null);
@@ -286,6 +352,7 @@ public class FilesFragment
 					}
 					case R.id.action_sel_unwanted: {
 						// TODO: Delete Prompt
+						showProgressBar();
 						sessionInfo.getRpc().setWantState(torrentID, new long[] {
 							selectedFileIndex
 						}, false, null);
@@ -302,6 +369,7 @@ public class FilesFragment
 						} else {
 							priority += 1;
 						}
+						showProgressBar();
 						sessionInfo.getRpc().setFilePriority(torrentID, new long[] {
 							selectedFileIndex
 						}, priority, null);
@@ -318,6 +386,7 @@ public class FilesFragment
 						} else {
 							priority -= 1;
 						}
+						showProgressBar();
 						sessionInfo.getRpc().setFilePriority(torrentID, new long[] {
 							selectedFileIndex
 						}, priority, null);
@@ -369,6 +438,7 @@ public class FilesFragment
 		final File outFile = new File(directory, MapUtils.getMapString(
 				selectedFile, "name", "foo.txt"));
 
+		showProgressBar();
 		new Thread(new Runnable() {
 
 			@Override
@@ -381,6 +451,7 @@ public class FilesFragment
 				activity.runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
+						hideProgressBar();
 						Toast.makeText(getActivity().getApplicationContext(),
 								"Saved " + outFile.getName(), Toast.LENGTH_SHORT).show();
 					}
@@ -406,7 +477,7 @@ public class FilesFragment
 
 				}
 				if (AndroidUtils.DEBUG) {
-					System.out.println("Started " + uri);
+					Log.d(TAG, "Started " + uri);
 				}
 				return true;
 			} else {
@@ -432,7 +503,7 @@ public class FilesFragment
 			try {
 				startActivity(intent);
 				if (AndroidUtils.DEBUG) {
-					System.out.println("Started " + uri + " MIME: " + intent.getType());
+					Log.d(TAG, "Started " + uri + " MIME: " + intent.getType());
 				}
 			} catch (android.content.ActivityNotFoundException ex) {
 				if (AndroidUtils.DEBUG) {
@@ -447,7 +518,7 @@ public class FilesFragment
 						}
 						startActivity(intent2);
 						if (AndroidUtils.DEBUG) {
-							System.out.println("Started (no mime set) " + uri);
+							Log.d(TAG, "Started (no mime set) " + uri);
 						}
 						return true;
 					} catch (android.content.ActivityNotFoundException ex2) {
@@ -574,8 +645,13 @@ public class FilesFragment
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				FragmentActivity activity = getActivity();
+				if (activity == null) {
+					return;
+				}
+				hideProgressBar();
 				adapter.setTorrentID(torrentID);
-				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
+				AndroidUtils.invalidateOptionsMenuHC(activity, mActionMode);
 			}
 		});
 	}
