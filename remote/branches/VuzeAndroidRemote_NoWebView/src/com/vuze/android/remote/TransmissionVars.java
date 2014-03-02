@@ -241,39 +241,39 @@ public class TransmissionVars
 	
 	//////////////////////////////////////////////////////////////////////////////
 
-	public static final String TORRENT_FIELD_WANTED = "wanted";
+	public static final String FIELD_TORRENT_WANTED = "wanted";
 
-	public static final String TORRENT_FIELD_PRIORITIES = "priorities";
+	public static final String FIELD_TORRENT_PRIORITIES = "priorities";
 
-	public static final String TORRENT_FIELD_FILE_COUNT = "fileCount";
+	public static final String FIELD_TORRENT_FILE_COUNT = "fileCount";
 
-	public static final String TORRENT_FIELD_ETA = "eta";
+	public static final String FIELD_TORRENT_ETA = "eta";
 
-	public static final String TORRENT_FIELD_ERROR_STRING = "errorString";
+	public static final String FIELD_TORRENT_ERROR_STRING = "errorString";
 
-	public static final String TORRENT_FIELD_ERROR = "error";
+	public static final String FIELD_TORRENT_ERROR = "error";
 
-	public static final String TORRENT_FIELD_STATUS = "status";
+	public static final String FIELD_TORRENT_STATUS = "status";
 
-	public static final String TORRENT_FIELD_RATE_DOWNLOAD = "rateDownload";
+	public static final String FIELD_TORRENT_RATE_DOWNLOAD = "rateDownload";
 
-	public static final String TORRENT_FIELD_RATE_UPLOAD = "rateUpload";
+	public static final String FIELD_TORRENT_RATE_UPLOAD = "rateUpload";
 
-	public static final String TORRENT_FIELD_SIZE_WHEN_DONE = "sizeWhenDone";
+	public static final String FIELD_TORRENT_SIZE_WHEN_DONE = "sizeWhenDone";
 
-	public static final String TORRENT_FIELD_PERCENT_DONE = "percentDone";
+	public static final String FIELD_TORRENT_PERCENT_DONE = "percentDone";
 
-	public static final String TORRENT_FIELD_NAME = "name";
+	public static final String FIELD_TORRENT_NAME = "name";
 
-	public static final String TORRENT_FIELD_ID = "id";
+	public static final String FIELD_TORRENT_ID = "id";
 
-	public static final String TORRENT_FIELD_FILES_PRIORITY = "priority";
+	public static final String FIELD_TORRENT_FILES_PRIORITY = "priority";
 
-	public static final String TORRENT_FIELD_POSITION = "queuePosition";
+	public static final String FIELD_TORRENT_POSITION = "queuePosition";
 
-	public static final String TORRENT_FIELD_UPLOAD_RATIO = "uploadRatio";
+	public static final String FIELD_TORRENT_UPLOAD_RATIO = "uploadRatio";
 
-	public static final String TORRENT_FIELD_DATE_ADDED = "addedDate";
+	public static final String FIELD_TORRENT_DATE_ADDED = "addedDate";
 
 	//////////////////////////////////////////////////////////////////////////////
 

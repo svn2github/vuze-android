@@ -274,7 +274,7 @@ public class TorrentListAdapter
 			if (mapTagUIDs == null) {
 
 				int status = MapUtils.getMapInt(item,
-						TransmissionVars.TORRENT_FIELD_STATUS,
+						TransmissionVars.FIELD_TORRENT_STATUS,
 						TransmissionVars.TR_STATUS_STOPPED);
 				int id;
 				switch (status) {
@@ -550,7 +550,7 @@ public class TorrentListAdapter
 		}
 
 		String name = MapUtils.getMapString(map,
-				TransmissionVars.TORRENT_FIELD_NAME, "").toLowerCase();
+				TransmissionVars.FIELD_TORRENT_NAME, "").toLowerCase();
 		return name.contains(constraint);
 	}
 
@@ -579,9 +579,9 @@ public class TorrentListAdapter
 		switch ((int) filterMode) {
 			case FILTERBY_ACTIVE:
 				long dlRate = MapUtils.getMapLong(map,
-						TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD, -1);
+						TransmissionVars.FIELD_TORRENT_RATE_DOWNLOAD, -1);
 				long ulRate = MapUtils.getMapLong(map,
-						TransmissionVars.TORRENT_FIELD_RATE_UPLOAD, -1);
+						TransmissionVars.FIELD_TORRENT_RATE_UPLOAD, -1);
 				if (ulRate <= 0 && dlRate <= 0) {
 					return false;
 				}
@@ -589,7 +589,7 @@ public class TorrentListAdapter
 
 			case FILTERBY_COMPLETE: {
 				float pctDone = MapUtils.getMapFloat(map,
-						TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
+						TransmissionVars.FIELD_TORRENT_PERCENT_DONE, 0);
 				if (pctDone < 1.0f) {
 					return false;
 				}
@@ -597,7 +597,7 @@ public class TorrentListAdapter
 			}
 			case FILTERBY_INCOMPLETE: {
 				float pctDone = MapUtils.getMapFloat(map,
-						TransmissionVars.TORRENT_FIELD_PERCENT_DONE, 0);
+						TransmissionVars.FIELD_TORRENT_PERCENT_DONE, 0);
 				if (pctDone >= 1.0f) {
 					return false;
 				}
@@ -605,7 +605,7 @@ public class TorrentListAdapter
 			}
 			case FILTERBY_STOPPED: {
 				int status = MapUtils.getMapInt(map,
-						TransmissionVars.TORRENT_FIELD_STATUS,
+						TransmissionVars.FIELD_TORRENT_STATUS,
 						TransmissionVars.TR_STATUS_STOPPED);
 				if (status != TransmissionVars.TR_STATUS_STOPPED) {
 					return false;

@@ -297,7 +297,7 @@ public class FilesFragment
 				}
 
 				int priority = MapUtils.getMapInt(mapFileStats,
-						TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+						TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
 						TransmissionVars.TR_PRI_NORMAL);
 				MenuItem menuPriorityUp = menu.findItem(R.id.action_sel_priority_up);
 				if (menuPriorityUp != null) {
@@ -361,7 +361,7 @@ public class FilesFragment
 					case R.id.action_sel_priority_up: {
 						Map<?, ?> selectedFile = getSelectedFileStats();
 						int priority = MapUtils.getMapInt(selectedFile,
-								TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+								TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
 								TransmissionVars.TR_PRI_NORMAL);
 
 						if (priority >= TransmissionVars.TR_PRI_HIGH) {
@@ -378,7 +378,7 @@ public class FilesFragment
 					case R.id.action_sel_priority_down: {
 						Map<?, ?> selectedFile = getSelectedFileStats();
 						int priority = MapUtils.getMapInt(selectedFile,
-								TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+								TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
 								TransmissionVars.TR_PRI_NORMAL);
 
 						if (priority <= TransmissionVars.TR_PRI_LOW) {

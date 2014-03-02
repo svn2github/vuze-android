@@ -63,7 +63,7 @@ public class DialogFragmentSortBy
 						switch (which) {
 							case 0: // <item>Queue Order</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_POSITION
+									TransmissionVars.FIELD_TORRENT_POSITION
 								};
 								sortOrderAsc = new Boolean[] {
 									true
@@ -71,8 +71,8 @@ public class DialogFragmentSortBy
 								break;
 							case 1: // <item>Activity</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD,
-									TransmissionVars.TORRENT_FIELD_RATE_UPLOAD
+									TransmissionVars.FIELD_TORRENT_RATE_DOWNLOAD,
+									TransmissionVars.FIELD_TORRENT_RATE_UPLOAD
 								};
 								sortOrderAsc = new Boolean[] {
 									false
@@ -80,7 +80,7 @@ public class DialogFragmentSortBy
 								break;
 							case 2: // <item>Age</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_DATE_ADDED
+									TransmissionVars.FIELD_TORRENT_DATE_ADDED
 								};
 								sortOrderAsc = new Boolean[] {
 									false
@@ -88,7 +88,7 @@ public class DialogFragmentSortBy
 								break;
 							case 3: // <item>Progress</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_PERCENT_DONE
+									TransmissionVars.FIELD_TORRENT_PERCENT_DONE
 								};
 								sortOrderAsc = new Boolean[] {
 									false
@@ -96,7 +96,7 @@ public class DialogFragmentSortBy
 								break;
 							case 4: // <item>Ratio</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_UPLOAD_RATIO
+									TransmissionVars.FIELD_TORRENT_UPLOAD_RATIO
 								};
 								sortOrderAsc = new Boolean[] {
 									false
@@ -104,7 +104,7 @@ public class DialogFragmentSortBy
 								break;
 							case 5: // <item>Size</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_SIZE_WHEN_DONE
+									TransmissionVars.FIELD_TORRENT_SIZE_WHEN_DONE
 								};
 								sortOrderAsc = new Boolean[] {
 									false
@@ -112,7 +112,7 @@ public class DialogFragmentSortBy
 								break;
 							case 6: // <item>State</item>
 								sortFieldIDs = new String[] {
-									TransmissionVars.TORRENT_FIELD_STATUS
+									TransmissionVars.FIELD_TORRENT_STATUS
 								};
 								sortOrderAsc = new Boolean[] {
 									false

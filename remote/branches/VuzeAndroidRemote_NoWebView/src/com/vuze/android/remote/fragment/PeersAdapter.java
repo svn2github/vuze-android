@@ -209,7 +209,7 @@ public class PeersAdapter
 							Object key = iterator.next();
 							Map map = mapCopy.get(key);
 
-							String name = MapUtils.getMapString(map, TransmissionVars.TORRENT_FIELD_NAME, "").toLowerCase();
+							String name = MapUtils.getMapString(map, TransmissionVars.FIELD_TORRENT_NAME, "").toLowerCase();
 							if (!name.contains(constraintString)) {
 								iterator.remove();
 							}

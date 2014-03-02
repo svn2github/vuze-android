@@ -551,7 +551,7 @@ public class TorrentListFragment
 				boolean canStop = false;
 				for (Map<?, ?> mapTorrent : selectedTorrentMaps) {
 					int status = MapUtils.getMapInt(mapTorrent,
-							TransmissionVars.TORRENT_FIELD_STATUS,
+							TransmissionVars.FIELD_TORRENT_STATUS,
 							TransmissionVars.TR_STATUS_STOPPED);
 					canStart |= status == TransmissionVars.TR_STATUS_STOPPED;
 					canStop |= status != TransmissionVars.TR_STATUS_STOPPED;
@@ -753,7 +753,7 @@ public class TorrentListFragment
 				boolean canStop = false;
 				for (Map<?, ?> mapTorrent : selectedTorrentMaps) {
 					int status = MapUtils.getMapInt(mapTorrent,
-							TransmissionVars.TORRENT_FIELD_STATUS,
+							TransmissionVars.FIELD_TORRENT_STATUS,
 							TransmissionVars.TR_STATUS_STOPPED);
 					canStart |= status == TransmissionVars.TR_STATUS_STOPPED;
 					canStop |= status != TransmissionVars.TR_STATUS_STOPPED;

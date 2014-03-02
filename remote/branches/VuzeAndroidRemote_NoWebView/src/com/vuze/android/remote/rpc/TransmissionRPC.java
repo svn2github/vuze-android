@@ -228,14 +228,14 @@ public class TransmissionRPC
 									continue;
 								}
 								Map map = (Map) o;
-								if (map.containsKey(TransmissionVars.TORRENT_FIELD_FILE_COUNT)) {
+								if (map.containsKey(TransmissionVars.FIELD_TORRENT_FILE_COUNT)) {
 									hasFileCountField = true;
 									continue;
 								}
 								map.put(
-										TransmissionVars.TORRENT_FIELD_FILE_COUNT,
+										TransmissionVars.FIELD_TORRENT_FILE_COUNT,
 										MapUtils.getMapList(map,
-												TransmissionVars.TORRENT_FIELD_PRIORITIES,
+												TransmissionVars.FIELD_TORRENT_PRIORITIES,
 												Collections.EMPTY_LIST).size());
 							}
 						}
@@ -316,32 +316,32 @@ public class TransmissionRPC
 		if (basicTorrentFieldIDs == null) {
 
 			basicTorrentFieldIDs = new ArrayList<String>();
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_ID);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_NAME);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_PERCENT_DONE);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_SIZE_WHEN_DONE);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_RATE_UPLOAD);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_RATE_DOWNLOAD);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_ERROR); // TransmissionVars.TR_STAT_*
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_ERROR_STRING);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_ETA);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_POSITION);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_UPLOAD_RATIO);
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_DATE_ADDED);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_ID);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_NAME);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_PERCENT_DONE);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_SIZE_WHEN_DONE);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_RATE_UPLOAD);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_RATE_DOWNLOAD);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_ERROR); // TransmissionVars.TR_STAT_*
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_ERROR_STRING);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_ETA);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_POSITION);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_UPLOAD_RATIO);
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_DATE_ADDED);
 			basicTorrentFieldIDs.add("speedHistory");
 			basicTorrentFieldIDs.add("leftUntilDone");
 			basicTorrentFieldIDs.add("tag-uids");
-			basicTorrentFieldIDs.add(TransmissionVars.TORRENT_FIELD_STATUS); // TransmissionVars.TR_STATUS_*
+			basicTorrentFieldIDs.add(TransmissionVars.FIELD_TORRENT_STATUS); // TransmissionVars.TR_STATUS_*
 		}
 
 		List<String> fields = new ArrayList<String>(basicTorrentFieldIDs);
 		if (hasFileCountField == null) {
-			fields.add(TransmissionVars.TORRENT_FIELD_FILE_COUNT); // azRPC 2+
-			fields.add(TransmissionVars.TORRENT_FIELD_PRIORITIES); // for filesCount
+			fields.add(TransmissionVars.FIELD_TORRENT_FILE_COUNT); // azRPC 2+
+			fields.add(TransmissionVars.FIELD_TORRENT_PRIORITIES); // for filesCount
 		} else if (hasFileCountField) {
-			fields.add(TransmissionVars.TORRENT_FIELD_FILE_COUNT); // azRPC 2+
+			fields.add(TransmissionVars.FIELD_TORRENT_FILE_COUNT); // azRPC 2+
 		} else {
-			fields.add(TransmissionVars.TORRENT_FIELD_PRIORITIES); // for filesCount
+			fields.add(TransmissionVars.FIELD_TORRENT_PRIORITIES); // for filesCount
 		}
 
 		return fields;

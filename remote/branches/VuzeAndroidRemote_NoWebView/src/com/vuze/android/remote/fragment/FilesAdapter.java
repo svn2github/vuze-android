@@ -162,7 +162,7 @@ public class FilesAdapter
 		}
 		if (holder.tvStatus != null) {
 			int priority = MapUtils.getMapInt(item,
-					TransmissionVars.TORRENT_FIELD_FILES_PRIORITY,
+					TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
 					TransmissionVars.TR_PRI_NORMAL);
 			int id;
 			switch (priority) {

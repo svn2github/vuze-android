@@ -173,7 +173,7 @@ public class TorrentDetailsFragment
 		}
 		Map<?, ?> torrent = sessionInfo.getTorrent(torrentIDs[0]);
 		int status = MapUtils.getMapInt(torrent,
-				TransmissionVars.TORRENT_FIELD_STATUS,
+				TransmissionVars.FIELD_TORRENT_STATUS,
 				TransmissionVars.TR_STATUS_STOPPED);
 		boolean canStart = status == TransmissionVars.TR_STATUS_STOPPED;
 		boolean canStop = status != TransmissionVars.TR_STATUS_STOPPED;
