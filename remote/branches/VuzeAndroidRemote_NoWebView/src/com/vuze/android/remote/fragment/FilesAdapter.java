@@ -7,6 +7,7 @@ import org.gudy.azureus2.core3.util.DisplayFormatters;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,11 +15,14 @@ import android.widget.*;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.TextViewFlipper.FlipValidator;
 
 public class FilesAdapter
 	extends BaseAdapter
 	implements Filterable
 {
+	private static final String TAG = "FilesAdapter";
+	
 	static class ViewHolder
 	{
 		TextView tvName;
@@ -29,9 +33,29 @@ public class FilesAdapter
 
 		TextView tvInfo;
 
-		TextView tvETA;
-
 		TextView tvStatus;
+
+		public boolean animateFlip;
+
+		public int fileIndex = -1;
+	}
+
+	public static class ViewHolderFlipValidator
+		implements FlipValidator
+	{
+		private ViewHolder holder;
+
+		private int fileIndex = -1;
+
+		public ViewHolderFlipValidator(ViewHolder holder, int fileIndex) {
+			this.holder = holder;
+			this.fileIndex = fileIndex;
+		}
+
+		@Override
+		public boolean isStillValid() {
+			return holder.fileIndex == fileIndex;
+		}
 	}
 
 	private Context context;
@@ -55,9 +79,12 @@ public class FilesAdapter
 
 	private long torrentID;
 
+	private TextViewFlipper flipper;
+
 	public FilesAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
+		flipper = new TextViewFlipper(R.anim.anim_field_change);
 		displayList = new ArrayList<Object>();
 	}
 
@@ -90,19 +117,26 @@ public class FilesAdapter
 			viewHolder.tvProgress = (TextView) rowView.findViewById(R.id.filerow_progress_pct);
 			viewHolder.pb = (ProgressBar) rowView.findViewById(R.id.filerow_progress);
 			viewHolder.tvInfo = (TextView) rowView.findViewById(R.id.filerow_info);
-			viewHolder.tvETA = (TextView) rowView.findViewById(R.id.filerow_eta);
 			viewHolder.tvStatus = (TextView) rowView.findViewById(R.id.filerow_state);
 
 			rowView.setTag(viewHolder);
 		}
 
 		ViewHolder holder = (ViewHolder) rowView.getTag();
-
 		Map<?, ?> item = getItem(position);
+
+		int fileIndex = MapUtils.getMapInt(item, "index", -2);
+		holder.animateFlip = holder.fileIndex == fileIndex;
+		holder.fileIndex = fileIndex;
+		ViewHolderFlipValidator validator = new ViewHolderFlipValidator(holder,
+				fileIndex);
+
 		boolean wanted = MapUtils.getMapBoolean(item, "wanted", true);
 
 		if (holder.tvName != null) {
-			holder.tvName.setText(MapUtils.getMapString(item, "name", "??"));
+			flipper.changeText(holder.tvName,
+					MapUtils.getMapString(item, "name", "??"), holder.animateFlip,
+					validator);
 		}
 		long bytesCompleted = MapUtils.getMapLong(item, "bytesCompleted", 0);
 		long length = MapUtils.getMapLong(item, "length", -1);
@@ -113,7 +147,7 @@ public class FilesAdapter
 				NumberFormat format = NumberFormat.getPercentInstance();
 				format.setMaximumFractionDigits(1);
 				String s = format.format(pctDone);
-				holder.tvProgress.setText(s);
+				flipper.changeText(holder.tvProgress, s, holder.animateFlip, validator);
 			}
 			if (holder.pb != null) {
 				holder.pb.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
@@ -124,20 +158,7 @@ public class FilesAdapter
 			String s = resources.getString(R.string.files_row_size,
 					DisplayFormatters.formatByteCountToKiBEtc(bytesCompleted),
 					DisplayFormatters.formatByteCountToKiBEtc(length));
-			holder.tvInfo.setText(s);
-		}
-		if (holder.tvETA != null) {
-			holder.tvETA.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
-			
-			long etaSecs = MapUtils.getMapLong(item, "eta", -1);
-			if (etaSecs > 0) {
-				String s = DisplayFormatters.prettyFormat(etaSecs);
-				holder.tvETA.setText(s);
-				holder.tvETA.setVisibility(View.VISIBLE);
-			} else {
-				holder.tvETA.setVisibility(View.GONE);
-				holder.tvETA.setText("");
-			}
+			flipper.changeText(holder.tvInfo, s, holder.animateFlip, validator);
 		}
 		if (holder.tvStatus != null) {
 			int priority = MapUtils.getMapInt(item,
@@ -156,7 +177,9 @@ public class FilesAdapter
 					break;
 			}
 
-			holder.tvStatus.setText(id);
+			String s = resources.getString(id);
+			Log.d(TAG, "changeText: " + s);
+			flipper.changeText(holder.tvStatus, s, holder.animateFlip, validator);
 		}
 
 		return rowView;
@@ -185,29 +208,33 @@ public class FilesAdapter
 		@Override
 		protected FilterResults performFiltering(CharSequence constraint) {
 			this.constraint = constraint;
-			System.out.println("performFIlter Start");
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "performFIlter Start");
+			}
 			FilterResults results = new FilterResults();
 
 			if (sessionInfo == null) {
-				System.out.println("noSessionInfo");
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "noSessionInfo");
+				}
 
 				return results;
 			}
-
 
 			synchronized (mLock) {
 				Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
 				if (torrent == null) {
 					return results;
 				}
-				final List listFiles = MapUtils.getMapList(torrent, "files", null);
-				final List listFileStats = MapUtils.getMapList(torrent, "fileStats",
+				final List<?> listFiles = MapUtils.getMapList(torrent, "files", null);
+				final List<?> listFileStats = MapUtils.getMapList(torrent, "fileStats",
 						null);
-				//					System.out.println("listFiles=" + listFiles);
 				if (listFiles == null) {
 					return results;
 				}
-				System.out.println("listFiles=" + listFiles.size());
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "listFiles=" + listFiles.size());
+				}
 				if (listFileStats != null) {
 					List<Map> mergedFileMaps = new ArrayList<Map>();
 					for (int i = 0; i < listFiles.size() && i < listFileStats.size(); i++) {
@@ -217,6 +244,7 @@ public class FilesAdapter
 
 							Map map = new HashMap(mapFile);
 							map.putAll(mapFileStats);
+							map.put("index", i);
 							mergedFileMaps.add(map);
 						} catch (Throwable t) {
 							VuzeEasyTracker.getInstance(context).logError(context, t);
@@ -233,7 +261,9 @@ public class FilesAdapter
 
 			}
 
-			System.out.println("performFIlter End");
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "performFIlter End");
+			}
 			return results;
 		}
 
@@ -242,7 +272,7 @@ public class FilesAdapter
 			{
 				synchronized (mLock) {
 					displayList = (List<Object>) results.values;
-					
+
 					if (displayList == null) {
 						displayList = new ArrayList<Object>();
 					}
@@ -356,6 +386,8 @@ public class FilesAdapter
 
 	public void setTorrentID(long torrentID) {
 		this.torrentID = torrentID;
+		Log.d(TAG, "setTorrentID on FIilesFrag");
+
 		getFilter().filter("");
 	}
 

@@ -141,7 +141,7 @@ If you have any feature ideas, or would like to vote on what gets worked on next
 	<string name="local_name">Local Vuze on %s</string>
 	<string name="dialog_delete_datatoo">Remove downloaded files as well</string>
 	<string name="multi_select_tip">Tap &amp; Hold to multi-select. <i>DONE</i> to de-select.</string>
-	<string name="files_row_size">%1$s of %2$s downloaded</string>
+	<string name="files_row_size">%1$s of %2$s</string>
 	<string name="torrent_file_priority_high">High Priority</string>
 	<string name="torrent_file_priority_low">Low Priority</string>
 	<string name="torrent_file_priority_normal"></string>

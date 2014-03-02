@@ -8,8 +8,6 @@ import org.gudy.azureus2.core3.util.DisplayFormatters;
 import android.content.Context;
 import android.content.res.Resources;
 import android.text.SpannableString;
-import android.text.style.BackgroundColorSpan;
-import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +16,7 @@ import android.widget.*;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.TextViewFlipper.FlipValidator;
 
 public class TorrentListAdapter
 	extends BaseAdapter
@@ -39,6 +38,8 @@ public class TorrentListAdapter
 
 	static class ViewHolder
 	{
+		long torrentID = -1;
+
 		TextView tvName;
 
 		TextView tvProgress;
@@ -56,6 +57,26 @@ public class TorrentListAdapter
 		TextView tvStatus;
 
 		TextView tvTags;
+
+		boolean animateFlip;
+	}
+
+	public static class ViewHolderFlipValidator
+		implements FlipValidator
+	{
+		private ViewHolder holder;
+
+		private long torrentID;
+
+		public ViewHolderFlipValidator(ViewHolder holder, long torrentID) {
+			this.holder = holder;
+			this.torrentID = torrentID;
+		}
+
+		@Override
+		public boolean isStillValid() {
+			return holder.torrentID == torrentID;
+		}
 	}
 
 	private Context context;
@@ -77,9 +98,38 @@ public class TorrentListAdapter
 
 	private SessionInfo sessionInfo;
 
+	private int colorBGTagState;
+
+	private int colorFGTagState;
+
+	private int colorBGTagType0;
+
+	private int colorFGTagType0;
+
+	private int colorBGTagCat;
+
+	private int colorFGTagCat;
+
+	private int colorBGTagManual;
+
+	private int colorFGTagManual;
+
+	private TextViewFlipper flipper;
+
 	public TorrentListAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
+		colorBGTagState = resources.getColor(R.color.bg_tag_type_2);
+		colorFGTagState = resources.getColor(R.color.fg_tag_type_2);
+		colorBGTagType0 = resources.getColor(R.color.bg_tag_type_0);
+		colorFGTagType0 = resources.getColor(R.color.fg_tag_type_0);
+		colorBGTagCat = resources.getColor(R.color.bg_tag_type_cat);
+		colorFGTagCat = resources.getColor(R.color.fg_tag_type_cat);
+		colorBGTagManual = resources.getColor(R.color.bg_tag_type_manualtag);
+		colorFGTagManual = resources.getColor(R.color.fg_tag_type_manualtag);
+
+		flipper = new TextViewFlipper(R.anim.anim_field_change);
+
 		displayList = new ArrayList<Object>();
 	}
 
@@ -92,9 +142,9 @@ public class TorrentListAdapter
 		int position = -1;
 		synchronized (mLock) {
 			int i = -1;
-			for (Iterator iterator = displayList.iterator(); iterator.hasNext();) {
+			for (Iterator<?> iterator = displayList.iterator(); iterator.hasNext();) {
 				i++;
-				Object key = (Object) iterator.next();
+				Object key = iterator.next();
 				if (key.equals(itemKey)) {
 					position = i;
 					break;
@@ -116,6 +166,10 @@ public class TorrentListAdapter
 	public View getView(int position, View convertView, ViewGroup parent,
 			boolean requireHolder) {
 		View rowView = convertView;
+
+		Map<?, ?> item = getItem(position);
+		long torrentID = MapUtils.getMapLong(item, "id", -1);
+
 		if (rowView == null) {
 			if (requireHolder) {
 				return null;
@@ -125,7 +179,6 @@ public class TorrentListAdapter
 			ViewHolder viewHolder = new ViewHolder();
 
 			viewHolder.tvName = (TextView) rowView.findViewById(R.id.torrentrow_name);
-
 			viewHolder.tvProgress = (TextView) rowView.findViewById(R.id.torrentrow_progress_pct);
 			viewHolder.pb = (ProgressBar) rowView.findViewById(R.id.torrentrow_progress);
 			viewHolder.tvInfo = (TextView) rowView.findViewById(R.id.torrentrow_info);
@@ -138,7 +191,12 @@ public class TorrentListAdapter
 			rowView.setTag(viewHolder);
 		}
 
-		ViewHolder holder = (ViewHolder) rowView.getTag();
+		final ViewHolder holder = (ViewHolder) rowView.getTag();
+
+		holder.animateFlip = holder.torrentID == torrentID;
+		holder.torrentID = torrentID;
+		ViewHolderFlipValidator validator = new ViewHolderFlipValidator(holder,
+				torrentID);
 
 		//		boolean isChecked = false;
 		//		if (parent instanceof ListView) {
@@ -149,17 +207,18 @@ public class TorrentListAdapter
 		//		rowView.setBackgroundColor(isChecked
 		//				? resources.getColor(R.color.list_bg_f) : 0);
 
-		Map<?, ?> item = getItem(position);
 		if (holder.tvName != null) {
-			holder.tvName.setText(MapUtils.getMapString(item, "name", "??"));
+			flipper.changeText(holder.tvName,
+					MapUtils.getMapString(item, "name", "??"), holder.animateFlip,
+					validator);
 		}
-		float pctDone = MapUtils.getMapFloat(item, "percentDone", 0f);
 
+		float pctDone = MapUtils.getMapFloat(item, "percentDone", 0f);
 		if (holder.tvProgress != null) {
 			NumberFormat format = NumberFormat.getPercentInstance();
 			format.setMaximumFractionDigits(1);
 			String s = format.format(pctDone);
-			holder.tvProgress.setText(s);
+			flipper.changeText(holder.tvProgress, s, holder.animateFlip, validator);
 		}
 		if (holder.pb != null) {
 			holder.pb.setProgress((int) (pctDone * 10000));
@@ -172,44 +231,45 @@ public class TorrentListAdapter
 					fileCount, fileCount)
 					+ resources.getString(R.string.torrent_row_info2,
 							DisplayFormatters.formatByteCountToKiBEtc(size));
-			holder.tvInfo.setText(s);
+			long error = MapUtils.getMapLong(item, "error",
+					TransmissionVars.TR_STAT_OK);
+			if (error != TransmissionVars.TR_STAT_OK) {
+				// error
+				// TODO: parse error and add error type to message
+				String errorString = MapUtils.getMapString(item, "errorString", "");
+				if (s.length() > 0) {
+					s += "\n";
+				}
+				s += errorString;
+			}
+
+			flipper.changeText(holder.tvInfo, s, holder.animateFlip, validator);
 		}
 		if (holder.tvETA != null) {
 			long etaSecs = MapUtils.getMapLong(item, "eta", -1);
-			if (etaSecs > 0) {
-				String s = DisplayFormatters.prettyFormat(etaSecs);
-				holder.tvETA.setText(s);
-				holder.tvETA.setVisibility(View.VISIBLE);
-			} else {
-				holder.tvETA.setVisibility(View.GONE);
-				holder.tvETA.setText("");
-			}
+			String eta = etaSecs > 0 ? DisplayFormatters.prettyFormat(etaSecs) : "";
+			flipper.changeText(holder.tvETA, eta, holder.animateFlip, validator);
 		}
 		if (holder.tvUlRate != null) {
 			long rateUpload = MapUtils.getMapLong(item, "rateUpload", 0);
 
-			if (rateUpload > 0) {
-				holder.tvUlRate.setText("\u25B2 "
-						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateUpload));
-			} else {
-				holder.tvUlRate.setText("");
-			}
+			String rateString = rateUpload <= 0 ? "" : "\u25B2 "
+					+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateUpload);
+			flipper.changeText(holder.tvUlRate, rateString, holder.animateFlip,
+					validator);
 		}
 		if (holder.tvDlRate != null) {
 			long rateDownload = MapUtils.getMapLong(item, "rateDownload", 0);
-
-			if (rateDownload > 0) {
-				holder.tvDlRate.setText("\u25BC "
-						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateDownload));
-			} else {
-				holder.tvDlRate.setText("");
-			}
+			String rateString = rateDownload <= 0 ? "" : "\u25BC "
+					+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateDownload);
+			flipper.changeText(holder.tvDlRate, rateString, holder.animateFlip,
+					validator);
 		}
+
 		if (holder.tvStatus != null) {
-			long error = MapUtils.getMapLong(item, "error",
-					TransmissionVars.TR_STAT_OK);
-			List mapTagUIDs = MapUtils.getMapList(item, "tag-uids", null);
+			List<?> mapTagUIDs = MapUtils.getMapList(item, "tag-uids", null);
 			StringBuilder text = new StringBuilder();
+			int color = -1;
 
 			if (mapTagUIDs == null) {
 
@@ -251,13 +311,16 @@ public class TorrentListAdapter
 					text.append(context.getString(id));
 				}
 			} else {
-
 				for (Object o : mapTagUIDs) {
 					String name = null;
 					int type = 0;
 					if (o instanceof Number) {
-						Map mapTag = sessionInfo.getTag(((Number) o).longValue());
+						Map<?, ?> mapTag = sessionInfo.getTag(((Number) o).longValue());
 						if (mapTag != null) {
+							String htmlColor = MapUtils.getMapString(mapTag, "color", null);
+							if (htmlColor != null && htmlColor.startsWith("#")) {
+								color = Integer.decode("0x" + htmlColor.substring(1));
+							}
 							name = MapUtils.getMapString(mapTag, "name", null);
 							type = MapUtils.getMapInt(mapTag, "type", 0);
 						}
@@ -277,41 +340,32 @@ public class TorrentListAdapter
 				}
 			}
 
-			if (error != TransmissionVars.TR_STAT_OK) {
-				// error
-				// TODO: parse error and add error type to message
-				String errorString = MapUtils.getMapString(item, "errorString", "");
-				if (text.length() > 0) {
-					text.append("\n");
-				}
-				text.append(errorString);
-			}
 			SpannableString ss = new SpannableString(text);
 			String string = text.toString();
-			Resources res = context.getResources();
-			AndroidUtils.setSpanBetweenTokens(ss, string, "|",
-					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_2)),
-					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_2)));
-			holder.tvStatus.setText(ss);
+			AndroidUtils.setSpanBubbles(ss, string, "|", holder.tvStatus.getPaint(),
+					color < 0 ? colorBGTagState : color, colorFGTagState, colorBGTagState);
+			flipper.changeText(holder.tvStatus, ss, holder.animateFlip, validator);
 		}
 
 		if (holder.tvTags != null) {
-			List mapTagUIDs = MapUtils.getMapList(item, "tag-uids", null);
+			List<?> mapTagUIDs = MapUtils.getMapList(item, "tag-uids", null);
 			StringBuilder sb = new StringBuilder();
 			if (mapTagUIDs != null) {
 				for (Object o : mapTagUIDs) {
 					String name = null;
 					int type = 0;
+					// TODO: Use Color
 					long color = -1;
 					if (o instanceof Number) {
-						Map mapTag = sessionInfo.getTag(((Number) o).longValue());
+						Map<?, ?> mapTag = sessionInfo.getTag(((Number) o).longValue());
 						if (mapTag != null) {
 							type = MapUtils.getMapInt(mapTag, "type", 0);
 							if (type == 2) {
 								continue;
 							}
 							if (type == 1) {
-								boolean canBePublic = MapUtils.getMapBoolean(mapTag, "canBePublic", false);
+								boolean canBePublic = MapUtils.getMapBoolean(mapTag,
+										"canBePublic", false);
 								if (!canBePublic) {
 									continue;
 								}
@@ -341,24 +395,21 @@ public class TorrentListAdapter
 				}
 			}
 			if (sb.length() == 0) {
-				holder.tvTags.setVisibility(View.GONE);
-				holder.tvTags.setText(null);
+				flipper.changeText(holder.tvTags, "", holder.animateFlip, validator);
 			} else {
-  			SpannableString ss = new SpannableString(sb);
-  			String string = sb.toString();
-  			Resources res = context.getResources();
-  			AndroidUtils.setSpanBetweenTokens(ss, string, "~0~",
-  					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_0)),
-  					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_0)));
-  			AndroidUtils.setSpanBetweenTokens(ss, string, "~1~",
-  					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_cat)),
-  					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_cat)));
-  			AndroidUtils.setSpanBetweenTokens(ss, string, "~3~",
-  					new BackgroundColorSpan(res.getColor(R.color.bg_tag_type_manualtag)),
-  					new ForegroundColorSpan(res.getColor(R.color.fg_tag_type_manualtag)));
-  
-  			holder.tvTags.setText(ss);
-				holder.tvTags.setVisibility(View.VISIBLE);
+				SpannableString ss = new SpannableString(sb);
+				String string = sb.toString();
+				int color = -1;
+				AndroidUtils.setSpanBubbles(ss, string, "~0~",
+						holder.tvStatus.getPaint(), color < 0 ? colorBGTagType0 : color,
+						colorFGTagType0, colorBGTagType0);
+				AndroidUtils.setSpanBubbles(ss, string, "~1~",
+						holder.tvStatus.getPaint(), color < 0 ? colorBGTagCat : color,
+						colorFGTagCat, colorBGTagCat);
+				AndroidUtils.setSpanBubbles(ss, string, "~3~",
+						holder.tvStatus.getPaint(), color < 0 ? colorBGTagManual : color,
+						colorFGTagManual, colorBGTagManual);
+				flipper.changeText(holder.tvTags, ss, holder.animateFlip, validator);
 			}
 		}
 
@@ -416,7 +467,7 @@ public class TorrentListAdapter
 
 				if (filterMode >= 0 && filterMode != FILTERBY_ALL) {
 					synchronized (mLock) {
-						for (Iterator iterator = listKeys.iterator(); iterator.hasNext();) {
+						for (Iterator<Object> iterator = listKeys.iterator(); iterator.hasNext();) {
 							Object key = iterator.next();
 
 							if (!filterCheck(filterMode, key)) {
@@ -432,7 +483,7 @@ public class TorrentListAdapter
 
 				if (hasConstraint) {
 					synchronized (mLock) {
-						for (Iterator iterator = listKeys.iterator(); iterator.hasNext();) {
+						for (Iterator<?> iterator = listKeys.iterator(); iterator.hasNext();) {
 							Object key = iterator.next();
 
 							if (!constraintCheck(constraint, key)) {
@@ -493,7 +544,7 @@ public class TorrentListAdapter
 		if (constraint == null || constraint.length() == 0) {
 			return true;
 		}
-		Map map = sessionInfo.getTorrent(key);
+		Map<?, ?> map = sessionInfo.getTorrent(key);
 		if (map == null) {
 			return false;
 		}
@@ -504,13 +555,13 @@ public class TorrentListAdapter
 	}
 
 	private boolean filterCheck(long filterMode, Object key) {
-		Map map = sessionInfo.getTorrent(key);
+		Map<?, ?> map = sessionInfo.getTorrent(key);
 		if (map == null) {
 			return false;
 		}
 
 		if (filterMode > 10) {
-			List listTagUIDs = MapUtils.getMapList(map, "tag-uids", null);
+			List<?> listTagUIDs = MapUtils.getMapList(map, "tag-uids", null);
 			if (listTagUIDs != null) {
 				for (Object o : listTagUIDs) {
 					if (o instanceof Long) {
@@ -521,10 +572,10 @@ public class TorrentListAdapter
 					}
 				}
 			}
-			
+
 			return false;
 		}
-		
+
 		switch ((int) filterMode) {
 			case FILTERBY_ACTIVE:
 				long dlRate = MapUtils.getMapLong(map,
@@ -636,8 +687,24 @@ public class TorrentListAdapter
 								} // else == drops to next sort field
 
 							} else {
-								int comp = sortOrderAsc[i] ? oLHS.compareTo(oRHS)
-										: oRHS.compareTo(oLHS);
+								int comp;
+								if (oRHS instanceof Number && oLHS instanceof Number) {
+									long lRHS = ((Number) oRHS).longValue();
+									long lLHS = ((Number) oLHS).longValue();
+									if (sortOrderAsc[i]) {
+										comp = lLHS > lRHS ? 1 : lLHS == lRHS ? 0 : -1;
+									} else {
+										comp = lLHS > lRHS ? -1 : lLHS == lRHS ? 0 : 1;
+									}
+								} else {
+									try {
+										comp = sortOrderAsc[i] ? oLHS.compareTo(oRHS)
+												: oRHS.compareTo(oLHS);
+									} catch (Throwable t) {
+										VuzeEasyTracker.getInstance(context).logError(context, t);
+										comp = 0;
+									}
+								}
 								if (comp != 0) {
 									return comp;
 								} // else == drops to next sort field
@@ -666,7 +733,7 @@ public class TorrentListAdapter
 	@Override
 	public Map<?, ?> getItem(int position) {
 		if (sessionInfo == null) {
-			return new HashMap();
+			return new HashMap<Object, Object>();
 		}
 		Object key = displayList.get(position);
 		return sessionInfo.getTorrent(key);

@@ -10,10 +10,9 @@
 		android:id="@+id/filerow_name"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
+		android:layout_alignParentRight="true"
 		android:layout_alignParentTop="true"
-		android:layout_toLeftOf="@+id/filerow_dl"
 		android:layout_toRightOf="@+id/filerow_progress"
-		android:text="File Name\n\n"
 		android:textAppearance="?android:attr/textAppearanceMedium" />
 
 	<ProgressBar
@@ -46,28 +45,6 @@
 		android:textSize="15sp" />
 
 	<TextView
-		android:id="@+id/filerow_eta"
-		android:layout_width="fill_parent"
-		android:layout_height="wrap_content"
-		android:gravity="center"
-		android:text="1m"
-		android:textSize="12sp"
-		android:visibility="gone" />
-
-	<Button
-		android:id="@+id/filerow_dl"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_alignParentRight="true"
-		android:layout_alignTop="@+id/filerow_name"
-		android:layout_marginLeft="5dp"
-		android:focusable="false"
-		android:focusableInTouchMode="false"
-		android:minHeight="30dp"
-		android:minWidth="60dp"
-		android:visibility="gone" />
-
-	<TextView
 		android:id="@+id/filerow_state"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -76,6 +53,7 @@
 		android:layout_alignParentBottom="true"
 		android:layout_alignParentEnd="false"
 		android:layout_below="@+id/filerow_name"
+		android:layout_toLeftOf="@+id/filerow_info"
 		android:gravity="bottom"
 		android:text="File Priority"
 		android:textAppearance="?android:attr/textAppearanceSmall" />

@@ -46,15 +46,6 @@
 		android:text="5 Files, 128MB"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
 
-	<TextView
-		android:id="@+id/torrentrow_upspeed"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_alignParentBottom="true"
-		android:layout_alignParentRight="true"
-		android:text="↑ 0 kB/s"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
-
 	<LinearLayout
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -84,22 +75,12 @@
 	</LinearLayout>
 
 	<TextView
-		android:id="@+id/torrentrow_downspeed"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_above="@+id/torrentrow_upspeed"
-		android:layout_alignParentRight="true"
-		android:text="0 kB/s"
-		android:textAppearance="?android:attr/textAppearanceSmall" />
-
-	<TextView
 		android:id="@+id/torrentrow_state"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_alignLeft="@+id/torrentrow_info"
-		android:layout_alignParentRight="true"
 		android:layout_below="@+id/torrentrow_info"
-		android:lineSpacingExtra="1dp"
+		android:layout_toLeftOf="@+id/torrentrow_speed"
 		android:text="Torrent State"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
 
@@ -108,9 +89,41 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_alignLeft="@+id/torrentrow_state"
+		android:layout_alignParentBottom="true"
 		android:layout_below="@+id/torrentrow_state"
 		android:layout_marginTop="1dp"
-		android:layout_toLeftOf="@+id/torrentrow_upspeed"
+		android:layout_toLeftOf="@+id/torrentrow_speed"
 		android:lineSpacingExtra="1dp" />
+
+	<LinearLayout
+		android:id="@+id/torrentrow_speed"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentRight="true"
+		android:gravity="bottom"
+		android:orientation="vertical" >
+
+		<TextView
+			android:id="@+id/torrentrow_upspeed"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="right"
+			android:gravity="right"
+			android:text="↑ 0 kB/s"
+			android:textAppearance="?android:attr/textAppearanceSmall"
+			android:textSize="12sp" />
+
+		<TextView
+			android:id="@+id/torrentrow_downspeed"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="right"
+			android:gravity="right"
+			android:text="0 kB/s"
+			android:textAppearance="?android:attr/textAppearanceSmall"
+			android:textSize="12sp" />
+
+	</LinearLayout>
 
 </com.android.music.CheckableRelativeLayout>
