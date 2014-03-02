@@ -130,6 +130,7 @@ public class SessionInfo
 					List<?> tagList = MapUtils.getMapList(optionalMap, "tags", null);
 					if (tagList == null) {
 						mapTags = null;
+						setUIReady();
 						return;
 					}
 					mapTags = new HashMap<Long, Map<?, ?>>();
