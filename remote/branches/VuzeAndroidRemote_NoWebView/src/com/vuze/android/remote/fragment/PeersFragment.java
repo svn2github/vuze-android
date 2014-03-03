@@ -4,18 +4,19 @@ import java.util.List;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.SessionInfo;
-import com.vuze.android.remote.SetTorrentIdListener;
+import com.vuze.android.remote.*;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class PeersFragment
 	extends Fragment
 	implements SetTorrentIdListener
 {
+	private static final String TAG = "PeersFragment";
+
 	private ListView listview;
 
 	private PeersAdapter adapter;
@@ -24,8 +25,14 @@ public class PeersFragment
 
 	private SessionInfo sessionInfo;
 
+	private TorrentIDGetter torrentIdGetter;
+
 	public PeersFragment() {
 		super();
+	}
+
+	public void setTorrentIdGetter(TorrentIDGetter torrentIdGetter) {
+		this.torrentIdGetter = torrentIdGetter;
 	}
 
 	@Override
@@ -38,17 +45,12 @@ public class PeersFragment
 		}
 		listview.setItemsCanFocus(true);
 		listview.setAdapter(adapter);
-
-		if (torrentID >= 0) {
-			adapter.setTorrentID(torrentID);
-		}
 	}
 
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
 
 		View view = inflater.inflate(R.layout.frag_torrent_peers, container, false);
-
 
 		listview = (ListView) view.findViewById(R.id.peers_list);
 
@@ -59,6 +61,29 @@ public class PeersFragment
 		setHasOptionsMenu(true);
 		return view;
 	}
+	
+	@Override
+	public void onPause() {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onPause");
+		}
+		setTorrentID(sessionInfo, -1);
+
+		super.onPause();
+	}
+
+	@Override
+	public void onResume() {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onResume");
+		}
+		super.onResume();
+
+		// fragment attached and instanciated, ok to setTorrentID now
+		this.setTorrentID(torrentIdGetter.getSessionInfo(),
+				torrentIdGetter.getTorrentID());
+	}
+
 
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
@@ -70,27 +95,33 @@ public class PeersFragment
 
 		this.sessionInfo = sessionInfo;
 		torrentID = id;
-		
-		//Map<?, ?> torrent = sessionInfo.getTorrent(id);
-		//System.out.println("torrent is " + torrent);
+
 		if (adapter != null) {
 			adapter.setSessionInfo(sessionInfo);
+		}
+		if (id < 0) {
+			updateAdapterTorrentID(id);
+			return;
 		}
 		sessionInfo.getRpc().getTorrentPeerInfo(id,
 				new TorrentListReceivedListener() {
 					@Override
 					public void rpcTorrentListReceived(List<?> listTorrents) {
-						if (adapter != null) {
-							getActivity().runOnUiThread(new Runnable() {
-								@Override
-								public void run() {
-									adapter.setTorrentID(torrentID);
-								}
-							});
-						}
-						System.out.println("DS CHANGED Peer " + adapter);
+						updateAdapterTorrentID(torrentID);
 					}
 				});
+	}
+
+	private void updateAdapterTorrentID(long id) {
+		if (adapter != null) {
+			getActivity().runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					adapter.setTorrentID(torrentID);
+				}
+			});
+		}
+		System.out.println("DS CHANGED Peer " + adapter);
 	}
 
 }

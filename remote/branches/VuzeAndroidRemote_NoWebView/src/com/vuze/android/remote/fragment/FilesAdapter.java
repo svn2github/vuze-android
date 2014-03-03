@@ -19,10 +19,10 @@ import com.vuze.android.remote.TextViewFlipper.FlipValidator;
 
 public class FilesAdapter
 	extends BaseAdapter
-	implements Filterable
+	implements Filterable, SectionIndexer
 {
 	private static final String TAG = "FilesAdapter";
-	
+
 	static class ViewHolder
 	{
 		TextView tvName;
@@ -63,7 +63,7 @@ public class FilesAdapter
 	private FileFilter filter;
 
 	/** List of they keys of all entries displayed, in the display order */
-	private List<Object> displayList = new ArrayList<Object>(0);
+	private List<Integer> displayList = new ArrayList<Integer>(0);
 
 	public Object mLock = new Object();
 
@@ -71,9 +71,13 @@ public class FilesAdapter
 
 	private Resources resources;
 
-	private String[] sortFieldIDs;
+	private String[] sortFieldIDs = {
+		"name"
+	};
 
-	private Boolean[] sortOrderAsc;
+	private Boolean[] sortOrderAsc = {
+		true
+	};
 
 	private SessionInfo sessionInfo;
 
@@ -81,11 +85,15 @@ public class FilesAdapter
 
 	private TextViewFlipper flipper;
 
+	private String[] sections;
+
+	private List<Integer> sectionStarts;
+
 	public FilesAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
 		flipper = new TextViewFlipper(R.anim.anim_field_change);
-		displayList = new ArrayList<Object>();
+		displayList = new ArrayList<Integer>();
 	}
 
 	public void setSessionInfo(SessionInfo sessionInfo) {
@@ -178,7 +186,6 @@ public class FilesAdapter
 			}
 
 			String s = resources.getString(id);
-			Log.d(TAG, "changeText: " + s);
 			flipper.changeText(holder.tvStatus, s, holder.animateFlip, validator);
 		}
 
@@ -227,38 +234,21 @@ public class FilesAdapter
 					return results;
 				}
 				final List<?> listFiles = MapUtils.getMapList(torrent, "files", null);
-				final List<?> listFileStats = MapUtils.getMapList(torrent, "fileStats",
-						null);
 				if (listFiles == null) {
 					return results;
 				}
 				if (AndroidUtils.DEBUG) {
 					Log.d(TAG, "listFiles=" + listFiles.size());
 				}
-				if (listFileStats != null) {
-					List<Map> mergedFileMaps = new ArrayList<Map>();
-					for (int i = 0; i < listFiles.size() && i < listFileStats.size(); i++) {
-						try {
-							Map mapFile = (Map) listFiles.get(i);
-							Map mapFileStats = (Map) listFileStats.get(i);
-
-							Map map = new HashMap(mapFile);
-							map.putAll(mapFileStats);
-							map.put("index", i);
-							mergedFileMaps.add(map);
-						} catch (Throwable t) {
-							VuzeEasyTracker.getInstance(context).logError(context, t);
-							t.printStackTrace();
-						}
-
-					}
-					results.values = mergedFileMaps;
-					results.count = mergedFileMaps.size();
-				} else {
-					results.values = new ArrayList(listFiles);
-					results.count = listFiles.size();
+				List<Integer> listIndexes = new ArrayList<Integer>();
+				for (int i = 0; i < listFiles.size(); i++) {
+					listIndexes.add(i);
 				}
 
+				doSort(listIndexes);
+
+				results.values = listIndexes;
+				results.count = listIndexes.size();
 			}
 
 			if (AndroidUtils.DEBUG) {
@@ -267,22 +257,87 @@ public class FilesAdapter
 			return results;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		protected void publishResults(CharSequence constraint, FilterResults results) {
-			{
+			if (results.values instanceof List) {
 				synchronized (mLock) {
-					displayList = (List<Object>) results.values;
+					displayList = (List<Integer>) results.values;
 
 					if (displayList == null) {
-						displayList = new ArrayList<Object>();
+						displayList = new ArrayList<Integer>();
 					}
-
-					doSort();
 				}
-				notifyDataSetChanged();
 			}
+			notifyDataSetChanged();
 		}
 
+	}
+
+	@Override
+	public void notifyDataSetChanged() {
+		if (sessionInfo == null) {
+			super.notifyDataSetChanged();
+			return;
+		}
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "Sections start calc");
+		}
+		synchronized (mLock) {
+			List<String> categories = new ArrayList<String>();
+			List<Integer> categoriesStart = new ArrayList<Integer>();
+			String lastFullCat = " ";
+			Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
+			List<?> listFiles = MapUtils.getMapList(torrent, "files", null);
+
+			if (listFiles != null) {
+				for (int i = 0; i < displayList.size(); i++) {
+					Integer index = displayList.get(i);
+					Map<?, ?> mapFile = (Map<?, ?>) listFiles.get(index);
+
+					String name = MapUtils.getMapString(mapFile, "name", "").toUpperCase(
+							Locale.US);
+					if (!name.startsWith(lastFullCat)) {
+						String[] split = name.split("[\\\\/]", 3);
+						String cat = "";
+						int count = 0;
+						int end = 0;
+						for (int j = 0; j < split.length; j++) {
+							if (j > 0) {
+								end++;
+							}
+
+							String g = split[j];
+
+							if (g.length() > 0) {
+								cat += g.substring(0, 1);
+								count++;
+								if (count >= 2 || j == split.length - 1) {
+									end++;
+									break;
+								} else {
+									end += g.length();
+								}
+							}
+						}
+						lastFullCat = name.substring(0, end);
+						//Log.d(TAG, lastFullCat);
+						categories.add(cat);
+						categoriesStart.add(i);
+					}
+				}
+			}
+			// We could split larger gaps into two sections with the same name
+			sections = categories.toArray(new String[0]);
+			sectionStarts = categoriesStart;
+		}
+		if (AndroidUtils.DEBUG) {
+  		Log.d(TAG, "Sections end calc");
+  		Log.d(TAG, "Sections: " + Arrays.toString(sections));
+  		Log.d(TAG, "SectionStarts: " + sectionStarts);
+		}
+
+		super.notifyDataSetChanged();
 	}
 
 	public void setSort(String[] fieldIDs, Boolean[] sortOrderAsc) {
@@ -302,66 +357,58 @@ public class FilesAdapter
 			this.sortOrderAsc = order;
 			comparator = null;
 		}
-		doSort();
-		notifyDataSetChanged();
+		getFilter().filter("");
 	}
 
 	public void setSort(Comparator<? super Map<?, ?>> comparator) {
 		synchronized (mLock) {
 			this.comparator = comparator;
 		}
-		doSort();
-		notifyDataSetChanged();
+		getFilter().filter("");
 	}
 
-	private void doSort() {
+	private void doSort(List<Integer> list) {
 		if (sessionInfo == null) {
 			return;
 		}
 		if (comparator == null && sortFieldIDs == null) {
 			return;
 		}
-		synchronized (mLock) {
 
-			Collections.sort(displayList, new Comparator<Object>() {
-				@SuppressWarnings({
-					"unchecked",
-					"rawtypes"
-				})
-				@Override
-				public int compare(Object lhs, Object rhs) {
-					Map<?, ?> mapLHS = (Map) lhs;
-					Map<?, ?> mapRHS = (Map) rhs;
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "Sort by " + Arrays.toString(sortFieldIDs));
+		}
 
-					if (mapLHS == null || mapRHS == null) {
-						return 0;
-					}
+		ComparatorMapFields sorter = new ComparatorMapFields(sortFieldIDs,
+				sortOrderAsc, comparator) {
 
-					if (sortFieldIDs == null) {
-						return comparator.compare(mapLHS, mapRHS);
-					} else {
-						for (int i = 0; i < sortFieldIDs.length; i++) {
-							String fieldID = sortFieldIDs[i];
-							Comparable oLHS = (Comparable) mapLHS.get(fieldID);
-							Comparable oRHS = (Comparable) mapRHS.get(fieldID);
-							if (oLHS == null || oRHS == null) {
-								if (oLHS != oRHS) {
-									return oLHS == null ? -1 : 1;
-								} // else == drops to next sort field
+			private Map<?, ?> torrent;
 
-							} else {
-								int comp = sortOrderAsc[i] ? oLHS.compareTo(oRHS)
-										: oRHS.compareTo(oLHS);
-								if (comp != 0) {
-									return comp;
-								} // else == drops to next sort field
-							}
-						}
+			private List<?> mapList;
 
-						return 0;
-					}
+			@Override
+			public int reportError(Comparable<?> oLHS, Comparable<?> oRHS, Throwable t) {
+				VuzeEasyTracker.getInstance(context).logError(context, t);
+				return 0;
+			}
+
+			@SuppressWarnings("rawtypes")
+			@Override
+			public Map<?, ?> mapGetter(Object o) {
+				if (torrent == null) {
+					torrent = sessionInfo.getTorrent(torrentID);
+					mapList = MapUtils.getMapList(torrent, "files", null);
 				}
-			});
+				if (mapList == null) {
+					return new HashMap();
+				}
+				Integer index = (Integer) o;
+				return (Map<?, ?>) mapList.get(index);
+			}
+		};
+
+		synchronized (mLock) {
+			Collections.sort(list, sorter);
 		}
 	}
 
@@ -376,17 +423,32 @@ public class FilesAdapter
 	/* (non-Javadoc)
 	 * @see android.widget.Adapter#getItem(int)
 	 */
+	@SuppressWarnings({
+		"rawtypes",
+		"unchecked"
+	})
 	@Override
 	public Map<?, ?> getItem(int position) {
 		if (sessionInfo == null) {
 			return new HashMap();
 		}
-		return (Map<?, ?>) displayList.get(position);
+		Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
+
+		Integer index = displayList.get(position);
+		List<?> listFiles = MapUtils.getMapList(torrent, "files", null);
+		List<?> listFileStats = MapUtils.getMapList(torrent, "fileStats", null);
+		Map<?, ?> mapFile = listFiles == null ? null : (Map) listFiles.get(index);
+		Map mapFileStats = listFileStats == null ? null
+				: (Map) listFileStats.get(index);
+
+		Map map = new HashMap(mapFile);
+		map.putAll(mapFileStats);
+		map.put("index", index);
+		return map;
 	}
 
 	public void setTorrentID(long torrentID) {
 		this.torrentID = torrentID;
-		Log.d(TAG, "setTorrentID on FIilesFrag");
 
 		getFilter().filter("");
 	}
@@ -408,5 +470,45 @@ public class FilesAdapter
 
 	public void refreshList() {
 		getFilter().filter("");
+	}
+
+	/* (non-Javadoc)
+	 * @see android.widget.SectionIndexer#getSections()
+	 */
+	@Override
+	public Object[] getSections() {
+		return sections;
+	}
+
+	/* (non-Javadoc)
+	 * @see android.widget.SectionIndexer#getPositionForSection(int)
+	 */
+	@Override
+	public int getPositionForSection(int sectionIndex) {
+		if (sectionIndex < 0 || sectionStarts == null
+				|| sectionIndex >= sectionStarts.size()) {
+			return 0;
+		}
+		return sectionStarts.get(sectionIndex);
+	}
+
+	/* (non-Javadoc)
+	 * @see android.widget.SectionIndexer#getSectionForPosition(int)
+	 */
+	@Override
+	public int getSectionForPosition(int position) {
+		if (sectionStarts == null) {
+			return 0;
+		}
+		int i = Collections.binarySearch(sectionStarts, position);
+		if (i < 0) {
+			i = (-1 * i) - 2;
+		}
+		if (i >= sections.length) {
+			i = sections.length - 1;
+		} else if (i < 0) {
+			i = 0;
+		}
+		return i;
 	}
 }

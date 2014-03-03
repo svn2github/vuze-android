@@ -1,29 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent" >
 
-    <ListView
-    	android:id="@+id/files_list"
-    	android:layout_width="fill_parent"
-    	android:layout_height="wrap_content"
-    	android:layout_alignParentBottom="true"
-    	android:layout_alignParentLeft="true"
-    	android:layout_alignParentRight="true"
-    	android:layout_alignParentTop="true"
-    	android:layout_alignWithParentIfMissing="true"
-    	android:layout_margin="0dp" >
+	<com.handmark.pulltorefresh.library.PullToRefreshListView
+		xmlns:ptr="http://schemas.android.com/apk/res-auto"
+		android:id="@+id/files_list"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true"
+		android:layout_alignParentLeft="true"
+		android:layout_alignParentRight="true"
+		android:layout_alignParentTop="true"
+		android:layout_alignWithParentIfMissing="true"
+		android:layout_margin="0dp"
+		android:fastScrollEnabled="true"
+		ptr:ptrAnimationStyle="flip"
+		ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
+		tools:ignore="MissingRegistered" />
 
-    </ListView>
-
-    <ProgressBar
-    	android:id="@+id/files_pb"
-    	style="?android:attr/progressBarStyleHorizontal"
-    	android:layout_width="wrap_content"
-    	android:layout_height="wrap_content"
-    	android:layout_alignParentLeft="true"
-    	android:layout_alignParentRight="true"
-    	android:layout_alignParentTop="true"
-    	android:indeterminate="true" />
+	<ProgressBar
+		android:id="@+id/files_pb"
+		style="?android:attr/progressBarStyleHorizontal"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_alignParentLeft="true"
+		android:layout_alignParentRight="true"
+		android:layout_alignParentTop="true"
+		android:indeterminate="true"
+		android:visibility="gone" />
 
 </RelativeLayout>

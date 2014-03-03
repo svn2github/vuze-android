@@ -8,10 +8,10 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.vuze.android.remote.SessionInfo;
-import com.vuze.android.remote.SetTorrentIdListener;
 
 public class TorrentDetailsPagerAdapter
 	extends FragmentPagerAdapter
+	implements TorrentIDGetter
 {
 
 	private SparseArray<Fragment> pageReferences;
@@ -25,22 +25,35 @@ public class TorrentDetailsPagerAdapter
 		pageReferences = new SparseArray<Fragment>();
 	}
 
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.fragment.TorrentIDGetter#getTorrentID()
+	 */
+	@Override
+	public long getTorrentID() {
+		return torrentID;
+	}
+
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.fragment.TorrentIDGetter#getSessionInfo()
+	 */
+	@Override
+	public SessionInfo getSessionInfo() {
+		return sessionInfo;
+	}
+
 	@Override
 	public Fragment getItem(int position) {
 		Fragment fragment;
 		switch (position) {
 			case 1:
 				fragment = new PeersFragment();
+				((PeersFragment) fragment).setTorrentIdGetter(this);
 				break;
 			default:
 				fragment = new FilesFragment();
+				((FilesFragment) fragment).setTorrentIdGetter(this);
 		}
 
-		if (sessionInfo != null) {
-			if (fragment instanceof SetTorrentIdListener) {
-				((SetTorrentIdListener) fragment).setTorrentID(sessionInfo, torrentID);
-			}
-		}
 		pageReferences.put(position, fragment);
 		return fragment;
 	}
@@ -87,13 +100,6 @@ public class TorrentDetailsPagerAdapter
 		}
 		this.sessionInfo = sessionInfo;
 		this.torrentID = torrentID;
-
-		for (int i = 0, nsize = pageReferences.size(); i < nsize; i++) {
-			Fragment fragment = pageReferences.valueAt(i);
-			if (fragment instanceof SetTorrentIdListener) {
-				((SetTorrentIdListener) fragment).setTorrentID(sessionInfo, torrentID);
-			}
-		}
 	}
 
 }

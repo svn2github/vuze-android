@@ -52,6 +52,8 @@ public class TorrentListFragment
 
 	private static final boolean DEBUG = AndroidUtils.DEBUG;
 
+	private static final String TAG = "TorrentList";
+
 	private ListView listview;
 
 	protected ActionMode mActionMode;
@@ -220,7 +222,7 @@ public class TorrentListFragment
 						}, 0);
 					} else if (state == State.RESET || state == State.REFRESHING) {
 						if (pullRefreshHandler != null) {
-							pullRefreshHandler.removeCallbacks(null);
+							pullRefreshHandler.removeCallbacksAndMessages(null);
 							pullRefreshHandler = null;
 						}
 					}
@@ -520,19 +522,21 @@ public class TorrentListFragment
 	private void setupHoneyCombListView(ListView lv) {
 
 		if (DEBUG) {
-			System.out.println("MULTI:setup");
+			Log.d(TAG, "MULTI:setup");
 		}
 		lv.setMultiChoiceModeListener(new MultiChoiceModeListener() {
 			// Called when the action mode is created; startActionMode() was called
 			@Override
 			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
 				if (DEBUG) {
-					System.out.println("MULTI:ON CREATEACTIONMODE");
+					Log.d(TAG, "MULTI:ON CREATEACTIONMODE");
 				}
 				mActionMode = mode;
 				// Inflate a menu resource providing context menu items
 				MenuInflater inflater = mode.getMenuInflater();
 				inflater.inflate(R.menu.menu_context_torrent_details, menu);
+				mActionMode.setTitle(R.string.context_torrent_title);
+
 				return true;
 			}
 
@@ -541,7 +545,7 @@ public class TorrentListFragment
 			@Override
 			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
 				if (DEBUG) {
-					System.out.println("MULTI:onPrepareActionMode");
+					Log.d(TAG, "MULTI:onPrepareActionMode");
 				}
 				MenuItem menuMove = menu.findItem(R.id.action_sel_move);
 				menuMove.setEnabled(listview.getCheckedItemCount() > 0);
@@ -573,7 +577,7 @@ public class TorrentListFragment
 			@Override
 			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
 				if (DEBUG) {
-					System.out.println("MULTI:onActionItemClicked");
+					Log.d(TAG, "MULTI:onActionItemClicked");
 				}
 				if (TorrentListFragment.this.handleMenu(item.getItemId())) {
 					return true;
@@ -585,7 +589,7 @@ public class TorrentListFragment
 			@Override
 			public void onDestroyActionMode(ActionMode mode) {
 				if (DEBUG) {
-					System.out.println("MULTI:onDestroyActionMode");
+					Log.d(TAG, "MULTI:onDestroyActionMode");
 				}
 				mActionMode = null;
 				listview.post(new Runnable() {
@@ -604,7 +608,7 @@ public class TorrentListFragment
 			public void onItemCheckedStateChanged(ActionMode mode, int position,
 					long id, boolean checked) {
 				if (DEBUG) {
-					System.out.println("MULTI:CHECK CHANGE");
+					Log.d(TAG, "MULTI:CHECK CHANGE");
 				}
 
 				String subtitle = getResources().getString(
@@ -631,7 +635,7 @@ public class TorrentListFragment
 
 	protected boolean handleMenu(int itemId) {
 		if (DEBUG) {
-			System.out.println("HANDLE MENU FRAG " + itemId);
+			Log.d(TAG, "HANDLE MENU FRAG " + itemId);
 		}
 		switch (itemId) {
 			case R.id.action_filterby:
@@ -783,7 +787,6 @@ public class TorrentListFragment
 			// Called when the user exits the action mode
 			@Override
 			public void onDestroyActionMode(ActionMode mode) {
-				System.out.println("destroy " + mode + "/" + mActionMode);
 				mActionMode = null;
 
 				if (!actionModeBeingReplaced) {
@@ -941,13 +944,11 @@ public class TorrentListFragment
 		this.actionModeBeingReplaced = actionModeBeingReplaced;
 		if (actionModeBeingReplaced) {
 			rebuildActionMode = mActionMode != null;
-			System.out.println("actionmode: will rebuild? " + rebuildActionMode);
 		}
 	}
 
 	@Override
 	public void actionModeBeingReplacedDone() {
-		System.out.println("actionmode: done. will rebuild? " + rebuildActionMode);
 		if (rebuildActionMode) {
 			rebuildActionMode = false;
 			showContextualActions();

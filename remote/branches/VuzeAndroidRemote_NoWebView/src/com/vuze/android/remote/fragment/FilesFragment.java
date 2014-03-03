@@ -9,10 +9,10 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
+import android.os.*;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.*;
 import android.view.ActionMode.Callback;
@@ -21,7 +21,13 @@ import android.widget.*;
 import android.widget.AdapterView.OnItemClickListener;
 
 import com.aelitis.azureus.util.MapUtils;
+import com.handmark.pulltorefresh.library.*;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.OnPullEventListener;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.OnRefreshListener;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.State;
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.R;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class FilesFragment
@@ -58,14 +64,10 @@ public class FilesFragment
 	private Callback mActionModeCallback;
 
 	protected ActionMode mActionMode;
-	
-	private Object mLock = new Object();
-	
-	private int numProgresses = 0;
 
-	public FilesFragment() {
-		super();
-	}
+	private Object mLock = new Object();
+
+	private int numProgresses = 0;
 
 	private ActionModeBeingReplacedListener mCallback;
 
@@ -73,15 +75,33 @@ public class FilesFragment
 
 	private ProgressBar progressBar;
 
+	private boolean showProgressBarOnAttach = false;
+
+	private PullToRefreshListView pullListView;
+
+	private long lastUpdated;
+
+	private TorrentIDGetter torrentIdGetter;
+
+	public FilesFragment() {
+		super();
+	}
+
+	public void setTorrentIdGetter(TorrentIDGetter torrentIdGetter) {
+		this.torrentIdGetter = torrentIdGetter;
+	}
+
 	@Override
 	public void onAttach(Activity activity) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onAttach");
+		}
 		super.onAttach(activity);
 		this.activity = activity;
-		
-		if (torrentID >= 0) {
-  		// getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
+
+		if (showProgressBarOnAttach) {
+			System.out.println("show Progress!");
 			showProgressBar();
-  		sessionInfo.getRpc().getTorrentFileInfo(torrentID, null);
 		}
 
 		if (activity instanceof ActionModeBeingReplacedListener) {
@@ -92,9 +112,14 @@ public class FilesFragment
 	private void showProgressBar() {
 		synchronized (mLock) {
 			numProgresses++;
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "showProgress " + numProgresses);
+			}
 		}
 		FragmentActivity activity = getActivity();
 		if (activity == null || progressBar == null) {
+			System.out.println("show Progress Later");
+			showProgressBarOnAttach = true;
 			return;
 		}
 		activity.runOnUiThread(new Runnable() {
@@ -112,6 +137,9 @@ public class FilesFragment
 	private void hideProgressBar() {
 		synchronized (mLock) {
 			numProgresses--;
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "hideProgress " + numProgresses);
+			}
 			if (numProgresses <= 0) {
 				numProgresses = 0;
 			} else {
@@ -120,6 +148,7 @@ public class FilesFragment
 		}
 		FragmentActivity activity = getActivity();
 		if (activity == null || progressBar == null) {
+			showProgressBarOnAttach = false;
 			return;
 		}
 		activity.runOnUiThread(new Runnable() {
@@ -136,22 +165,31 @@ public class FilesFragment
 
 	@Override
 	public void onPause() {
-		if (sessionInfo != null) {
-			sessionInfo.removeTorrentListReceivedListener(this);
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onPause");
 		}
+		setTorrentID(sessionInfo, -1);
+
 		super.onPause();
 	}
 
 	@Override
 	public void onResume() {
-		if (sessionInfo != null) {
-			sessionInfo.addTorrentListReceivedListener(this);
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onResume");
 		}
 		super.onResume();
+
+		// fragment attached and instanciated, ok to setTorrentID now
+		this.setTorrentID(torrentIdGetter.getSessionInfo(),
+				torrentIdGetter.getTorrentID());
 	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onCreate");
+		}
 		super.onCreate(savedInstanceState);
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
@@ -159,30 +197,95 @@ public class FilesFragment
 		}
 	}
 
-	@Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		super.onActivityCreated(savedInstanceState);
-
-		adapter = new FilesAdapter(this.getActivity());
-		if (sessionInfo != null) {
-			adapter.setSessionInfo(sessionInfo);
-		}
-		listview.setItemsCanFocus(true);
-		listview.setAdapter(adapter);
-
-		if (torrentID >= 0) {
-			adapter.setTorrentID(torrentID);
-		}
-	}
-
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
+
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onCreateview");
+		}
 
 		View view = inflater.inflate(R.layout.frag_torrent_files, container, false);
 
 		progressBar = (ProgressBar) view.findViewById(R.id.files_pb);
-		
-		listview = (ListView) view.findViewById(R.id.files_list);
+
+		View oListView = view.findViewById(R.id.files_list);
+		if (oListView instanceof ListView) {
+			listview = (ListView) oListView;
+		} else if (oListView instanceof PullToRefreshListView) {
+			pullListView = (PullToRefreshListView) oListView;
+			listview = pullListView.getRefreshableView();
+			pullListView.setOnPullEventListener(new OnPullEventListener<ListView>() {
+				private Handler pullRefreshHandler;
+
+				@Override
+				public void onPullEvent(PullToRefreshBase<ListView> refreshView,
+						State state, Mode direction) {
+					if (state == State.PULL_TO_REFRESH) {
+						if (pullRefreshHandler != null) {
+							pullRefreshHandler.removeCallbacks(null);
+							pullRefreshHandler = null;
+						}
+						pullRefreshHandler = new Handler(Looper.getMainLooper());
+
+						pullRefreshHandler.postDelayed(new Runnable() {
+							@Override
+							public void run() {
+								FragmentActivity activity = getActivity();
+								if (activity == null) {
+									return;
+								}
+								long sinceMS = System.currentTimeMillis() - lastUpdated;
+								String since = DateUtils.getRelativeDateTimeString(activity,
+										lastUpdated, DateUtils.SECOND_IN_MILLIS,
+										DateUtils.WEEK_IN_MILLIS, 0).toString();
+								String s = activity.getResources().getString(
+										R.string.last_updated, since);
+								if (pullListView.getState() != State.REFRESHING) {
+									pullListView.getLoadingLayoutProxy().setLastUpdatedLabel(s);
+								}
+
+								if (pullRefreshHandler != null) {
+									pullRefreshHandler.postDelayed(this,
+											sinceMS < DateUtils.MINUTE_IN_MILLIS
+													? DateUtils.SECOND_IN_MILLIS
+													: sinceMS < DateUtils.HOUR_IN_MILLIS
+															? DateUtils.MINUTE_IN_MILLIS
+															: DateUtils.HOUR_IN_MILLIS);
+								}
+							}
+						}, 0);
+					} else if (state == State.RESET || state == State.REFRESHING) {
+						if (pullRefreshHandler != null) {
+							pullRefreshHandler.removeCallbacksAndMessages(null);
+							pullRefreshHandler = null;
+						}
+					}
+				}
+			});
+			pullListView.setOnRefreshListener(new OnRefreshListener<ListView>() {
+				@Override
+				public void onRefresh(PullToRefreshBase<ListView> refreshView) {
+					showProgressBar();
+					sessionInfo.getRpc().getTorrentFileInfo(torrentID,
+							new TorrentListReceivedListener() {
+								@Override
+								public void rpcTorrentListReceived(List<?> listTorrents) {
+									FragmentActivity activity = getActivity();
+									if (activity == null) {
+										return;
+									}
+									activity.runOnUiThread(new Runnable() {
+										@Override
+										public void run() {
+											pullListView.onRefreshComplete();
+										}
+									});
+								}
+							});
+				}
+
+			});
+		}
 
 		listview.setItemsCanFocus(false);
 		listview.setClickable(true);
@@ -218,6 +321,13 @@ public class FilesFragment
 			}
 		});
 
+		adapter = new FilesAdapter(this.getActivity());
+		if (sessionInfo != null) {
+			adapter.setSessionInfo(sessionInfo);
+		}
+		listview.setItemsCanFocus(true);
+		listview.setAdapter(adapter);
+
 		return view;
 	}
 
@@ -226,23 +336,66 @@ public class FilesFragment
 	 */
 	@Override
 	public void setTorrentID(SessionInfo sessionInfo, long id) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "set torrentID=" + id + "/adapter=" + adapter + "/activity="
+					+ activity);
+		}
+
+		if (activity == null) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: No Activity");
+			}
+			return;
+		}
+		if (adapter == null) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: No Adapter");
+			}
+			return;
+		}
+
+		boolean wasTorrent = torrentID >= 0;
+		boolean isTorrent = id >= 0;
+		boolean torrentIdChanged = id != torrentID;
+
 		if (sessionInfo == null) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: No sessionInfo");
+			}
 			return;
 		}
 		this.sessionInfo = sessionInfo;
-		if (torrentID != id && adapter != null) {
+		if (torrentIdChanged) {
 			adapter.clearList();
 		}
+
 		torrentID = id;
-		//Map<?, ?> torrent = sessionInfo.getTorrent(id);
-		//System.out.println("torrent is " + torrent);
-		if (adapter != null) {
-			adapter.setSessionInfo(sessionInfo);
+
+		if (!wasTorrent && isTorrent) {
+			sessionInfo.addTorrentListReceivedListener(this, false);
+		} else if (wasTorrent && !isTorrent) {
+			sessionInfo.removeTorrentListReceivedListener(this);
 		}
-		if (activity != null) {
-  		// getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
-			showProgressBar();
-  		sessionInfo.getRpc().getTorrentFileInfo(id, null);
+
+		//System.out.println("torrent is " + torrent);
+		adapter.setSessionInfo(sessionInfo);
+		if (isTorrent) {
+			Map<?, ?> torrent = sessionInfo.getTorrent(id);
+			if (torrent == null) {
+				Log.e(TAG, "setTorrentID: No torrent #" + id);
+			} else {
+
+				if (torrent.containsKey("files")) {
+					// already has files.. we are good to go, although might be a bit outdated
+					adapter.setTorrentID(id);
+				} else {
+					if (AndroidUtils.DEBUG) {
+						Log.d(TAG, "setTorrentID: getFileInfo for " + id);
+					} // getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
+					showProgressBar();
+					sessionInfo.getRpc().getTorrentFileInfo(id, null);
+				}
+			}
 		}
 	}
 
@@ -637,11 +790,14 @@ public class FilesFragment
 		}
 		if (!found) {
 			if (AndroidUtils.DEBUG) {
-				Log.d(TAG, "TorrentListReceived, does not contain torretn #"
+				Log.d(TAG, "TorrentListReceived, does not contain torrent #"
 						+ torrentID);
 			}
 			return;
 		}
+		// Not accurate when we are triggered because of addListener
+		lastUpdated = System.currentTimeMillis();
+
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
@@ -650,7 +806,9 @@ public class FilesFragment
 					return;
 				}
 				hideProgressBar();
-				adapter.setTorrentID(torrentID);
+				if (adapter != null) {
+					adapter.setTorrentID(torrentID);
+				}
 				AndroidUtils.invalidateOptionsMenuHC(activity, mActionMode);
 			}
 		});

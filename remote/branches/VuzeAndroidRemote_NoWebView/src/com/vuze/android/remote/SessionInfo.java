@@ -246,7 +246,7 @@ public class SessionInfo
 		"unchecked"
 	})
 	public void addTorrents(List<?> collection) {
-		System.out.println("adding torrents " + collection.size());
+		Log.d(TAG, "adding torrents " + collection.size());
 		synchronized (mLock) {
 			for (Object item : collection) {
 				if (!(item instanceof Map)) {
@@ -263,7 +263,7 @@ public class SessionInfo
 					for (Iterator iterator = old.keySet().iterator(); iterator.hasNext();) {
 						Object torrentKey = iterator.next();
 						if (!mapTorrent.containsKey(torrentKey)) {
-							System.out.println(key + " missing " + torrentKey);
+							//System.out.println(key + " missing " + torrentKey);
 							mapTorrent.put(torrentKey, old.get(torrentKey));
 						}
 					}
@@ -277,17 +277,23 @@ public class SessionInfo
 		}
 	}
 
-	public void addTorrentListReceivedListener(TorrentListReceivedListener l) {
+	public boolean addTorrentListReceivedListener(TorrentListReceivedListener l) {
+		return addTorrentListReceivedListener(l, true);
+	}
+
+	public boolean addTorrentListReceivedListener(TorrentListReceivedListener l,
+			boolean fire) {
 		synchronized (torrentListReceivedListeners) {
 			if (torrentListReceivedListeners.contains(l)) {
-				return;
+				return false;
 			}
 			torrentListReceivedListeners.add(l);
 			List<Map<?, ?>> torrentList = getTorrentList();
-			if (torrentList.size() > 0) {
+			if (torrentList.size() > 0 && fire) {
 				l.rpcTorrentListReceived(torrentList);
 			}
 		}
+		return true;
 	}
 
 	public void removeTorrentListReceivedListener(TorrentListReceivedListener l) {

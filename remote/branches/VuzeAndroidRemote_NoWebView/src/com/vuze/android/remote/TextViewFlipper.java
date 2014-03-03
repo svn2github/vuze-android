@@ -10,6 +10,7 @@ import android.widget.TextView;
 public class TextViewFlipper
 {
 	private static final boolean DEBUG_FLIPPER = false;
+
 	private int animId;
 
 	public static interface FlipValidator
@@ -19,6 +20,13 @@ public class TextViewFlipper
 
 	public TextViewFlipper(int animId) {
 		this.animId = animId;
+	}
+
+	public String meh(View v) {
+		int id = v.getId();
+		String idText = id == View.NO_ID ? ""
+				: v.getContext().getResources().getResourceEntryName(id);
+		return idText;
 	}
 
 	/**
@@ -33,7 +41,8 @@ public class TextViewFlipper
 	public void changeText(final TextView tv, final String newText,
 			boolean animate, final FlipValidator validator) {
 		if (DEBUG_FLIPPER) {
-			Log.d("flipper", "changeText: '" + newText + "';" + (animate ? "animate" : "now"));
+			Log.d("flipper", meh(tv) + "] changeText: '" + newText + "';"
+					+ (animate ? "animate" : "now"));
 		}
 		if (!animate) {
 			tv.setText(newText);
@@ -46,18 +55,18 @@ public class TextViewFlipper
 				public void onAnimationRepeat(Animation animation) {
 					if (validator != null && !validator.isStillValid()) {
 						if (DEBUG_FLIPPER) {
-							Log.d("flipper", "changeText: no longer valid");
+							Log.d("flipper", meh(tv) + "] changeText: no longer valid");
 						}
 						return;
 					}
-					Log.d("flipper", "changeText: setting to " + newText);
+					Log.d("flipper", meh(tv) + "] changeText: setting to " + newText);
 					tv.setText(newText);
 					tv.setVisibility(newText.length() == 0 ? View.GONE : View.VISIBLE);
 				}
 			});
 		} else {
 			if (DEBUG_FLIPPER) {
-				Log.d("flipper", "changeText: ALREADY " + newText);
+				Log.d("flipper", meh(tv) + "] changeText: ALREADY " + newText);
 			}
 		}
 	}
@@ -65,8 +74,14 @@ public class TextViewFlipper
 	private void flipIt(View view, AnimationListener l) {
 		Animation animation = AnimationUtils.loadAnimation(view.getContext(),
 				animId);
+		// Some Android versions won't animate when view is GONE
 		if (view.getVisibility() == View.GONE) {
-			// Usually when the view is gone and is a TextView, the text is ""
+			Log.d("flipper", meh(view)
+					+ "] changeText: view gone.. need to make visible");
+			if (view instanceof TextView) {
+				// Some Android versions won't animate when text is ""
+				((TextView) view).setText(" ");
+			}
 			view.setVisibility(View.VISIBLE);
 		}
 		if (l != null) {

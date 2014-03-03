@@ -20,9 +20,8 @@
 		android:id="@+id/peerrow_cc"
 		android:layout_width="30dp"
 		android:layout_height="wrap_content"
-		android:layout_alignParentBottom="true"
 		android:layout_alignParentLeft="true"
-		android:layout_alignParentTop="true"
+		android:layout_centerVertical="true"
 		android:gravity="center_vertical"
 		android:maxLines="1"
 		android:text="CA" />
@@ -40,10 +39,8 @@
 	<TextView
 		android:id="@+id/peerrow_pct"
 		android:layout_width="wrap_content"
-		android:layout_height="fill_parent"
-		android:layout_alignParentBottom="true"
+		android:layout_height="wrap_content"
 		android:layout_alignParentRight="true"
-		android:layout_alignParentTop="true"
 		android:layout_centerVertical="true"
 		android:layout_marginLeft="5dp"
 		android:gravity="center_vertical"

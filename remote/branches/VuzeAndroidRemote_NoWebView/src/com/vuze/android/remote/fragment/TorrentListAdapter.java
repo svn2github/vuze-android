@@ -355,7 +355,7 @@ public class TorrentListAdapter
 					String name = null;
 					int type = 0;
 					// TODO: Use Color
-					long color = -1;
+					//long color = -1;
 					if (o instanceof Number) {
 						Map<?, ?> mapTag = sessionInfo.getTag(((Number) o).longValue());
 						if (mapTag != null) {
@@ -371,10 +371,10 @@ public class TorrentListAdapter
 								}
 							}
 							name = MapUtils.getMapString(mapTag, "name", null);
-							String htmlColor = MapUtils.getMapString(mapTag, "color", null);
-							if (htmlColor != null && htmlColor.startsWith("#")) {
-								color = Long.decode("0x" + htmlColor.substring(1));
-							}
+							//String htmlColor = MapUtils.getMapString(mapTag, "color", null);
+							//if (htmlColor != null && htmlColor.startsWith("#")) {
+							//	color = Long.decode("0x" + htmlColor.substring(1));
+							//}
 						}
 					}
 					if (name == null) {
@@ -439,7 +439,7 @@ public class TorrentListAdapter
 		@Override
 		protected FilterResults performFiltering(CharSequence _constraint) {
 			this.constraint = _constraint == null ? null
-					: _constraint.toString().toLowerCase();
+					: _constraint.toString().toLowerCase(Locale.US);
 			FilterResults results = new FilterResults();
 
 			if (sessionInfo == null) {
@@ -458,11 +458,11 @@ public class TorrentListAdapter
 					results.count = listKeys.size();
 				}
 				if (DEBUG) {
-					System.out.println("filtering " + results.count);
+					Log.d(TAG, "filtering " + results.count);
 				}
 			} else {
 				if (DEBUG) {
-					System.out.println("filtering " + listKeys.size());
+					Log.d(TAG, "filtering " + listKeys.size());
 				}
 
 				if (filterMode >= 0 && filterMode != FILTERBY_ALL) {
@@ -478,7 +478,7 @@ public class TorrentListAdapter
 				}
 
 				if (DEBUG) {
-					System.out.println("type filtered to " + listKeys.size());
+					Log.d(TAG, "type filtered to " + listKeys.size());
 				}
 
 				if (hasConstraint) {
@@ -493,7 +493,7 @@ public class TorrentListAdapter
 					}
 
 					if (DEBUG) {
-						System.out.println("text filtered to " + listKeys.size());
+						Log.d(TAG, "text filtered to " + listKeys.size());
 					}
 				}
 
@@ -504,6 +504,7 @@ public class TorrentListAdapter
 			return results;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		protected void publishResults(CharSequence constraint, FilterResults results) {
 			// Now we have to inform the adapter about the new list filtered
@@ -513,7 +514,7 @@ public class TorrentListAdapter
 			} else {
 				synchronized (mLock) {
 					if (results.values instanceof List) {
-						displayList = (List) results.values;
+						displayList = (List<Object>) results.values;
 						doSort();
 					}
 				}
@@ -523,6 +524,9 @@ public class TorrentListAdapter
 	}
 
 	public void refreshDisplayList() {
+		if (DEBUG) {
+			Log.d(TAG, "refreshDisplayList");
+		}
 		if (sessionInfo != null) {
 			TorrentFilter filter = getFilter();
 			// How does this work with filters?
@@ -550,7 +554,7 @@ public class TorrentListAdapter
 		}
 
 		String name = MapUtils.getMapString(map,
-				TransmissionVars.FIELD_TORRENT_NAME, "").toLowerCase();
+				TransmissionVars.FIELD_TORRENT_NAME, "").toLowerCase(Locale.US);
 		return name.contains(constraint);
 	}
 
@@ -656,66 +660,32 @@ public class TorrentListAdapter
 			}
 			return;
 		}
-		System.out.println("sort: " + Arrays.asList(sortFieldIDs) + "/"
-				+ Arrays.asList(sortOrderAsc));
-		synchronized (mLock) {
-			Collections.sort(displayList, new Comparator<Object>() {
-				@SuppressWarnings({
-					"unchecked",
-					"rawtypes"
-				})
-				@Override
-				public int compare(Object lhs, Object rhs) {
-					Map<?, ?> mapLHS = sessionInfo.getTorrent(lhs);
-					Map<?, ?> mapRHS = sessionInfo.getTorrent(rhs);
-
-					if (mapLHS == null || mapRHS == null) {
-						return 0;
-					}
-
-					if (sortFieldIDs == null) {
-						return comparator.compare(mapLHS, mapRHS);
-					} else {
-						for (int i = 0; i < sortFieldIDs.length; i++) {
-							String fieldID = sortFieldIDs[i];
-							Comparable oLHS = (Comparable) mapLHS.get(fieldID);
-							Comparable oRHS = (Comparable) mapRHS.get(fieldID);
-							if (oLHS == null || oRHS == null) {
-								System.out.println("no field:" + fieldID);
-								if (oLHS != oRHS) {
-									return oLHS == null ? -1 : 1;
-								} // else == drops to next sort field
-
-							} else {
-								int comp;
-								if (oRHS instanceof Number && oLHS instanceof Number) {
-									long lRHS = ((Number) oRHS).longValue();
-									long lLHS = ((Number) oLHS).longValue();
-									if (sortOrderAsc[i]) {
-										comp = lLHS > lRHS ? 1 : lLHS == lRHS ? 0 : -1;
-									} else {
-										comp = lLHS > lRHS ? -1 : lLHS == lRHS ? 0 : 1;
-									}
-								} else {
-									try {
-										comp = sortOrderAsc[i] ? oLHS.compareTo(oRHS)
-												: oRHS.compareTo(oLHS);
-									} catch (Throwable t) {
-										VuzeEasyTracker.getInstance(context).logError(context, t);
-										comp = 0;
-									}
-								}
-								if (comp != 0) {
-									return comp;
-								} // else == drops to next sort field
-							}
-						}
-
-						return 0;
-					}
-				}
-			});
+		if (DEBUG) {
+			Log.d(
+					TAG,
+					"sort: " + Arrays.asList(sortFieldIDs) + "/"
+							+ Arrays.asList(sortOrderAsc));
 		}
+
+		ComparatorMapFields sorter = new ComparatorMapFields(sortFieldIDs,
+				sortOrderAsc, comparator) {
+
+			@Override
+			public int reportError(Comparable<?> oLHS, Comparable<?> oRHS, Throwable t) {
+				VuzeEasyTracker.getInstance(context).logError(context, t);
+				return 0;
+			}
+
+			@Override
+			public Map<?, ?> mapGetter(Object o) {
+				return sessionInfo.getTorrent(o);
+			}
+		};
+
+		synchronized (mLock) {
+			Collections.sort(displayList, sorter);
+		}
+
 		notifyDataSetChanged();
 	}
 

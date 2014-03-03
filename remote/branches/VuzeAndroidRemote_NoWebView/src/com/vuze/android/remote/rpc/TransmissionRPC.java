@@ -42,7 +42,16 @@ public class TransmissionRPC
 
 		@Override
 		public void rpcSuccess(String id, Map optionalMap) {
-			getTorrents(ids, fields, null);
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+					}
+					getTorrents(ids, fields, null);
+				}
+			}).start();;
 			if (l != null) {
 				l.rpcSuccess(id, optionalMap);
 			}
@@ -250,10 +259,22 @@ public class TransmissionRPC
 
 					@Override
 					public void rpcFailure(String id, String message) {
+						// send event to listeners on fail/error, since some do a call
+						// and rely on a response of some sort to clean up (ie. files view progress bar)
+						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
+						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
+							torrentListReceivedListener.rpcTorrentListReceived(new ArrayList(0));
+						}
 					}
 
 					@Override
 					public void rpcError(String id, Exception e) {
+						// send event to listeners on fail/error, since some do a call
+						// and rely on a response of some sort to clean up (ie. files view progress bar)
+						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
+						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
+							torrentListReceivedListener.rpcTorrentListReceived(new ArrayList(0));
+						}
 					}
 				});
 	}
