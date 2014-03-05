@@ -176,7 +176,7 @@ public class TorrentListFragment
 			setupHoneyComb();
 		}
 
-		View oListView = view.findViewById(android.R.id.list);
+		View oListView = view.findViewById(R.id.listTorrents);
 		if (oListView instanceof ListView) {
 			listview = (ListView) oListView;
 		} else if (oListView instanceof PullToRefreshListView) {

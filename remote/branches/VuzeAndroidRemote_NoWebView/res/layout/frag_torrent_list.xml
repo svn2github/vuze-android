@@ -21,7 +21,7 @@
 
     <com.handmark.pulltorefresh.library.PullToRefreshListView
     	xmlns:ptr="http://schemas.android.com/apk/res-auto"
-    	android:id="@android:id/list"
+    	android:id="@+id/listTorrents"
     	android:layout_width="fill_parent"
     	android:layout_height="fill_parent"
     	android:choiceMode="multipleChoice"
