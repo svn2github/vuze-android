@@ -271,7 +271,7 @@ public class TorrentListAdapter
 			StringBuilder text = new StringBuilder();
 			int color = -1;
 
-			if (mapTagUIDs == null) {
+			if (mapTagUIDs == null || mapTagUIDs.size() == 0) {
 
 				int status = MapUtils.getMapInt(item,
 						TransmissionVars.FIELD_TORRENT_STATUS,
