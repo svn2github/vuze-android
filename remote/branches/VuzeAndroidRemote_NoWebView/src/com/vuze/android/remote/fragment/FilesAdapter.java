@@ -436,13 +436,16 @@ public class FilesAdapter
 
 		Integer index = displayList.get(position);
 		List<?> listFiles = MapUtils.getMapList(torrent, "files", null);
+		if (listFiles == null || index >= listFiles.size()) {
+			return new HashMap();
+		}
 		List<?> listFileStats = MapUtils.getMapList(torrent, "fileStats", null);
-		Map<?, ?> mapFile = listFiles == null ? null : (Map) listFiles.get(index);
-		Map mapFileStats = listFileStats == null ? null
-				: (Map) listFileStats.get(index);
+		Map<?, ?> mapFile = (Map) listFiles.get(index);
 
 		Map map = new HashMap(mapFile);
-		map.putAll(mapFileStats);
+		if (listFileStats != null && index < listFileStats.size()) {
+			map.putAll((Map) listFileStats.get(index));
+		}
 		map.put("index", index);
 		return map;
 	}
@@ -458,7 +461,11 @@ public class FilesAdapter
 	 */
 	@Override
 	public long getItemId(int position) {
-		return position;
+		Integer index = displayList.get(position);
+		if (index == null) {
+			return 0;
+		}
+		return index;
 	}
 
 	public void clearList() {
