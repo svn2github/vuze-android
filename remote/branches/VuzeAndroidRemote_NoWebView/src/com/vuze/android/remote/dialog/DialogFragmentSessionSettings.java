@@ -17,10 +17,6 @@
 
 package com.vuze.android.remote.dialog;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import android.app.Activity;
 import android.app.AlertDialog.Builder;
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -28,9 +24,11 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.EditText;
 
+import com.google.analytics.tracking.android.Log;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.AlertDialogBuilder;
 
@@ -61,6 +59,10 @@ public class DialogFragmentSessionSettings
 		String id = arguments.getString(SessionInfoManager.BUNDLE_KEY);
 		if (id != null) {
 			sessionInfo = SessionInfoManager.getSessionInfo(id);
+			if (sessionInfo == null) {
+				Log.e("No session info for " + id);
+				return null;
+			}
 			originalSettings = sessionInfo.getSessionSettings();
 		} else {
 			return null;
