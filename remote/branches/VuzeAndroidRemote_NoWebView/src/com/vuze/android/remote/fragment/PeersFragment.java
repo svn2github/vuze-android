@@ -4,6 +4,7 @@ import java.util.List;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
@@ -113,14 +114,19 @@ public class PeersFragment
 	}
 
 	private void updateAdapterTorrentID(long id) {
-		if (adapter != null) {
-			getActivity().runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					adapter.setTorrentID(torrentID);
-				}
-			});
+		if (adapter == null) {
+			return;
 		}
+		FragmentActivity activity = getActivity();
+		if (activity == null) {
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				adapter.setTorrentID(torrentID);
+			}
+		});
 		System.out.println("DS CHANGED Peer " + adapter);
 	}
 
