@@ -267,6 +267,9 @@ public class SessionInfo
 							mapTorrent.put(torrentKey, old.get(torrentKey));
 						}
 					}
+					
+					mergeList("files", mapTorrent, old);
+					mergeList("fileStats", mapTorrent, old);
 				}
 			}
 		}
@@ -274,6 +277,32 @@ public class SessionInfo
 		TorrentListReceivedListener[] listeners = getTorrentListReceivedListeners();
 		for (TorrentListReceivedListener l : listeners) {
 			l.rpcTorrentListReceived(collection);
+		}
+	}
+
+	private void mergeList(String key, Map mapTorrent, Map old) {
+		List listOldFiles = MapUtils.getMapList(old, key, null);
+		if (listOldFiles != null) {
+			// files: merge special case
+			List listUpdatedFiles = MapUtils.getMapList(mapTorrent, key, null);
+			if (listUpdatedFiles != null) {
+				List listNewFiles = new ArrayList(listOldFiles);
+				for (Object oUpdatedFile : listUpdatedFiles) {
+					if (!(oUpdatedFile instanceof Map)) {
+						continue;
+					}
+					Map mapUpdatedFile = (Map) oUpdatedFile;
+					int index = MapUtils.getMapInt(mapUpdatedFile, "index", -1);
+					if (index < 0 || index >= listNewFiles.size()) {
+						continue;
+					}
+					Map mapNewFile = (Map) listNewFiles.get(index);
+					for (Object fileKey : mapUpdatedFile.keySet()) {
+						mapNewFile.put(fileKey, mapUpdatedFile.get(fileKey));
+					}
+					mapTorrent.put(key, listNewFiles);
+				}
+			}
 		}
 	}
 

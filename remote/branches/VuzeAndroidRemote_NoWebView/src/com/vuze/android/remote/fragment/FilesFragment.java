@@ -266,7 +266,7 @@ public class FilesFragment
 				@Override
 				public void onRefresh(PullToRefreshBase<ListView> refreshView) {
 					showProgressBar();
-					sessionInfo.getRpc().getTorrentFileInfo(torrentID,
+					sessionInfo.getRpc().getTorrentFileInfo(torrentID, null, null,
 							new TorrentListReceivedListener() {
 								@Override
 								public void rpcTorrentListReceived(List<?> listTorrents) {
@@ -299,10 +299,8 @@ public class FilesFragment
 			public void onItemClick(AdapterView<?> parent, View view, int position,
 					long id) {
 				boolean isChecked = listview.isItemChecked(position);
-				if (isChecked) {
-
-				}
-				selectedFileIndex = isChecked ? position : -1;
+				// DON'T USE adapter.getItemId, it doesn't account for headers!
+				selectedFileIndex = isChecked ? (int) parent.getItemIdAtPosition(position) : -1;
 
 				if (mActionMode == null) {
 					showContextualActions();
@@ -393,7 +391,7 @@ public class FilesFragment
 						Log.d(TAG, "setTorrentID: getFileInfo for " + id);
 					} // getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
 					showProgressBar();
-					sessionInfo.getRpc().getTorrentFileInfo(id, null);
+					sessionInfo.getRpc().getTorrentFileInfo(id, null, null, null);
 				}
 			}
 		}
@@ -498,7 +496,7 @@ public class FilesFragment
 					}
 					case R.id.action_sel_wanted: {
 						showProgressBar();
-						sessionInfo.getRpc().setWantState(torrentID, new long[] {
+						sessionInfo.getRpc().setWantState(torrentID, new int[] {
 							selectedFileIndex
 						}, true, null);
 						return true;
@@ -506,7 +504,7 @@ public class FilesFragment
 					case R.id.action_sel_unwanted: {
 						// TODO: Delete Prompt
 						showProgressBar();
-						sessionInfo.getRpc().setWantState(torrentID, new long[] {
+						sessionInfo.getRpc().setWantState(torrentID, new int[] {
 							selectedFileIndex
 						}, false, null);
 						return true;
@@ -523,7 +521,7 @@ public class FilesFragment
 							priority += 1;
 						}
 						showProgressBar();
-						sessionInfo.getRpc().setFilePriority(torrentID, new long[] {
+						sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
 							selectedFileIndex
 						}, priority, null);
 						return true;
@@ -540,7 +538,7 @@ public class FilesFragment
 							priority -= 1;
 						}
 						showProgressBar();
-						sessionInfo.getRpc().setFilePriority(torrentID, new long[] {
+						sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
 							selectedFileIndex
 						}, priority, null);
 						return true;
