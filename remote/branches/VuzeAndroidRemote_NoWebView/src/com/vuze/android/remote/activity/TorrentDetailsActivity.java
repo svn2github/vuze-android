@@ -1,5 +1,6 @@
 package com.vuze.android.remote.activity;
 
+import java.util.List;
 import java.util.Map;
 
 import android.annotation.TargetApi;
@@ -9,23 +10,27 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.Window;
 
-import com.aelitis.azureus.util.MapUtils;
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.SessionInfo;
-import com.vuze.android.remote.SessionInfoManager;
+import com.vuze.android.remote.*;
 import com.vuze.android.remote.fragment.TorrentDetailsFragment;
 import com.vuze.android.remote.fragment.TorrentListFragment;
+import com.vuze.android.remote.fragment.TorrentListRowFiller;
+import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 /**
  * Activity to hold {@link TorrentListFragment}.  Used for narrow screens.
  */
 public class TorrentDetailsActivity
 	extends FragmentActivity
+	implements TorrentListReceivedListener
 {
 	private long torrentID;
+
 	private SessionInfo sessionInfo;
+
+	private TorrentListRowFiller torrentListRowFiller;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +48,7 @@ public class TorrentDetailsActivity
 		torrentID = extras.getLong("TorrentID");
 		String remoteProfileID = extras.getString(SessionInfoManager.BUNDLE_KEY);
 		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID);
-		
+
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
 		}
@@ -52,6 +57,9 @@ public class TorrentDetailsActivity
 		}
 
 		setContentView(R.layout.activity_torrent_detail);
+
+		View viewMain = findViewById(R.id.activity_torrent_detail_view);
+		torrentListRowFiller = new TorrentListRowFiller(this, viewMain);
 
 		TorrentDetailsFragment detailsFrag = (TorrentDetailsFragment) getSupportFragmentManager().findFragmentById(
 				R.id.fragment2);
@@ -62,6 +70,29 @@ public class TorrentDetailsActivity
 				torrentID
 			});
 		}
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		sessionInfo.removeTorrentListReceivedListener(this);
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		sessionInfo.addTorrentListReceivedListener(this);
+	}
+
+	@Override
+	public void rpcTorrentListReceived(List<?> listTorrents) {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
+				torrentListRowFiller.fillHolder(mapTorrent, sessionInfo);
+			}
+		});
 	}
 
 	@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
@@ -81,12 +112,11 @@ public class TorrentDetailsActivity
 			return;
 		}
 
-		Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
-		if (mapTorrent != null) {
-			String name = MapUtils.getMapString(mapTorrent, "name", null);
-			if (name != null) {
-				actionBar.setSubtitle(name);
-			}
+		RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			actionBar.setTitle(remoteProfile.getNick());
+		} else {
+			actionBar.setSubtitle(remoteProfile.getNick());
 		}
 
 		// enable ActionBar app icon to behave as action to toggle nav drawer
