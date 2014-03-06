@@ -47,17 +47,17 @@
 				android:maxLevel="10000"
 				android:minLevel="10000">
 				<inset
-					android:insetBottom="5dp"
-					android:insetLeft="5dp"
-					android:insetRight="5dp"
-					android:insetTop="5dp" >
+					android:insetBottom="6dp"
+					android:insetLeft="6dp"
+					android:insetRight="6dp"
+					android:insetTop="6dp" >
 					<shape
 						android:shape="oval"
 						android:useLevel="false" >
 						<solid android:color="#00000000" />
 
 						<stroke
-							android:width="6dp"
+							android:width="7dp"
 							android:color="#40A080" />
 					</shape>
 				</inset>
