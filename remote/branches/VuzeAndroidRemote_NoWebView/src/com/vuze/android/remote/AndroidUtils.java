@@ -55,7 +55,9 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.CharacterStyle;
 import android.text.style.ImageSpan;
 import android.util.Log;
+import android.util.SparseBooleanArray;
 import android.view.*;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -770,4 +772,86 @@ public class AndroidUtils
 	private static File getDownloadDir_Froyo() {
 		return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 	}
+
+	public static int getCheckedItemCount(ListView listview) {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			return getCheckedItemCount_11(listview);
+		}
+		return getCheckedItemCount_Pre11(listview);
+	}
+
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private static int getCheckedItemCount_11(ListView listview) {
+		return listview.getCheckedItemCount();
+	}
+
+	private static int getCheckedItemCount_Pre11(ListView listview) {
+		int total = 0;
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				total++;
+			}
+		}
+		return total;
+	}
+
+	public static int[] getCheckedPositions(ListView listview) {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		int[] positions = new int[size];
+		int pos = 0;
+		for (int i = 0; i < size; i++) {
+			int position = checked.keyAt(i);
+			positions[pos] = position;
+			pos++;
+		}
+		if (pos < size) {
+			int[] finalPositions = new int[pos];
+			System.arraycopy(positions, 0, finalPositions, 0, pos);
+			return finalPositions;
+		}
+		return positions;
+	}
+
+	public static boolean isChecked(ListView listview, int position) {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int checkedPosition = checked.keyAt(i);
+			if (checkedPosition == position) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static Map<?, ?> getFirstChecked(ListView listview) {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				return (Map<?, ?>) listview.getItemAtPosition(key);
+			}
+		}
+		return null;
+	}
+
+	public static void clearChecked(ListView listview) {
+		SparseBooleanArray checked = listview.getCheckedItemPositions();
+		int size = checked.size(); // number of name-value pairs in the array
+		for (int i = 0; i < size; i++) {
+			int key = checked.keyAt(i);
+			boolean value = checked.get(key);
+			if (value) {
+				listview.setItemChecked(key, false);
+			}
+		}
+	}
+
 }
