@@ -215,7 +215,7 @@ public class RemoteProfile
 	}
 
 	public long getUpdateInterval() {
-		return MapUtils.getMapInt(mapRemote, ID_UPDATEINTERVAL, -1);
+		return MapUtils.getMapInt(mapRemote, ID_UPDATEINTERVAL, 30);
 	}
 
 	public void setUpdateInterval(long interval) {
