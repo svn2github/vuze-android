@@ -225,7 +225,7 @@ public class TransmissionRPC
 		getTorrents(null, getBasicTorrentFieldIDs(), null, null, l);
 	}
 
-	private void getTorrents(Object ids, List<String> fields,
+	private void getTorrents(final Object ids, List<String> fields,
 			final int[] fileIndexes, final List<String> fileFields,
 			final TorrentListReceivedListener l) {
 
@@ -249,11 +249,12 @@ public class TransmissionRPC
 			mapArguments.put("ids", ids);
 		}
 
-		String idList = (ids instanceof long[])
-				? Arrays.toString(((long[]) ids)) : "" + ids;
-		sendRequest("getTorrents t=" + idList + "/f=" + Arrays.toString(fileIndexes)
-				+ ", " + (fields == null ? "null" : fields.size()) + "/"
-				+ (fileFields == null ? "null" : fileFields.size()), map,
+		String idList = (ids instanceof long[]) ? Arrays.toString(((long[]) ids))
+				: "" + ids;
+		sendRequest(
+				"getTorrents t=" + idList + "/f=" + Arrays.toString(fileIndexes) + ", "
+						+ (fields == null ? "null" : fields.size()) + "/"
+						+ (fileFields == null ? "null" : fileFields.size()), map,
 				new ReplyMapReceivedListener() {
 
 					@SuppressWarnings({
@@ -291,23 +292,55 @@ public class TransmissionRPC
 
 					@Override
 					public void rpcFailure(String id, String message) {
-						// send event to listeners on fail/error, since some do a call
-						// and rely on a response of some sort to clean up (ie. files view progress bar)
+						// send event to listeners on fail/error
+						// some do a call for a specific torrentID and rely on a response 
+						// of some sort to clean up (ie. files view progress bar), so
+						// we must fake a reply with those torrentIDs
+
+						List list = createFakeList(ids);
+
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
-							torrentListReceivedListener.rpcTorrentListReceived(new ArrayList(
-									0));
+							torrentListReceivedListener.rpcTorrentListReceived(list);
 						}
+						if (l != null) {
+							l.rpcTorrentListReceived(list);
+						}
+					}
+
+					private List createFakeList(Object ids) {
+						List<Map> list = new ArrayList<Map>();
+						if (ids instanceof Long) {
+							HashMap<String, Object> map = new HashMap<String, Object>(2);
+							map.put("id", ids);
+							list.add(map);
+							return list;
+						}
+						if (ids instanceof long[]) {
+							for (long torrentID : (long[]) ids) {
+								HashMap<String, Object> map = new HashMap<String, Object>(2);
+								map.put("id", torrentID);
+								list.add(map);
+							}
+						}
+						return list;
 					}
 
 					@Override
 					public void rpcError(String id, Exception e) {
-						// send event to listeners on fail/error, since some do a call
-						// and rely on a response of some sort to clean up (ie. files view progress bar)
+						// send event to listeners on fail/error
+						// some do a call for a specific torrentID and rely on a response 
+						// of some sort to clean up (ie. files view progress bar), so
+						// we must fake a reply with those torrentIDs
+						
+						List list = createFakeList(ids);
+
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
-							torrentListReceivedListener.rpcTorrentListReceived(new ArrayList(
-									0));
+							torrentListReceivedListener.rpcTorrentListReceived(list);
+						}
+						if (l != null) {
+							l.rpcTorrentListReceived(list);
 						}
 					}
 				});
