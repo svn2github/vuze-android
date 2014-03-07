@@ -18,7 +18,9 @@
 package com.vuze.android.remote;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
+import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -50,43 +52,138 @@ public class SessionInfo
 
 	private Object mLock = new Object();
 
-	private List<TorrentListReceivedListener> torrentListReceivedListeners = new ArrayList<TorrentListReceivedListener>();
+	private List<TorrentListReceivedListener> torrentListReceivedListeners = new CopyOnWriteArrayList<TorrentListReceivedListener>();
 
-	private List<SessionSettingsChangedListener> sessionSettingsChangedListeners = new ArrayList<SessionSettingsChangedListener>();
+	private List<SessionSettingsChangedListener> sessionSettingsChangedListeners = new CopyOnWriteArrayList<SessionSettingsChangedListener>();
+
+	private List<RefreshTriggerListener> refreshTriggerListeners = new CopyOnWriteArrayList<RefreshTriggerListener>();
+
+	private List<SessionInfoListener> availabilityListeners = new CopyOnWriteArrayList<SessionInfoListener>();
 
 	private boolean rememberSettingChanges;
 
 	private Handler handler;
 
-	boolean uiReady = false;
-
-	List<SessionInfoListener> availabilityListeners = new ArrayList<SessionInfoListener>();
+	private boolean uiReady = false;
 
 	private Map<?, ?> mapSessionStats;
 
 	private Map<Long, Map<?, ?>> mapTags;
 
+	private boolean refreshing;
+
+	private String rpcRoot;
+
 	protected SessionInfo(TransmissionRPC rpc, RemoteProfile _remoteProfile,
 			boolean rememberSettingChanges) {
-		this.rpc = rpc;
 		this.remoteProfile = _remoteProfile;
 		this.rememberSettingChanges = rememberSettingChanges;
 		this.mapOriginal = new LinkedHashMap<Object, Map<?, ?>>();
 
-		for (SessionInfoListener l : availabilityListeners) {
-			l.transmissionRpcAvailable(this);
-		}
-
-		rpc.addTorrentListReceivedListener(new TorrentListReceivedListener() {
-			@Override
-			public void rpcTorrentListReceived(List<?> listTorrents) {
-				addTorrents(listTorrents);
-			}
-		});
-
-		rpc.addSessionSettingsReceivedListener(this);
+		setRpc(rpc);
 
 		VuzeRemoteApp.getNetworkState().addListener(this);
+	}
+
+	public SessionInfo(final Activity activity, RemoteProfile _remoteProfile,
+			boolean rememberSettingChanges) {
+		this((TransmissionRPC) null, _remoteProfile, rememberSettingChanges);
+
+		// Bind and Open take a while, do it on the non-UI thread
+		Thread thread = new Thread("bindAndOpen") {
+			public void run() {
+				String host = remoteProfile.getHost();
+				if (host != null && host.length() > 0
+						&& remoteProfile.getRemoteType() == RemoteProfile.TYPE_NORMAL) {
+					open(activity, remoteProfile.getUser(), remoteProfile.getAC(),
+							"http", host, remoteProfile.getPort());
+				} else {
+					bindAndOpen(activity, remoteProfile.getAC(), remoteProfile.getUser());
+				}
+			}
+		};
+		thread.setDaemon(true);
+		thread.start();
+
+	}
+
+	@SuppressWarnings("null")
+	protected void bindAndOpen(Activity activity, final String ac,
+			final String user) {
+
+		RPC rpc = new RPC();
+		try {
+			Map<?, ?> bindingInfo = rpc.getBindingInfo(ac);
+
+			Map<?, ?> error = MapUtils.getMapMap(bindingInfo, "error", null);
+			if (error != null) {
+				String errMsg = MapUtils.getMapString(error, "msg", "Unknown Error");
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "Error from getBindingInfo " + errMsg);
+				}
+
+				AndroidUtils.showConnectionError(activity, errMsg, false);
+				return;
+			}
+
+			String host = MapUtils.getMapString(bindingInfo, "ip", null);
+			String protocol = MapUtils.getMapString(bindingInfo, "protocol", null);
+			int port = Integer.valueOf(MapUtils.getMapString(bindingInfo, "port", "0"));
+
+			if (AndroidUtils.DEBUG) {
+				if (host == null) {
+					//ip = "192.168.2.59";
+					host = "192.168.1.2";
+					protocol = "http";
+					port = 9092;
+				}
+			}
+
+			if (host != null && protocol != null) {
+				remoteProfile.setHost(host);
+				remoteProfile.setPort(port);
+				open(activity, "vuze", ac, protocol, host, port);
+			}
+		} catch (final RPCException e) {
+			VuzeEasyTracker.getInstance(activity).logError(activity, e);
+			AndroidUtils.showConnectionError(activity, e.getMessage(), false);
+			if (AndroidUtils.DEBUG) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void open(Activity activity, String user, final String ac,
+			String protocol, String host, int port) {
+		try {
+
+			rpcRoot = protocol + "://" + host + ":" + port + "/";
+			String rpcUrl = rpcRoot + "transmission/rpc";
+
+			if (!AndroidUtils.isURLAlive(rpcUrl)) {
+				AndroidUtils.showConnectionError(activity,
+						R.string.error_remote_not_found, false);
+				return;
+			}
+
+			AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
+			remoteProfile.setLastUsedOn(System.currentTimeMillis());
+			if (rememberSettingChanges) {
+				appPreferences.setLastRemote(ac);
+				appPreferences.addRemoteProfile(remoteProfile);
+			}
+
+			if (AndroidUtils.DEBUG) {
+				Log.d(null, "rpc root = " + rpcRoot);
+			}
+
+			setRpc(new TransmissionRPC(rpcUrl, user, ac));
+		} catch (Exception e) {
+			VuzeEasyTracker.getInstance(activity).logError(activity, e);
+			if (AndroidUtils.DEBUG) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	/* (non-Javadoc)
@@ -100,30 +197,18 @@ public class SessionInfo
 		settings.setULIsAuto(MapUtils.getMapBoolean(map, "speed-limit-up-enabled",
 				true));
 		settings.setDownloadDir(MapUtils.getMapString(map, "download-dir", null));
-		long refreshRateSecs = MapUtils.getMapLong(map, "refresh_rate", 0);
-		long profileRefeshInterval = remoteProfile.getUpdateInterval();
-		long newRefreshRate = refreshRateSecs == 0 && profileRefeshInterval > 0
-				? profileRefeshInterval : refreshRateSecs;
-		if (refreshRateSecs != profileRefeshInterval || sessionSettings == null) {
-			settings.setRefreshIntervalEnabled(refreshRateSecs > 0);
-		} else {
-			settings.setRefreshIntervalEnabled(sessionSettings.isRefreshIntervalIsEnabled());
-		}
-		settings.setRefreshInterval(newRefreshRate);
 
 		settings.setDlSpeed(MapUtils.getMapLong(map, "speed-limit-down", 0));
 		settings.setUlSpeed(MapUtils.getMapLong(map, "speed-limit-up", 0));
 
 		sessionSettings = settings;
 
-		synchronized (sessionSettingsChangedListeners) {
-			for (SessionSettingsChangedListener l : sessionSettingsChangedListeners) {
-				l.sessionSettingsChanged(settings);
-			}
+		for (SessionSettingsChangedListener l : sessionSettingsChangedListeners) {
+			l.sessionSettingsChanged(settings);
 		}
 
 		if (!uiReady) {
-			getRpc().simpleRpcCall("tags-get-list", new ReplyMapReceivedListener() {
+			rpc.simpleRpcCall("tags-get-list", new ReplyMapReceivedListener() {
 
 				@Override
 				public void rpcSuccess(String id, Map<?, ?> optionalMap) {
@@ -163,6 +248,7 @@ public class SessionInfo
 		for (SessionInfoListener l : availabilityListeners) {
 			l.uiReady();
 		}
+		availabilityListeners.clear();
 	}
 
 	public Map<?, ?> getTag(Long uid) {
@@ -205,7 +291,31 @@ public class SessionInfo
 	 * @param rpc the rpc to set
 	 */
 	public void setRpc(TransmissionRPC rpc) {
+		if (this.rpc == rpc) {
+			return;
+		}
+
+		if (this.rpc != null) {
+			this.rpc.removeSessionSettingsReceivedListener(this);
+		}
+
+
 		this.rpc = rpc;
+
+		if (rpc != null) {
+			for (SessionInfoListener l : availabilityListeners) {
+				l.transmissionRpcAvailable(this);
+			}
+
+			rpc.addTorrentListReceivedListener(new TorrentListReceivedListener() {
+				@Override
+				public void rpcTorrentListReceived(List<?> listTorrents) {
+					addTorrents(listTorrents);
+				}
+			});
+
+			rpc.addSessionSettingsReceivedListener(this);
+		}
 	}
 
 	/**
@@ -267,19 +377,22 @@ public class SessionInfo
 							mapTorrent.put(torrentKey, old.get(torrentKey));
 						}
 					}
-					
+
 					mergeList("files", mapTorrent, old);
 					mergeList("fileStats", mapTorrent, old);
 				}
 			}
 		}
 
-		TorrentListReceivedListener[] listeners = getTorrentListReceivedListeners();
-		for (TorrentListReceivedListener l : listeners) {
+		for (TorrentListReceivedListener l : torrentListReceivedListeners) {
 			l.rpcTorrentListReceived(collection);
 		}
 	}
 
+	@SuppressWarnings({
+		"rawtypes",
+		"unchecked"
+	})
 	private void mergeList(String key, Map mapTorrent, Map old) {
 		List listOldFiles = MapUtils.getMapList(old, key, null);
 		if (listOldFiles != null) {
@@ -331,12 +444,6 @@ public class SessionInfo
 		}
 	}
 
-	private TorrentListReceivedListener[] getTorrentListReceivedListeners() {
-		synchronized (torrentListReceivedListeners) {
-			return torrentListReceivedListeners.toArray(new TorrentListReceivedListener[0]);
-		}
-	}
-
 	public void saveProfileIfRemember() {
 		if (rememberSettingChanges) {
 			AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
@@ -347,20 +454,17 @@ public class SessionInfo
 	public void updateSessionSettings(SessionSettings newSettings) {
 		SessionSettings originalSettings = getSessionSettings();
 
-		if (newSettings.isRefreshIntervalIsEnabled() != originalSettings.isRefreshIntervalIsEnabled()
-				|| newSettings.getRefreshInterval() != originalSettings.getRefreshInterval()) {
-			remoteProfile.setUpdateInterval(newSettings.getRefreshInterval());
-			remoteProfile.setUpdateIntervalEnabled(newSettings.isRefreshIntervalIsEnabled());
-			saveProfileIfRemember();
+		saveProfileIfRemember();
 
-			if (!newSettings.isRefreshIntervalIsEnabled()) {
-				cancelRefreshHandler();
-			} else {
-				if (handler == null) {
-					initRefreshHandler();
-				}
+		// if already init/cancelled, methods will handle check
+		if (!remoteProfile.isUpdateIntervalEnabled()) {
+			cancelRefreshHandler();
+		} else {
+			if (handler == null) {
+				initRefreshHandler();
 			}
 		}
+
 		Map<String, Object> changes = new HashMap<String, Object>();
 		if (newSettings.isDLAuto() != originalSettings.isDLAuto()) {
 			changes.put("speed-limit-down-enabled", newSettings.isDLAuto());
@@ -380,10 +484,8 @@ public class SessionInfo
 
 		sessionSettings = newSettings;
 
-		synchronized (sessionSettingsChangedListeners) {
-			for (SessionSettingsChangedListener l : sessionSettingsChangedListeners) {
-				l.sessionSettingsChanged(sessionSettings);
-			}
+		for (SessionSettingsChangedListener l : sessionSettingsChangedListeners) {
+			l.sessionSettingsChanged(sessionSettings);
 		}
 	}
 
@@ -402,7 +504,8 @@ public class SessionInfo
 		if (handler != null) {
 			return;
 		}
-		long interval = getRefreshInterval();
+		long interval = remoteProfile.isUpdateIntervalEnabled()
+				? remoteProfile.getUpdateInterval() : 0;
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "Handler fires every " + interval);
 		}
@@ -416,7 +519,13 @@ public class SessionInfo
 					Log.d(TAG, "Fire Handler");
 				}
 				triggerRefresh(true);
-				long interval = getRefreshInterval();
+
+				for (RefreshTriggerListener l : refreshTriggerListeners) {
+					l.triggerRefresh();
+				}
+
+				long interval = remoteProfile.isUpdateIntervalEnabled()
+						? remoteProfile.getUpdateInterval() : 0;
 				if (AndroidUtils.DEBUG) {
 					Log.d(TAG, "Handler fires in " + interval);
 				}
@@ -428,22 +537,43 @@ public class SessionInfo
 	}
 
 	public void triggerRefresh(boolean recentOnly) {
+		synchronized (mLock) {
+			if (refreshing) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "Refresh skipped. Already refreshing");
+				}
+				return;
+			}
+			refreshing = true;
+		}
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "Refresh Triggered");
 		}
+		
+		// XXX Don't do this when we have no focus!
+
 		rpc.getSessionStats(new ReplyMapReceivedListener() {
 
 			@Override
 			public void rpcSuccess(String id, Map<?, ?> optionalMap) {
+				synchronized (mLock) {
+					refreshing = false;
+				}
 				updateSessionStats(optionalMap);
 			}
 
 			@Override
 			public void rpcFailure(String id, String message) {
+				synchronized (mLock) {
+					refreshing = false;
+				}
 			}
 
 			@Override
 			public void rpcError(String id, Exception e) {
+				synchronized (mLock) {
+					refreshing = false;
+				}
 			}
 		});
 		if (recentOnly) {
@@ -493,28 +623,10 @@ public class SessionInfo
 
 		if (oldDownloadSpeed != newDownloadSpeed
 				|| oldUploadSpeed != newUploadSpeed) {
-			synchronized (sessionSettingsChangedListeners) {
-				for (SessionSettingsChangedListener l : sessionSettingsChangedListeners) {
-					l.speedChanged(newDownloadSpeed, newUploadSpeed);
-				}
+			for (SessionSettingsChangedListener l : sessionSettingsChangedListeners) {
+				l.speedChanged(newDownloadSpeed, newUploadSpeed);
 			}
 		}
-	}
-
-	protected long getRefreshInterval() {
-		boolean isUpdateIntervalEnabled = remoteProfile.isUpdateIntervalEnabled();
-		long interval = remoteProfile.getUpdateInterval();
-		if (sessionSettings != null) {
-			sessionSettings.setRefreshIntervalEnabled(isUpdateIntervalEnabled);
-			if (interval >= 0) {
-				sessionSettings.setRefreshInterval(interval);
-			}
-		}
-		if (!isUpdateIntervalEnabled) {
-			interval = 0;
-		}
-
-		return interval;
 	}
 
 	public void addSessionSettingsChangedListeners(
@@ -536,17 +648,36 @@ public class SessionInfo
 		}
 	}
 
+	/**
+	 * add SessionInfoListener.  listener is only triggered once for each method,
+	 * and then removed
+	 */
 	public void addRpcAvailableListener(SessionInfoListener l) {
-		if (availabilityListeners.contains(l)) {
+		if (uiReady && rpc != null) {
+			if (rpc != null) {
+				l.transmissionRpcAvailable(this);
+			}
+			if (uiReady) {
+				l.uiReady();
+			}
+		} else {
+			synchronized (availabilityListeners) {
+				if (availabilityListeners.contains(l)) {
+					return;
+				}
+				availabilityListeners.add(l);
+			}
+			if (rpc != null) {
+				l.transmissionRpcAvailable(this);
+			}
+		}
+	}
+
+	public void addRefreshTriggerListener(RefreshTriggerListener l) {
+		if (refreshTriggerListeners.contains(l)) {
 			return;
 		}
-		availabilityListeners.add(l);
-		if (rpc != null) {
-			l.transmissionRpcAvailable(this);
-		}
-		if (uiReady) {
-			l.uiReady();
-		}
+		refreshTriggerListeners.add(l);
 	}
 
 	@Override
@@ -560,5 +691,9 @@ public class SessionInfo
 
 	@Override
 	public void wifiConnectionChanged(boolean isWifiConnected) {
+	}
+
+	public String getRpcRoot() {
+		return rpcRoot;
 	}
 }

@@ -52,18 +52,21 @@ public class DialogFragmentSessionSettings
 
 	private SessionInfo sessionInfo;
 
+	private RemoteProfile remoteProfile;
+
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
 		Bundle arguments = getArguments();
 
 		String id = arguments.getString(SessionInfoManager.BUNDLE_KEY);
 		if (id != null) {
-			sessionInfo = SessionInfoManager.getSessionInfo(id);
+			sessionInfo = SessionInfoManager.getSessionInfo(id, getActivity(), true);
 			if (sessionInfo == null) {
 				Log.e("No session info for " + id);
 				return null;
 			}
 			originalSettings = sessionInfo.getSessionSettings();
+			remoteProfile = sessionInfo.getRemoteProfile();
 		} else {
 			return null;
 		}
@@ -95,7 +98,7 @@ public class DialogFragmentSessionSettings
 		textDL = (EditText) view.findViewById(R.id.rp_tvDL);
 		textDL.setText("" + originalSettings.getDlSpeed());
 		textRefresh = (EditText) view.findViewById(R.id.rpUpdateInterval);
-		textRefresh.setText("" + originalSettings.getRefreshInterval());
+		textRefresh.setText("" + remoteProfile.getUpdateInterval());
 
 		boolean check;
 		ViewGroup viewGroup;
@@ -131,7 +134,7 @@ public class DialogFragmentSessionSettings
 				setGroupEnabled(viewGroup, isChecked);
 			}
 		});
-		check = originalSettings.isRefreshIntervalIsEnabled();
+		check = remoteProfile.isUpdateIntervalEnabled();
 		viewGroup = (ViewGroup) view.findViewById(R.id.rp_UpdateIntervalArea);
 		setGroupEnabled(viewGroup, check);
 		chkRefresh.setChecked(check);
@@ -148,12 +151,12 @@ public class DialogFragmentSessionSettings
 
 	protected void saveAndClose() {
 		SessionSettings newSettings = new SessionSettings();
-		newSettings.setRefreshIntervalEnabled(chkRefresh.isChecked());
+		remoteProfile.setUpdateIntervalEnabled(chkRefresh.isChecked());
 		newSettings.setULIsAuto(chkUL.isChecked());
 		newSettings.setDLIsAuto(chkDL.isChecked());
 		newSettings.setDlSpeed(parseLong(textDL.getText().toString()));
 		newSettings.setUlSpeed(parseLong(textUL.getText().toString()));
-		newSettings.setRefreshInterval(parseLong(textRefresh.getText().toString()));
+		remoteProfile.setUpdateInterval(parseLong(textRefresh.getText().toString()));
 		
 		sessionInfo.updateSessionSettings(newSettings);
 	}

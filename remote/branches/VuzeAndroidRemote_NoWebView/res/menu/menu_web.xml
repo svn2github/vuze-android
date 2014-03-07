@@ -4,7 +4,13 @@
 		android:id="@+id/action_context"
 		android:icon="@drawable/ic_menu_more"
 		android:showAsAction="never"
-		android:title="@string/action_context"
+		android:title="@string/torrent_action_context"
+		android:visible="false"/>
+	<item
+		android:id="@+id/file_action_context"
+		android:icon="@drawable/ic_menu_more"
+		android:showAsAction="never"
+		android:title="@string/file_action_context"
 		android:visible="false"/>
 	<!--
 	<item

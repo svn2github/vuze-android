@@ -16,9 +16,7 @@ public class TorrentDetailsPagerAdapter
 
 	private SparseArray<Fragment> pageReferences;
 
-	private SessionInfo sessionInfo;
-
-	private long torrentID;
+	private long torrentID = -1;
 
 	public TorrentDetailsPagerAdapter(FragmentManager fm) {
 		super(fm);
@@ -31,14 +29,6 @@ public class TorrentDetailsPagerAdapter
 	@Override
 	public long getTorrentID() {
 		return torrentID;
-	}
-
-	/* (non-Javadoc)
-	 * @see com.vuze.android.remote.fragment.TorrentIDGetter#getSessionInfo()
-	 */
-	@Override
-	public SessionInfo getSessionInfo() {
-		return sessionInfo;
 	}
 
 	@Override
@@ -94,11 +84,7 @@ public class TorrentDetailsPagerAdapter
 		return super.getPageTitle(position);
 	}
 
-	public void setSelection(SessionInfo sessionInfo, long torrentID) {
-		if (sessionInfo == null) {
-			return;
-		}
-		this.sessionInfo = sessionInfo;
+	public void setSelection(long torrentID) {
 		this.torrentID = torrentID;
 	}
 

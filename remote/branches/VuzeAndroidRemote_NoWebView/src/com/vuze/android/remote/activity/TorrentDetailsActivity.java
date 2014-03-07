@@ -9,14 +9,11 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.Window;
+import android.util.Log;
+import android.view.*;
 
 import com.vuze.android.remote.*;
-import com.vuze.android.remote.fragment.TorrentDetailsFragment;
-import com.vuze.android.remote.fragment.TorrentListFragment;
-import com.vuze.android.remote.fragment.TorrentListRowFiller;
+import com.vuze.android.remote.fragment.*;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 /**
@@ -24,8 +21,10 @@ import com.vuze.android.remote.rpc.TorrentListReceivedListener;
  */
 public class TorrentDetailsActivity
 	extends FragmentActivity
-	implements TorrentListReceivedListener
+	implements TorrentListReceivedListener, SessionInfoGetter
 {
+	private static final String TAG = "TorrentDetailsView";
+
 	private long torrentID;
 
 	private SessionInfo sessionInfo;
@@ -47,7 +46,7 @@ public class TorrentDetailsActivity
 
 		torrentID = extras.getLong("TorrentID");
 		String remoteProfileID = extras.getString(SessionInfoManager.BUNDLE_KEY);
-		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID);
+		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID, this, true);
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
@@ -65,7 +64,6 @@ public class TorrentDetailsActivity
 				R.id.fragment2);
 
 		if (detailsFrag != null) {
-			sessionInfo.addRpcAvailableListener(detailsFrag);
 			detailsFrag.setTorrentIDs(new long[] {
 				torrentID
 			});
@@ -129,7 +127,31 @@ public class TorrentDetailsActivity
 				finish();
 				return true;
 		}
+		if (TorrentListFragment.handleTorrentMenuActions(sessionInfo, new long[] {
+			torrentID
+		}, getSupportFragmentManager(), item.getItemId())) {
+			return true;
+		}
 		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onCreateOptionsMenu");
+		}
+
+		super.onCreateOptionsMenu(menu);
+
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.menu_context_torrent_details, menu);
+
+		return true;
+	}
+
+	@Override
+	public SessionInfo getSessionInfo() {
+		return sessionInfo;
 	}
 
 }

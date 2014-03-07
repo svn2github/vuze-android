@@ -236,32 +236,6 @@ public class MetaSearch
 	}
 
 	@Override
-	protected void onPause() {
-		super.onPause();
-		pauseUI();
-	}
-
-	private void pauseUI() {
-		if (!AndroidUtils.areWebViewsPaused() && myWebView != null) {
-			//			myWebView.pauseTimers();
-			//AndroidUtils.setWebViewsPaused(true);
-		}
-	}
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-		resumeUI();
-	}
-
-	private void resumeUI() {
-		if (AndroidUtils.areWebViewsPaused() && myWebView != null) {
-			//			myWebView.resumeTimers();
-			//AndroidUtils.setWebViewsPaused(false);
-		}
-	}
-
-	@Override
 	protected void onStop() {
 		super.onStop();
 		if (AndroidUtils.DEBUG) {

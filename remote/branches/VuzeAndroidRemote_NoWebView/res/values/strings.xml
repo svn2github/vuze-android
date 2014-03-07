@@ -9,7 +9,8 @@
 	<string name="chkLoginRemember">Remember Login</string>
 	<string name="action_sortby">Sort</string>
 	<string name="action_filterby">Filter</string>
-	<string name="action_context">Actions</string>
+	<string name="torrent_action_context">Torrent Actions</string>
+	<string name="file_action_context">File Actions</string>
 	<string name="filterby_title">Filter By</string>
 
 	<string-array name="filterby_list">
@@ -83,13 +84,13 @@
 	<string name="action_about">About Vuze Remote</string>
 	<string name="about_thanks">
 <![CDATA[
-<p>&middot; <a href="https://trac.transmissionbt.com/browser/trunk/web">Transmission Web UI</a>, GPLv2</p>
-<p>&middot; <a href="https://code.google.com/p/json-simple/">Simple JSON</a>, Apache License v2</p>
+<p>&middot; <a href="https://github.com/alibaba/fastjson">Fast JSON Processor</a>, Apache License v2, (c) 1999-2013 Alibaba Group Holding Ltd.</p>
 <p>&middot; <a href="https://github.com/nhnopensource/android-pull-to-refresh">nhnopensource / android-pull-to-refresh</a>, Apache License v2, (c) 2011, 2012 Chris Banes, (c) 2013 Naver Business Platform Corp.</p>
+<p>&middot; <a href="https://github.com/astuetz/PagerSlidingTabStrip">astuetz / PagerSlidingTabStrip</a>, Apache License v2, (c) 2013 Andreas Stuetz</p>
 ]]>
 	</string>
 	<string name="about_thanks_header">Portions of this app thanks to:</string>
-	<string name="about_copyright">© 2013 Azureus Software, Inc.</string>
+	<string name="about_copyright">© 2013, 2014 Azureus Software, Inc.</string>
 	<string name="about_license">GPLv2</string>
 	<string name="login_copyright">
 <![CDATA[
@@ -113,6 +114,8 @@ Go to ## Tools ## > !! Remote Pairing !! in the Vuze desktop client to find your
 	<string name="about_ideas">
 <![CDATA[
 If you have any feature ideas, or would like to vote on what gets worked on next, please visit our <a href="http://vote.vuze.com/forums/227649-android-remote">Idea Bank</a>
+<p>
+If you like our app, please rate us on the <A HREF="market://details?id=com.vuze.android.remote">Google Play Store</a>!
 ]]>
 	</string>
 	<string name="addtorrent_info">If you don\'t have a torrent file, you can search for one using your remote machine\'s search templates.  Simply click on the search button and type in a search term.</string>

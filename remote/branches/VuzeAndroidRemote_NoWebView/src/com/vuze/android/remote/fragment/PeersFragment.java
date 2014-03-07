@@ -2,6 +2,7 @@ package com.vuze.android.remote.fragment;
 
 import java.util.List;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -64,11 +65,21 @@ public class PeersFragment
 	}
 	
 	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+
+		if (activity instanceof SessionInfoGetter) {
+			SessionInfoGetter getter = (SessionInfoGetter) activity;
+			sessionInfo = getter.getSessionInfo();
+		}
+	}
+	
+	@Override
 	public void onPause() {
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "onPause");
 		}
-		setTorrentID(sessionInfo, -1);
+		setTorrentID(-1);
 
 		super.onPause();
 	}
@@ -81,20 +92,18 @@ public class PeersFragment
 		super.onResume();
 
 		// fragment attached and instanciated, ok to setTorrentID now
-		this.setTorrentID(torrentIdGetter.getSessionInfo(),
-				torrentIdGetter.getTorrentID());
+		this.setTorrentID(torrentIdGetter.getTorrentID());
 	}
 
 
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
 	 */
-	public void setTorrentID(SessionInfo sessionInfo, long id) {
+	public void setTorrentID(long id) {
 		if (torrentID != id && adapter != null) {
 			adapter.clearList();
 		}
 
-		this.sessionInfo = sessionInfo;
 		torrentID = id;
 
 		if (adapter != null) {

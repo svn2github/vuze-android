@@ -16,9 +16,11 @@ import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.*;
 import android.view.ActionMode.Callback;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.webkit.MimeTypeMap;
 import android.widget.*;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.handmark.pulltorefresh.library.*;
@@ -99,6 +101,11 @@ public class FilesFragment
 		super.onAttach(activity);
 		this.activity = activity;
 
+		if (activity instanceof SessionInfoGetter) {
+			SessionInfoGetter getter = (SessionInfoGetter) activity;
+			sessionInfo = getter.getSessionInfo();
+		}
+
 		if (showProgressBarOnAttach) {
 			System.out.println("show Progress!");
 			showProgressBar();
@@ -168,7 +175,7 @@ public class FilesFragment
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "onPause");
 		}
-		setTorrentID(sessionInfo, -1);
+		setTorrentID(-1);
 
 		super.onPause();
 	}
@@ -181,8 +188,7 @@ public class FilesFragment
 		super.onResume();
 
 		// fragment attached and instanciated, ok to setTorrentID now
-		this.setTorrentID(torrentIdGetter.getSessionInfo(),
-				torrentIdGetter.getTorrentID());
+		this.setTorrentID(torrentIdGetter.getTorrentID());
 	}
 
 	@Override
@@ -195,6 +201,8 @@ public class FilesFragment
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
 		}
+
+		setHasOptionsMenu(true);
 	}
 
 	public View onCreateView(android.view.LayoutInflater inflater,
@@ -291,6 +299,11 @@ public class FilesFragment
 		listview.setClickable(true);
 		listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			// old style menu
+			registerForContextMenu(listview);
+		}
+
 		listview.setOnItemClickListener(new OnItemClickListener() {
 
 			private long lastIdClicked = -1;
@@ -300,17 +313,24 @@ public class FilesFragment
 					long id) {
 				boolean isChecked = listview.isItemChecked(position);
 				// DON'T USE adapter.getItemId, it doesn't account for headers!
-				selectedFileIndex = isChecked ? (int) parent.getItemIdAtPosition(position) : -1;
+				selectedFileIndex = isChecked
+						? (int) parent.getItemIdAtPosition(position) : -1;
 
 				if (mActionMode == null) {
-					showContextualActions();
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						showContextualActions();
+					}
 					lastIdClicked = id;
 				} else if (lastIdClicked == id) {
-					finishActionMode();
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						finishActionMode();
+					}
 					//listview.setItemChecked(position, false);
 					lastIdClicked = -1;
 				} else {
-					showContextualActions();
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+						showContextualActions();
+					}
 
 					lastIdClicked = id;
 				}
@@ -319,10 +339,19 @@ public class FilesFragment
 			}
 		});
 
+		listview.setOnItemLongClickListener(new OnItemLongClickListener() {
+
+			@Override
+			public boolean onItemLongClick(AdapterView<?> parent, View view,
+					int position, long id) {
+				selectedFileIndex = (int) parent.getItemIdAtPosition(position);
+				listview.setItemChecked(position, true);
+				return false;
+			}
+		});
+
 		adapter = new FilesAdapter(this.getActivity());
-		if (sessionInfo != null) {
-			adapter.setSessionInfo(sessionInfo);
-		}
+		adapter.setSessionInfo(sessionInfo);
 		listview.setItemsCanFocus(true);
 		listview.setAdapter(adapter);
 
@@ -333,7 +362,7 @@ public class FilesFragment
 	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
 	 */
 	@Override
-	public void setTorrentID(SessionInfo sessionInfo, long id) {
+	public void setTorrentID(long id) {
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "set torrentID=" + id + "/adapter=" + adapter + "/activity="
 					+ activity);
@@ -362,7 +391,6 @@ public class FilesFragment
 			}
 			return;
 		}
-		this.sessionInfo = sessionInfo;
 		if (torrentIdChanged) {
 			adapter.clearList();
 		}
@@ -395,6 +423,8 @@ public class FilesFragment
 				}
 			}
 		}
+		
+		AndroidUtils.clearChecked(listview);
 	}
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -415,136 +445,13 @@ public class FilesFragment
 			// may be called multiple times if the mode is invalidated.
 			@Override
 			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-				if (sessionInfo == null || torrentID < 0) {
-					return false;
-				}
-
-				boolean isComplete = false;
-				Map<?, ?> mapFile = getSelectedFile();
-				Map<?, ?> mapFileStats = getSelectedFileStats();
-				if (mapFile != null) {
-					long bytesCompleted = MapUtils.getMapLong(mapFile, "bytesCompleted",
-							0);
-					long length = MapUtils.getMapLong(mapFile, "length", -1);
-					//System.out.println("mapFIle=" + mapFile);
-					isComplete = bytesCompleted == length;
-				}
-
-				MenuItem menuLaunch = menu.findItem(R.id.action_sel_launch);
-				if (menuLaunch != null) {
-					boolean canLaunch = isComplete; //TODO: = && isOnline;
-					menuLaunch.setEnabled(canLaunch);
-				}
-
-				MenuItem menuSave = menu.findItem(R.id.action_sel_save);
-				if (menuSave != null) {
-					boolean visible = sessionInfo != null
-							&& !sessionInfo.getRemoteProfile().isLocalHost();
-					menuSave.setVisible(visible);
-					if (visible) {
-						boolean canSave = isComplete;
-						menuSave.setEnabled(canSave);
-					}
-				}
-
-				int priority = MapUtils.getMapInt(mapFileStats,
-						TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
-						TransmissionVars.TR_PRI_NORMAL);
-				MenuItem menuPriorityUp = menu.findItem(R.id.action_sel_priority_up);
-				if (menuPriorityUp != null) {
-					menuPriorityUp.setEnabled(!isComplete
-							&& priority < TransmissionVars.TR_PRI_HIGH);
-				}
-				MenuItem menuPriorityDown = menu.findItem(R.id.action_sel_priority_down);
-				if (menuPriorityDown != null) {
-					menuPriorityDown.setEnabled(!isComplete
-							&& priority > TransmissionVars.TR_PRI_LOW);
-				}
-
-				boolean wanted = MapUtils.getMapBoolean(mapFileStats, "wanted", true);
-				MenuItem menuUnwant = menu.findItem(R.id.action_sel_unwanted);
-				if (menuUnwant != null) {
-					menuUnwant.setVisible(wanted);
-				}
-				MenuItem menuWant = menu.findItem(R.id.action_sel_wanted);
-				if (menuWant != null) {
-					menuWant.setVisible(!wanted);
-				}
-
-				AndroidUtils.fixupMenuAlpha(menu);
-
-				return true;
+				return prepareContextMenu(menu);
 			}
 
 			// Called when the user selects a contextual menu item
 			@Override
 			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-				if (sessionInfo == null || torrentID < 0) {
-					return false;
-				}
-				switch (item.getItemId()) {
-					case R.id.action_sel_launch: {
-						Map<?, ?> selectedFile = getSelectedFile();
-						if (selectedFile == null) {
-							return false;
-						}
-						return launchFile(selectedFile);
-					}
-					case R.id.action_sel_save: {
-						Map<?, ?> selectedFile = getSelectedFile();
-						return saveFile(selectedFile);
-					}
-					case R.id.action_sel_wanted: {
-						showProgressBar();
-						sessionInfo.getRpc().setWantState(torrentID, new int[] {
-							selectedFileIndex
-						}, true, null);
-						return true;
-					}
-					case R.id.action_sel_unwanted: {
-						// TODO: Delete Prompt
-						showProgressBar();
-						sessionInfo.getRpc().setWantState(torrentID, new int[] {
-							selectedFileIndex
-						}, false, null);
-						return true;
-					}
-					case R.id.action_sel_priority_up: {
-						Map<?, ?> selectedFile = getSelectedFileStats();
-						int priority = MapUtils.getMapInt(selectedFile,
-								TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
-								TransmissionVars.TR_PRI_NORMAL);
-
-						if (priority >= TransmissionVars.TR_PRI_HIGH) {
-							return true;
-						} else {
-							priority += 1;
-						}
-						showProgressBar();
-						sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
-							selectedFileIndex
-						}, priority, null);
-						return true;
-					}
-					case R.id.action_sel_priority_down: {
-						Map<?, ?> selectedFile = getSelectedFileStats();
-						int priority = MapUtils.getMapInt(selectedFile,
-								TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
-								TransmissionVars.TR_PRI_NORMAL);
-
-						if (priority <= TransmissionVars.TR_PRI_LOW) {
-							return true;
-						} else {
-							priority -= 1;
-						}
-						showProgressBar();
-						sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
-							selectedFileIndex
-						}, priority, null);
-						return true;
-					}
-				}
-				return false;
+				return handleMenu(item.getItemId());
 			}
 
 			// Called when the user exits the action mode
@@ -568,6 +475,140 @@ public class FilesFragment
 				});
 			}
 		};
+	}
+
+	protected boolean prepareContextMenu(Menu menu) {
+		if (sessionInfo == null || torrentID < 0) {
+			return false;
+		}
+
+		boolean isComplete = false;
+		Map<?, ?> mapFile = getSelectedFile();
+		Map<?, ?> mapFileStats = getSelectedFileStats();
+		if (mapFile != null) {
+			long bytesCompleted = MapUtils.getMapLong(mapFile, "bytesCompleted",
+					0);
+			long length = MapUtils.getMapLong(mapFile, "length", -1);
+			//System.out.println("mapFIle=" + mapFile);
+			isComplete = bytesCompleted == length;
+		}
+
+		MenuItem menuLaunch = menu.findItem(R.id.action_sel_launch);
+		if (menuLaunch != null) {
+			boolean canLaunch = isComplete; //TODO: = && isOnline;
+			menuLaunch.setEnabled(canLaunch);
+		}
+
+		MenuItem menuSave = menu.findItem(R.id.action_sel_save);
+		if (menuSave != null) {
+			boolean visible = sessionInfo != null
+					&& !sessionInfo.getRemoteProfile().isLocalHost();
+			menuSave.setVisible(visible);
+			if (visible) {
+				boolean canSave = isComplete;
+				menuSave.setEnabled(canSave);
+			}
+		}
+
+		int priority = MapUtils.getMapInt(mapFileStats,
+				TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
+				TransmissionVars.TR_PRI_NORMAL);
+		MenuItem menuPriorityUp = menu.findItem(R.id.action_sel_priority_up);
+		if (menuPriorityUp != null) {
+			menuPriorityUp.setEnabled(!isComplete
+					&& priority < TransmissionVars.TR_PRI_HIGH);
+		}
+		MenuItem menuPriorityDown = menu.findItem(R.id.action_sel_priority_down);
+		if (menuPriorityDown != null) {
+			menuPriorityDown.setEnabled(!isComplete
+					&& priority > TransmissionVars.TR_PRI_LOW);
+		}
+
+		boolean wanted = MapUtils.getMapBoolean(mapFileStats, "wanted", true);
+		MenuItem menuUnwant = menu.findItem(R.id.action_sel_unwanted);
+		if (menuUnwant != null) {
+			menuUnwant.setVisible(wanted);
+		}
+		MenuItem menuWant = menu.findItem(R.id.action_sel_wanted);
+		if (menuWant != null) {
+			menuWant.setVisible(!wanted);
+		}
+
+		AndroidUtils.fixupMenuAlpha(menu);
+		return true;
+	}
+
+	protected boolean handleMenu(int itemId) {
+		if (sessionInfo == null || torrentID < 0) {
+			return false;
+		}
+		switch (itemId) {
+			case R.id.action_sel_launch: {
+				Map<?, ?> selectedFile = getSelectedFile();
+				if (selectedFile == null) {
+					return false;
+				}
+				return launchFile(selectedFile);
+			}
+			case R.id.action_sel_save: {
+				Map<?, ?> selectedFile = getSelectedFile();
+				return saveFile(selectedFile);
+			}
+			case R.id.action_sel_wanted: {
+				showProgressBar();
+				sessionInfo.getRpc().setWantState(torrentID, new int[] {
+					selectedFileIndex
+				}, true, null);
+				return true;
+			}
+			case R.id.action_sel_unwanted: {
+				// TODO: Delete Prompt
+				showProgressBar();
+				sessionInfo.getRpc().setWantState(torrentID, new int[] {
+					selectedFileIndex
+				}, false, null);
+				return true;
+			}
+			case R.id.action_sel_priority_up: {
+				Map<?, ?> selectedFile = getSelectedFileStats();
+				int priority = MapUtils.getMapInt(selectedFile,
+						TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
+						TransmissionVars.TR_PRI_NORMAL);
+
+				if (priority >= TransmissionVars.TR_PRI_HIGH) {
+					return true;
+				} else {
+					priority += 1;
+				}
+				showProgressBar();
+				sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
+					selectedFileIndex
+				}, priority, null);
+				return true;
+			}
+			case R.id.action_sel_priority_down: {
+				Map<?, ?> selectedFile = getSelectedFileStats();
+				int priority = MapUtils.getMapInt(selectedFile,
+						TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
+						TransmissionVars.TR_PRI_NORMAL);
+
+				if (priority <= TransmissionVars.TR_PRI_LOW) {
+					return true;
+				} else {
+					priority -= 1;
+				}
+				showProgressBar();
+				sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
+					selectedFileIndex
+				}, priority, null);
+				return true;
+			}
+			case R.id.file_action_context: {
+				getActivity().openContextMenu(listview);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	protected boolean saveFile(Map<?, ?> selectedFile) {
@@ -811,4 +852,60 @@ public class FilesFragment
 			}
 		});
 	}
+	
+	@Override
+	public void onPrepareOptionsMenu(Menu menu) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onPrepareOptionsMenu");
+		}
+
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+  		MenuItem menuContext = menu.findItem(R.id.file_action_context);
+  		if (menuContext != null) {
+  			menuContext.setVisible(AndroidUtils.getCheckedItemCount(listview) > 0
+  					&& torrentID >= 0);
+  		}
+		}
+
+		AndroidUtils.fixupMenuAlpha(menu);
+
+		super.onPrepareOptionsMenu(menu);
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		if (item.getItemId() == R.id.file_action_context) {
+			getActivity().openContextMenu(listview);
+			return true;
+		}
+		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
+	// For Android 2.x
+	public void onCreateContextMenu(ContextMenu menu, View v,
+			ContextMenuInfo menuInfo) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onCreateContextMenu");
+		}
+		super.onCreateContextMenu(menu, v, menuInfo);
+
+		MenuInflater inflater = getActivity().getMenuInflater();
+		inflater.inflate(R.menu.menu_context_torrent_files, menu);
+		
+		prepareContextMenu(menu);
+	}
+	
+	@Override
+	// For Android 2.x
+	public boolean onContextItemSelected(MenuItem item) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onContextItemSelected");
+		}
+		if (handleMenu(item.getItemId())) {
+			return true;
+		}
+		return super.onContextItemSelected(item);
+	}
+
 }

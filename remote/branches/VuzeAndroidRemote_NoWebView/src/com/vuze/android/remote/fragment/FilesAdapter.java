@@ -152,14 +152,18 @@ public class FilesAdapter
 			float pctDone = (float) bytesCompleted / length;
 			if (holder.tvProgress != null) {
 				holder.tvProgress.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
-				NumberFormat format = NumberFormat.getPercentInstance();
-				format.setMaximumFractionDigits(1);
-				String s = format.format(pctDone);
-				flipper.changeText(holder.tvProgress, s, holder.animateFlip, validator);
+				if (wanted) {
+  				NumberFormat format = NumberFormat.getPercentInstance();
+  				format.setMaximumFractionDigits(1);
+  				String s = format.format(pctDone);
+  				flipper.changeText(holder.tvProgress, s, holder.animateFlip, validator);
+				}
 			}
 			if (holder.pb != null) {
 				holder.pb.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
-				holder.pb.setProgress((int) (pctDone * 10000));
+				if (wanted) {
+					holder.pb.setProgress((int) (pctDone * 10000));
+				}
 			}
 		}
 		if (holder.tvInfo != null) {

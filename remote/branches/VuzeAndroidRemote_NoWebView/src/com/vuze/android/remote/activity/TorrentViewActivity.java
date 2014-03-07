@@ -38,13 +38,11 @@ import android.support.v4.app.*;
 import android.util.Base64;
 import android.util.Log;
 import android.view.*;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.SearchView;
 import android.widget.SearchView.OnQueryTextListener;
 import android.widget.TextView;
 
 import com.aelitis.azureus.util.JSONUtils;
-import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.NetworkState.NetworkStateListener;
@@ -67,7 +65,7 @@ public class TorrentViewActivity
 	implements OpenTorrentDialogListener, MoveDataDialogListener,
 	SessionSettingsChangedListener, TorrentAddedReceivedListener,
 	DeleteTorrentDialogListener, OnTorrentSelectedListener, SessionInfoListener,
-	ActionModeBeingReplacedListener, NetworkStateListener
+	ActionModeBeingReplacedListener, NetworkStateListener, SessionInfoGetter
 {
 	private SearchView mSearchView;
 
@@ -80,7 +78,7 @@ public class TorrentViewActivity
 
 	private static final boolean DEBUG = AndroidUtils.DEBUG;
 
-	private String rpcRoot;
+	private static final String TAG = "TorrentView";
 
 	private TextView tvUpSpeed;
 
@@ -92,8 +90,6 @@ public class TorrentViewActivity
 
 	private RemoteProfile remoteProfile;
 
-	private boolean remember;
-
 	private boolean disableRefreshButton;
 
 	protected String page;
@@ -101,8 +97,6 @@ public class TorrentViewActivity
 	protected TransmissionRPC rpc;
 
 	private SessionInfo sessionInfo;
-
-	private View view;
 
 	private boolean isLocalHost;
 
@@ -157,28 +151,8 @@ public class TorrentViewActivity
 			finish();
 			return;
 		}
-
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			setupHoneyComb();
-		}
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-			setupIceCream();
-		}
-
-		setContentView(R.layout.activity_torrent_view);
-
-		// setup view ids now because listeners below may trigger as soon as we get them
-		view = findViewById(R.id.activity_torrent_view);
-		tvUpSpeed = (TextView) findViewById(R.id.wvUpSpeed);
-		tvDownSpeed = (TextView) findViewById(R.id.wvDnSpeed);
-		tvCenter = (TextView) findViewById(R.id.wvCenter);
-
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
-			// old style menu
-			registerForContextMenu(view);
-		}
-
-		remember = extras.getBoolean("com.vuze.android.remote.remember");
+		
+		boolean remember = extras.getBoolean("com.vuze.android.remote.remember");
 		String remoteAsJSON = extras.getString("remote.json");
 		if (remoteAsJSON != null) {
 			try {
@@ -198,6 +172,26 @@ public class TorrentViewActivity
 				remoteProfile = new RemoteProfile(user, ac);
 			}
 		}
+
+		Log.d(TAG, "sessionInfo Time");
+		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfile, this, remember);
+		sessionInfo.addRpcAvailableListener(this);
+		sessionInfo.addSessionSettingsChangedListeners(this);
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+			setupHoneyComb();
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+			setupIceCream();
+		}
+
+		setContentView(R.layout.activity_torrent_view);
+
+		// setup view ids now because listeners below may trigger as soon as we get them
+		tvUpSpeed = (TextView) findViewById(R.id.wvUpSpeed);
+		tvDownSpeed = (TextView) findViewById(R.id.wvDnSpeed);
+		tvCenter = (TextView) findViewById(R.id.wvCenter);
+
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
 			setTitle(remoteProfile.getNick());
 		} else {
@@ -212,22 +206,6 @@ public class TorrentViewActivity
 		}
 
 		setProgressBarIndeterminateVisibility(true);
-
-		// Bind and Open take a while, do it on the non-UI thread
-		Thread thread = new Thread("bindAndOpen") {
-			public void run() {
-				String host = remoteProfile.getHost();
-				if (host != null && host.length() > 0
-						&& remoteProfile.getRemoteType() == RemoteProfile.TYPE_NORMAL) {
-					open(remoteProfile.getUser(), remoteProfile.getAC(), "http", host,
-							remoteProfile.getPort(), remember);
-				} else {
-					bindAndOpen(remoteProfile.getAC(), remoteProfile.getUser(), remember);
-				}
-			}
-		};
-		thread.setDaemon(true);
-		thread.start();
 
 	}
 
@@ -251,10 +229,13 @@ public class TorrentViewActivity
 				}).show();
 	}
 
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.SessionInfoListener#uiReady()
+	 */
 	@Override
 	public void uiReady() {
 		if (DEBUG) {
-			Log.d(null, "UI READY");
+			Log.d(TAG, "UI READY");
 		}
 
 		uiReady = true;
@@ -314,89 +295,6 @@ public class TorrentViewActivity
 		super.invalidateOptionsMenu();
 	}
 
-	@SuppressWarnings("null")
-	protected void bindAndOpen(final String ac, final String user,
-			boolean remember) {
-
-		RPC rpc = new RPC();
-		try {
-			Map<?, ?> bindingInfo = rpc.getBindingInfo(ac);
-
-			Map<?, ?> error = MapUtils.getMapMap(bindingInfo, "error", null);
-			if (error != null) {
-				String errMsg = MapUtils.getMapString(error, "msg", "Unknown Error");
-				if (DEBUG) {
-					Log.d(null, "Error from getBindingInfo " + errMsg);
-				}
-
-				AndroidUtils.showConnectionError(this, errMsg, false);
-				return;
-			}
-
-			String host = MapUtils.getMapString(bindingInfo, "ip", null);
-			String protocol = MapUtils.getMapString(bindingInfo, "protocol", null);
-			int port = Integer.valueOf(MapUtils.getMapString(bindingInfo, "port", "0"));
-
-			if (DEBUG) {
-				if (host == null) {
-					//ip = "192.168.2.59";
-					host = "192.168.1.2";
-					protocol = "http";
-					port = 9092;
-				}
-			}
-
-			if (host != null && protocol != null) {
-				remoteProfile.setHost(host);
-				remoteProfile.setPort(port);
-				open("vuze", ac, protocol, host, port, remember);
-			}
-		} catch (final RPCException e) {
-			VuzeEasyTracker.getInstance(this).logError(this, e);
-			AndroidUtils.showConnectionError(TorrentViewActivity.this,
-					e.getMessage(), false);
-			if (DEBUG) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void open(String user, final String ac, String protocol, String host,
-			int port, boolean remember) {
-		try {
-
-			rpcRoot = protocol + "://" + host + ":" + port + "/";
-			String rpcUrl = rpcRoot + "transmission/rpc";
-
-			if (!AndroidUtils.isURLAlive(rpcUrl)) {
-				AndroidUtils.showConnectionError(this, R.string.error_remote_not_found,
-						false);
-				return;
-			}
-
-			AppPreferences appPreferences = VuzeRemoteApp.getAppPreferences();
-			remoteProfile.setLastUsedOn(System.currentTimeMillis());
-			if (remember) {
-				appPreferences.setLastRemote(ac);
-				appPreferences.addRemoteProfile(remoteProfile);
-			}
-
-			if (DEBUG) {
-				Log.d(null, "rpc root = " + rpcRoot);
-			}
-
-			rpc = new TransmissionRPC(rpcUrl, user, ac);
-			sessionInfo = SessionInfoManager.createSessionInfo(rpc, remoteProfile,
-					remember);
-			sessionInfo.addRpcAvailableListener(TorrentViewActivity.this);
-			sessionInfo.addSessionSettingsChangedListeners(TorrentViewActivity.this);
-		} catch (Exception e) {
-			VuzeEasyTracker.getInstance(this).logError(this, e);
-			if (DEBUG) {
-				e.printStackTrace();
-			}
-		}
-	}
 
 	@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 	private void setupIceCream() {
@@ -422,12 +320,18 @@ public class TorrentViewActivity
 	@Override
 	protected void onPause() {
 		VuzeRemoteApp.getNetworkState().removeListener(this);
+		if (sessionInfo != null) {
+			sessionInfo.removeSessionSettingsChangedListeners(TorrentViewActivity.this);
+		}
 		super.onPause();
 	}
 
 	@Override
 	protected void onResume() {
 		VuzeRemoteApp.getNetworkState().addListener(this);
+		if (sessionInfo != null) {
+			sessionInfo.addSessionSettingsChangedListeners(TorrentViewActivity.this);
+		}
 		super.onResume();
 	}
 
@@ -563,10 +467,6 @@ public class TorrentViewActivity
 				onSearchRequested();
 				return true;
 
-			case R.id.action_context:
-				openContextMenu(view);
-				return true;
-
 			case R.id.action_logout:
 				new RemoteUtils(TorrentViewActivity.this).openRemoteList(getIntent());
 				finish();
@@ -605,26 +505,11 @@ public class TorrentViewActivity
 	}
 
 	@Override
-	// For Android 2.x
-	public void onCreateContextMenu(ContextMenu menu, View v,
-			ContextMenuInfo menuInfo) {
-		super.onCreateContextMenu(menu, v, menuInfo);
-
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.menu_context_torrent_details, menu);
-	}
-
-	@Override
-	// For Android 2.x
-	public boolean onContextItemSelected(MenuItem item) {
-		if (handleMenu(item.getItemId())) {
-			return true;
-		}
-		return super.onContextItemSelected(item);
-	}
-
-	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onCreateOptionsMenu");
+		}
+
 		super.onCreateOptionsMenu(menu);
 
 		// Inflate the menu; this adds items to the action bar if it is present.
@@ -651,8 +536,8 @@ public class TorrentViewActivity
 		if (sessionSettings != null) {
 			MenuItem menuRefresh = menu.findItem(R.id.action_refresh);
 			boolean refreshVisible = false;
-			if (!sessionSettings.isRefreshIntervalIsEnabled()
-					|| sessionSettings.getRefreshInterval() >= 30) {
+			if (!remoteProfile.isUpdateIntervalEnabled()
+					|| remoteProfile.getUpdateInterval() >= 45) {
 				refreshVisible = true;
 			}
 			menuRefresh.setVisible(refreshVisible);
@@ -687,7 +572,7 @@ public class TorrentViewActivity
 			@Override
 			public boolean onQueryTextSubmit(String query) {
 				AndroidUtils.executeSearch(query, TorrentViewActivity.this,
-						remoteProfile, rpcRoot);
+						remoteProfile, sessionInfo.getRpcRoot());
 				return true;
 			}
 
@@ -705,7 +590,7 @@ public class TorrentViewActivity
 	public boolean onSearchRequested() {
 		Bundle appData = new Bundle();
 		if (rpc.getRPCVersionAZ() >= 0) {
-			appData.putString("com.vuze.android.remote.searchsource", rpcRoot);
+			appData.putString("com.vuze.android.remote.searchsource", sessionInfo.getRpcRoot());
 			appData.putString("com.vuze.android.remote.ac", remoteProfile.getAC());
 		}
 		startSearch(null, false, appData, false);
@@ -824,7 +709,7 @@ public class TorrentViewActivity
 			}
 			detailFrag.setTorrentIDs(ids);
 		} else if (ids != null && ids.length == 1 && !inMultiMode) {
-			torrentListFragment.finishActionMode();
+			torrentListFragment.clearSelection();
 
 			Intent intent = new Intent(Intent.ACTION_VIEW, null, this,
 					TorrentDetailsActivity.class);
@@ -840,13 +725,7 @@ public class TorrentViewActivity
 	 */
 	@Override
 	public void transmissionRpcAvailable(SessionInfo sessionInfo) {
-		for (int id : fragmentIDS) {
-			Fragment fragment = getSupportFragmentManager().findFragmentById(id);
-
-			if (fragment instanceof SessionInfoListener) {
-				sessionInfo.addRpcAvailableListener((SessionInfoListener) fragment);
-			}
-		}
+		rpc = sessionInfo.getRpc();
 	}
 
 	/* (non-Javadoc)
@@ -897,5 +776,27 @@ public class TorrentViewActivity
 
 	@Override
 	public void wifiConnectionChanged(boolean isWifiConnected) {
+	}
+
+	@Override
+	public void onBackPressed() {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+			TorrentDetailsFragment detailFrag = (TorrentDetailsFragment) getSupportFragmentManager().findFragmentById(
+					R.id.fragment2);
+			View fragmentView = findViewById(R.id.fragment2_container);
+			
+			if (detailFrag != null && fragmentView != null && fragmentView.getVisibility() == View.VISIBLE) {
+				fragmentView.setVisibility(View.GONE);
+				detailFrag.setTorrentIDs(null);
+				return;
+			}
+		}
+
+		super.onBackPressed();
+	}
+
+	@Override
+	public SessionInfo getSessionInfo() {
+		return sessionInfo;
 	}
 }

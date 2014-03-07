@@ -131,14 +131,18 @@ public class RestJsonClient
   						}
   						sb.append(c, 0, read);
   				}
+  				
+
   				if (DEBUG_DETAILED) {
   					then = System.currentTimeMillis();
   					if (AndroidUtils.DEBUG) {
+  						Log.d(TAG, id + "] " + sb.toString());
   						Log.d(TAG, id + "]  read ->" + (then - now) + "ms");
   					}
   					now = then;
   				}
 
+  				
 					// 9775 files
 					// 33xx-3800 for simple; 22xx for GSON 2.2.4; 18xx-19xx for fastjson 1.1.34
 //					json = JSONUtils.decodeJSON(br);
@@ -183,8 +187,10 @@ public class RestJsonClient
 
 			}
 		} catch (RPCException e) {
+			Log.e(TAG, id, e);
 			throw e;
 		} catch (Throwable e) {
+			Log.e(TAG, id, e);
 			throw new RPCException(e);
 		}
 

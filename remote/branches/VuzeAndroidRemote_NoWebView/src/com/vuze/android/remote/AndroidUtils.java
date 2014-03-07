@@ -69,7 +69,7 @@ import com.vuze.android.remote.dialog.DialogFragmentSessionSettings;
 /**
  * Some generic Android Utility methods.
  * <p>
- * Some utility methods specific to this app and requireing Android API.
+ * Some utility methods specific to this app and requiring Android API.
  * Should, and probably should be in their own class.
  */
 public class AndroidUtils
@@ -77,8 +77,6 @@ public class AndroidUtils
 	public static final boolean DEBUG = true;
 
 	private static boolean hasAlertDialogOpen = false;
-
-	private static boolean webViewsPaused;
 
 	public static class AlertDialogBuilder
 	{
@@ -91,7 +89,6 @@ public class AndroidUtils
 			this.view = view;
 			this.builder = builder;
 		}
-
 	}
 
 	/**
@@ -150,6 +147,10 @@ public class AndroidUtils
 
 	public static void showConnectionError(final Activity activity,
 			final String errMsg, final boolean allowContinue) {
+		if (activity == null) {
+			Log.e(null, "No activity for error message " + errMsg);
+			return;
+		}
 		activity.runOnUiThread(new Runnable() {
 			public void run() {
 				if (activity.isFinishing()) {
@@ -306,14 +307,6 @@ public class AndroidUtils
 		Toast.makeText(activity.getApplicationContext(),
 				activity.getResources().getString(R.string.no_file_chooser),
 				Toast.LENGTH_SHORT).show();
-	}
-
-	public static boolean areWebViewsPaused() {
-		return webViewsPaused;
-	}
-
-	public static void setWebViewsPaused(boolean paused) {
-		webViewsPaused = paused;
 	}
 
 	public static void handleConsoleMessageFroyo(Context ctx, String message,

@@ -27,13 +27,14 @@
 		android:layout_alignParentLeft="true"
 		android:layout_alignParentTop="true"
 		android:layout_alignTop="@+id/torrentrow_name"
+		android:layout_marginRight="2dp"
 		android:indeterminateOnly="false"
 		android:max="10000"
 		android:maxHeight="500dp"
 		android:maxWidth="500dp"
 		android:minHeight="90dp"
 		android:minWidth="90dp"
-		android:progress="10000"
+		android:progress="8000"
 		android:progressDrawable="@drawable/progress_ring" />
 
 	<TextView

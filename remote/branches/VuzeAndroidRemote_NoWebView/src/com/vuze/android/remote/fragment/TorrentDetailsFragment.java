@@ -2,10 +2,13 @@ package com.vuze.android.remote.fragment;
 
 import java.util.Map;
 
+import android.app.Activity;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.util.Log;
 import android.view.*;
 
 import com.aelitis.azureus.util.MapUtils;
@@ -23,7 +26,6 @@ import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent;
  */
 public class TorrentDetailsFragment
 	extends Fragment
-	implements SessionInfoListener
 {
 	ViewPager mViewPager;
 
@@ -65,7 +67,7 @@ public class TorrentDetailsFragment
 				if (position != currentItem) {
 					Fragment item = pagerAdapter.getFragment(currentItem);
 					if (item instanceof SetTorrentIdListener) {
-						((SetTorrentIdListener) item).setTorrentID(sessionInfo, -1);
+						((SetTorrentIdListener) item).setTorrentID(-1);
 					}
 				}
 
@@ -76,7 +78,7 @@ public class TorrentDetailsFragment
 
 				Fragment item = pagerAdapter.getFragment(currentItem);
 				if (item instanceof SetTorrentIdListener) {
-					((SetTorrentIdListener) item).setTorrentID(sessionInfo, torrentID);
+					((SetTorrentIdListener) item).setTorrentID(torrentID);
 				}
 
 			}
@@ -85,24 +87,35 @@ public class TorrentDetailsFragment
 		mViewPager.setAdapter(pagerAdapter);
 		tabs.setViewPager(mViewPager);
 
-		setHasOptionsMenu(false);
+		setHasOptionsMenu(true);
 
 		return view;
+	}
+
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+
+		final Bundle extras = getActivity().getIntent().getExtras();
+		if (extras == null) {
+			System.err.println("No extras!");
+			return;
+		}
+
+		String id = extras.getString(SessionInfoManager.BUNDLE_KEY);
+		sessionInfo = SessionInfoManager.getSessionInfo(id, activity, true);
 	}
 
 	// Called from Activity
 	public void setTorrentIDs(long[] newIDs) {
 		this.torrentID = newIDs != null && newIDs.length == 1 ? newIDs[0] : -1;
+		pagerAdapter.setSelection(torrentID);
 		getActivity().runOnUiThread(new Runnable() {
 			public void run() {
-				boolean enable = torrentID >= 0;
-				setHasOptionsMenu(enable);
-				pagerAdapter.setSelection(sessionInfo, torrentID);
-
 				int currentItem = mViewPager.getCurrentItem();
 				Fragment item = pagerAdapter.getFragment(currentItem);
 				if (item instanceof SetTorrentIdListener) {
-					((SetTorrentIdListener) item).setTorrentID(sessionInfo, torrentID);
+					((SetTorrentIdListener) item).setTorrentID(torrentID);
 				}
 			}
 		});
@@ -110,10 +123,14 @@ public class TorrentDetailsFragment
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-		inflater.inflate(R.menu.menu_context_torrent_details, menu);
-		System.out.println("td.onCreateOptionsMenu");
+		if (AndroidUtils.DEBUG) {
+			Log.d("TorrentDetails", "onCreateOptionsMenu");
+		}
+
+		// Pre HoneyComb has a "Torrent Actions" menu handled by 
 		super.onCreateOptionsMenu(menu, inflater);
 	}
+	
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -209,14 +226,5 @@ public class TorrentDetailsFragment
 		}
 
 		AndroidUtils.fixupMenuAlpha(menu);
-	}
-
-	@Override
-	public void transmissionRpcAvailable(SessionInfo _sessionInfo) {
-		sessionInfo = _sessionInfo;
-	}
-
-	@Override
-	public void uiReady() {
 	}
 }

@@ -64,7 +64,7 @@ public class DialogFragmentFilterBy
 
 		String id = arguments == null ? null : arguments.getString(SessionInfoManager.BUNDLE_KEY);
 		if (id != null) {
-			SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(id);
+			SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(id, getActivity(), true);
 			List tags = sessionInfo.getTags();
 			if (tags != null && tags.size() > 0) {
 				TreeMap<String, Long> map = new TreeMap<String, Long>();

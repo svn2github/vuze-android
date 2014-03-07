@@ -163,6 +163,9 @@ public class VuzeEasyTracker
 	}
 
 	public void logError(Context ctx, Throwable e) {
+		if (ctx == null) {
+			ctx = VuzeRemoteApp.getContext();
+		}
 		easyTracker.send(MapBuilder.createException(
 				new StandardExceptionParser(ctx, null) // Context and optional collection of package names
 																							 // to be used in reporting the exception.

@@ -17,19 +17,26 @@
 
 package com.vuze.android.remote;
 
+import java.io.File;
 import java.util.*;
 
 import org.json.JSONException;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Build;
 
 import com.aelitis.azureus.util.JSONUtils;
 import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 
+@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 @SuppressWarnings({
 	"rawtypes",
 	"unchecked"
@@ -102,7 +109,7 @@ public class AppPreferences
 		return null;
 	}
 
-	public RemoteProfile getRemote(String nick) {
+	public RemoteProfile getRemote(String id) {
 		try {
 			String config = preferences.getString(KEY_CONFIG, null);
 			if (config != null) {
@@ -110,7 +117,7 @@ public class AppPreferences
 
 				Map mapRemotes = MapUtils.getMapMap(mapConfig, KEY_REMOTES, null);
 				if (mapRemotes != null) {
-					Object mapRemote = mapRemotes.get(nick);
+					Object mapRemote = mapRemotes.get(id);
 					if (mapRemote instanceof Map) {
 						return new RemoteProfile((Map) mapRemote);
 					}
@@ -280,5 +287,73 @@ public class AppPreferences
 			}
 			VuzeEasyTracker.getInstance(context).logError(context, t);
 		}
+	}
+
+	public SharedPreferences getSharedPreferences() {
+		return preferences;
+	}
+
+	public long getFirstInstalledOn() {
+		try {
+			String packageName = context.getPackageName();
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+				return getFistInstalledOn_GB(packageName);
+			} else {
+				long firstInstallTIme = preferences.getLong("firstInstallTime", 0);
+				if (firstInstallTIme == 0) {
+					ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(
+							packageName, 0);
+					String sAppFile = appInfo.sourceDir;
+					firstInstallTIme = new File(sAppFile).lastModified();
+					Editor edit = preferences.edit();
+					edit.putLong("firstInstallTime", firstInstallTIme);
+					edit.commit();
+				}
+				return firstInstallTIme;
+			}
+		} catch (Exception e) {
+		}
+		return System.currentTimeMillis();
+	}
+
+	private long getFistInstalledOn_GB(String packageName)
+			throws NameNotFoundException {
+		PackageInfo packageInfo = context.getPackageManager().getPackageInfo(
+				packageName, 0);
+		return packageInfo.firstInstallTime;
+	}
+
+	public long getLastUpdatedOn() {
+		try {
+			String packageName = context.getPackageName();
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+				return getLastUpdatedOn_GB(packageName);
+			} else {
+				ApplicationInfo appInfo = context.getPackageManager().getApplicationInfo(
+						packageName, 0);
+				String sAppFile = appInfo.sourceDir;
+				return new File(sAppFile).lastModified();
+			}
+		} catch (Exception e) {
+		}
+		return System.currentTimeMillis();
+	}
+
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
+	private long getLastUpdatedOn_GB(String packageName)
+			throws NameNotFoundException {
+		PackageInfo packageInfo = context.getPackageManager().getPackageInfo(
+				packageName, 0);
+		return packageInfo.lastUpdateTime;
+	}
+
+	public long getNumOpens() {
+		return preferences.getLong("numAppOpens", 0);
+	}
+
+	public void setNumOpens(long num) {
+		Editor edit = preferences.edit();
+		edit.putLong("numAppOpens", num);
+		edit.commit();
 	}
 }
