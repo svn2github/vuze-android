@@ -37,13 +37,6 @@ public class TransmissionRPC
 			this.fields = getBasicTorrentFieldIDs();
 		}
 
-		private ReplyMapReceivedListenerWithRefresh(ReplyMapReceivedListener l,
-				long[] ids, List<String> fields) {
-			this.l = l;
-			this.ids = ids;
-			this.fields = fields;
-		}
-
 		public ReplyMapReceivedListenerWithRefresh(ReplyMapReceivedListener l,
 				long[] torrentIDs, int[] fileIndexes, List<String> fileFields) {
 			this.l = l;
@@ -114,7 +107,13 @@ public class TransmissionRPC
 
 	protected long lastRecentTorrentGet;
 
-	public TransmissionRPC(String rpcURL, String username, String ac) {
+	private int cacheBuster = new Random().nextInt();
+
+	private SessionInfo sessionInfo;
+
+	public TransmissionRPC(SessionInfo sessionInfo, String rpcURL,
+			String username, String ac) {
+		this.sessionInfo = sessionInfo;
 		if (username != null) {
 			creds = new UsernamePasswordCredentials(username, ac);
 		}
@@ -124,9 +123,16 @@ public class TransmissionRPC
 		updateSessionSettings(ac);
 	}
 
-	public void getSessionStats(ReplyMapReceivedListener l) {
+	public void getSessionStats(String[] fields, ReplyMapReceivedListener l) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("method", "session-stats");
+		if (fields != null) {
+			Map<String, Object> mapArguments = new HashMap<String, Object>();
+			map.put("arguments", mapArguments);
+
+			mapArguments.put("fields", fields);
+		}
+
 		sendRequest("session-stats", map, l);
 	}
 
@@ -249,6 +255,32 @@ public class TransmissionRPC
 			mapArguments.put("ids", ids);
 		}
 
+		if (fields != null && fields.contains("files")) {
+			// build "hc"
+			long[] torrentIDs = {};
+			if (ids instanceof long[]) {
+				torrentIDs = (long[]) ids;
+			} else if (ids instanceof Number) {
+				torrentIDs = new long[] {
+					((Number) ids).longValue()
+				};
+			}
+			for (long torrentID : torrentIDs) {
+				Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
+				if (mapTorrent != null) {
+					List listFiles = MapUtils.getMapList(mapTorrent, "files", null);
+					if (listFiles != null) {
+						List<Object> listHCs = new ArrayList<Object>();
+						for (int i = 0; i < listFiles.size(); i++) {
+							Map mapFIle = (Map) listFiles.get(i);
+							listHCs.add(mapFIle.get("hc"));
+						}
+						mapArguments.put("files-hc", listHCs);
+					}
+				}
+			}
+		}
+
 		String idList = (ids instanceof long[]) ? Arrays.toString(((long[]) ids))
 				: "" + ids;
 		sendRequest(
@@ -332,7 +364,7 @@ public class TransmissionRPC
 						// some do a call for a specific torrentID and rely on a response 
 						// of some sort to clean up (ie. files view progress bar), so
 						// we must fake a reply with those torrentIDs
-						
+
 						List list = createFakeList(ids);
 
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
@@ -350,7 +382,7 @@ public class TransmissionRPC
 			final ReplyMapReceivedListener l) {
 		if (id == null || data == null) {
 			if (AndroidUtils.DEBUG) {
-				System.err.println("sendRequest(" + id + ","
+				Log.e(TAG, "sendRequest(" + id + ","
 						+ JSONUtils.encodeToJSON(data) + "," + l + ")");
 			}
 			return;
@@ -359,7 +391,7 @@ public class TransmissionRPC
 			@SuppressWarnings("unchecked")
 			@Override
 			public void run() {
-				data.put("random", Math.random());
+				data.put("random", Integer.toHexString(cacheBuster++));
 				try {
 					Map reply = RestJsonClient.connect(id, rpcURL, data, headers, creds);
 
@@ -370,7 +402,7 @@ public class TransmissionRPC
 									MapUtils.getMapMap(reply, "arguments", Collections.EMPTY_MAP));
 						} else {
 							if (AndroidUtils.DEBUG) {
-								Log.d(null, id + "]rpcFailure: " + result);
+								Log.d(TAG, id + "]rpcFailure: " + result);
 							}
 							l.rpcFailure(id, result);
 						}

@@ -41,6 +41,11 @@ public class SessionInfo
 {
 	private static final String TAG = "SessionInfo";
 
+	private static String[] SESSION_STATS_FIELDS = {
+		TransmissionVars.TR_SESSION_STATS_DOWNLOAD_SPEED,
+		TransmissionVars.TR_SESSION_STATS_UPLOAD_SPEED
+	};
+
 	private SessionSettings sessionSettings;
 
 	private TransmissionRPC rpc;
@@ -177,7 +182,7 @@ public class SessionInfo
 				Log.d(null, "rpc root = " + rpcRoot);
 			}
 
-			setRpc(new TransmissionRPC(rpcUrl, user, ac));
+			setRpc(new TransmissionRPC(this, rpcUrl, user, ac));
 		} catch (Exception e) {
 			VuzeEasyTracker.getInstance(activity).logError(activity, e);
 			if (AndroidUtils.DEBUG) {
@@ -299,7 +304,6 @@ public class SessionInfo
 			this.rpc.removeSessionSettingsReceivedListener(this);
 		}
 
-
 		this.rpc = rpc;
 
 		if (rpc != null) {
@@ -356,7 +360,9 @@ public class SessionInfo
 		"unchecked"
 	})
 	public void addTorrents(List<?> collection) {
-		Log.d(TAG, "adding torrents " + collection.size());
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "adding torrents " + collection.size());
+		}
 		synchronized (mLock) {
 			for (Object item : collection) {
 				if (!(item instanceof Map)) {
@@ -499,7 +505,7 @@ public class SessionInfo
 
 	public void initRefreshHandler() {
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "Init Handler");
+			Log.d(TAG, "initRefreshHandler");
 		}
 		if (handler != null) {
 			return;
@@ -536,7 +542,7 @@ public class SessionInfo
 		}, interval * 1000);
 	}
 
-	public void triggerRefresh(boolean recentOnly) {
+	public void triggerRefresh(final boolean recentOnly) {
 		synchronized (mLock) {
 			if (refreshing) {
 				if (AndroidUtils.DEBUG) {
@@ -549,38 +555,37 @@ public class SessionInfo
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "Refresh Triggered");
 		}
-		
+
 		// XXX Don't do this when we have no focus!
 
-		rpc.getSessionStats(new ReplyMapReceivedListener() {
-
+		rpc.getSessionStats(SESSION_STATS_FIELDS, new ReplyMapReceivedListener() {
 			@Override
 			public void rpcSuccess(String id, Map<?, ?> optionalMap) {
-				synchronized (mLock) {
-					refreshing = false;
-				}
 				updateSessionStats(optionalMap);
-			}
 
-			@Override
-			public void rpcFailure(String id, String message) {
-				synchronized (mLock) {
-					refreshing = false;
+				TorrentListReceivedListener listener = new TorrentListReceivedListener() {
+					@Override
+					public void rpcTorrentListReceived(List<?> listTorrents) {
+						synchronized (mLock) {
+							refreshing = false;
+						}
+					}
+				};
+				if (recentOnly) {
+					rpc.getRecentTorrents(listener);
+				} else {
+					rpc.getAllTorrents(listener);
 				}
 			}
 
 			@Override
 			public void rpcError(String id, Exception e) {
-				synchronized (mLock) {
-					refreshing = false;
-				}
+			}
+
+			@Override
+			public void rpcFailure(String id, String message) {
 			}
 		});
-		if (recentOnly) {
-			rpc.getRecentTorrents(null);
-		} else {
-			rpc.getAllTorrents(null);
-		}
 	}
 
 	protected void updateSessionStats(Map<?, ?> map) {
@@ -678,6 +683,10 @@ public class SessionInfo
 			return;
 		}
 		refreshTriggerListeners.add(l);
+	}
+
+	public void removeRefreshTriggerListener(RefreshTriggerListener l) {
+		refreshTriggerListeners.remove(l);
 	}
 
 	@Override
