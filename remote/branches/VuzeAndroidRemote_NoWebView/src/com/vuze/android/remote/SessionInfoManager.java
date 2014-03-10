@@ -32,11 +32,6 @@ public class SessionInfoManager
 		}
 	}
 
-	public static void setSessionInfo(SessionInfo sessionInfo) {
-		String id = sessionInfo.getRemoteProfile().getID();
-		mapSessionInfo.put(id, sessionInfo);
-	}
-
 	public static SessionInfo getSessionInfo(RemoteProfile remoteProfile,
 			Activity activity, boolean rememberSettingChanges) {
 		String id = remoteProfile.getID();
