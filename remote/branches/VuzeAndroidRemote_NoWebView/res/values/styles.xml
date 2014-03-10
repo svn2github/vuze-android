@@ -27,4 +27,6 @@
     <item name="android:shadowDy">1</item>
     <item name="android:shadowRadius">1</item>
   </style>
+  
+	<bool name="showTorrentDetailsActivity">true</bool>
 </resources>

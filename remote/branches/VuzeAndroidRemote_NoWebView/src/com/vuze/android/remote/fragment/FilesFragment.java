@@ -34,7 +34,8 @@ import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class FilesFragment
 	extends Fragment
-	implements SetTorrentIdListener, TorrentListReceivedListener
+	implements SetTorrentIdListener, TorrentListReceivedListener,
+	RefreshTriggerListener
 {
 	protected static final String TAG = "FilesFragment";
 
@@ -83,20 +84,16 @@ public class FilesFragment
 
 	private long lastUpdated;
 
-	private TorrentIDGetter torrentIdGetter;
+	private long pausedTorrentID = -1;
 
 	public FilesFragment() {
 		super();
 	}
 
-	public void setTorrentIdGetter(TorrentIDGetter torrentIdGetter) {
-		this.torrentIdGetter = torrentIdGetter;
-	}
-
 	@Override
 	public void onAttach(Activity activity) {
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onAttach");
+			Log.d(TAG, "onAttach " + this + " to " + activity);
 		}
 		super.onAttach(activity);
 		this.activity = activity;
@@ -175,7 +172,12 @@ public class FilesFragment
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "onPause");
 		}
+		pausedTorrentID = torrentID;
 		setTorrentID(-1);
+
+		if (sessionInfo != null) {
+			sessionInfo.removeRefreshTriggerListener(this);
+		}
 
 		super.onPause();
 	}
@@ -183,18 +185,33 @@ public class FilesFragment
 	@Override
 	public void onResume() {
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onResume");
+			Log.d(TAG, "onResume " + this + ", pausedTorrentID=" + pausedTorrentID);
 		}
 		super.onResume();
 
-		// fragment attached and instanciated, ok to setTorrentID now
-		this.setTorrentID(torrentIdGetter.getTorrentID());
+		if (getActivity() instanceof SessionInfoGetter) {
+			SessionInfoGetter getter = (SessionInfoGetter) getActivity();
+			sessionInfo = getter.getSessionInfo();
+		}
+
+		if (sessionInfo != null) {
+			sessionInfo.addRefreshTriggerListener(this);
+		}
+
+		if (pausedTorrentID >= 0) {
+			setTorrentID(pausedTorrentID);
+		} else if (torrentID >= 0) {
+			setTorrentID(torrentID);
+		} else {
+			long newTorrentID = getArguments().getLong("torrentID", -1);
+			setTorrentID(newTorrentID);
+		}
 	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onCreate");
+			Log.d(TAG, "onCreate " + this);
 		}
 		super.onCreate(savedInstanceState);
 
@@ -209,7 +226,7 @@ public class FilesFragment
 			android.view.ViewGroup container, Bundle savedInstanceState) {
 
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onCreateview");
+			Log.d(TAG, "onCreateview " + this);
 		}
 
 		View view = inflater.inflate(R.layout.frag_torrent_files, container, false);
@@ -365,19 +382,21 @@ public class FilesFragment
 	public void setTorrentID(long id) {
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "set torrentID=" + id + "/adapter=" + adapter + "/activity="
-					+ activity);
+					+ activity + "/this=" + this);
 		}
 
 		if (activity == null) {
 			if (AndroidUtils.DEBUG) {
 				Log.e(TAG, "setTorrentID: No Activity");
 			}
+			pausedTorrentID = id;
 			return;
 		}
 		if (adapter == null) {
 			if (AndroidUtils.DEBUG) {
 				Log.e(TAG, "setTorrentID: No Adapter");
 			}
+			pausedTorrentID = id;
 			return;
 		}
 
@@ -389,6 +408,7 @@ public class FilesFragment
 			if (AndroidUtils.DEBUG) {
 				Log.e(TAG, "setTorrentID: No sessionInfo");
 			}
+			pausedTorrentID = id;
 			return;
 		}
 		if (torrentIdChanged) {
@@ -398,8 +418,14 @@ public class FilesFragment
 		torrentID = id;
 
 		if (!wasTorrent && isTorrent) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: add listener");
+			}
 			sessionInfo.addTorrentListReceivedListener(this, false);
 		} else if (wasTorrent && !isTorrent) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: remove listener");
+			}
 			sessionInfo.removeTorrentListReceivedListener(this);
 		}
 
@@ -423,8 +449,15 @@ public class FilesFragment
 				}
 			}
 		}
-		
+
 		AndroidUtils.clearChecked(listview);
+	}
+
+	@Override
+	public void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+
+		outState.putLong("torrentID", torrentID);
 	}
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -486,8 +519,7 @@ public class FilesFragment
 		Map<?, ?> mapFile = getSelectedFile();
 		Map<?, ?> mapFileStats = getSelectedFileStats();
 		if (mapFile != null) {
-			long bytesCompleted = MapUtils.getMapLong(mapFile, "bytesCompleted",
-					0);
+			long bytesCompleted = MapUtils.getMapLong(mapFile, "bytesCompleted", 0);
 			long length = MapUtils.getMapLong(mapFile, "length", -1);
 			//System.out.println("mapFIle=" + mapFile);
 			isComplete = bytesCompleted == length;
@@ -852,7 +884,7 @@ public class FilesFragment
 			}
 		});
 	}
-	
+
 	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
 		if (AndroidUtils.DEBUG) {
@@ -860,18 +892,18 @@ public class FilesFragment
 		}
 
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
-  		MenuItem menuContext = menu.findItem(R.id.file_action_context);
-  		if (menuContext != null) {
-  			menuContext.setVisible(AndroidUtils.getCheckedItemCount(listview) > 0
-  					&& torrentID >= 0);
-  		}
+			MenuItem menuContext = menu.findItem(R.id.file_action_context);
+			if (menuContext != null) {
+				menuContext.setVisible(AndroidUtils.getCheckedItemCount(listview) > 0
+						&& torrentID >= 0);
+			}
 		}
 
 		AndroidUtils.fixupMenuAlpha(menu);
 
 		super.onPrepareOptionsMenu(menu);
 	}
-	
+
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		if (item.getItemId() == R.id.file_action_context) {
@@ -892,10 +924,10 @@ public class FilesFragment
 
 		MenuInflater inflater = getActivity().getMenuInflater();
 		inflater.inflate(R.menu.menu_context_torrent_files, menu);
-		
+
 		prepareContextMenu(menu);
 	}
-	
+
 	@Override
 	// For Android 2.x
 	public boolean onContextItemSelected(MenuItem item) {
@@ -906,6 +938,13 @@ public class FilesFragment
 			return true;
 		}
 		return super.onContextItemSelected(item);
+	}
+
+	@Override
+	public void triggerRefresh() {
+		if (sessionInfo != null && torrentID >= 0) {
+			sessionInfo.getRpc().getTorrentFileInfo(torrentID, null, null, null);
+		}
 	}
 
 }

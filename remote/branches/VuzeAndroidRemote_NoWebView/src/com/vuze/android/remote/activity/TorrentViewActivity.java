@@ -137,7 +137,6 @@ public class TorrentViewActivity
 		super.onCreate(savedInstanceState);
 
 		setDefaultKeyMode(DEFAULT_KEYS_SEARCH_LOCAL);
-		requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 
 		Intent intent = getIntent();
 		if (DEBUG) {
@@ -173,7 +172,6 @@ public class TorrentViewActivity
 			}
 		}
 
-		Log.d(TAG, "sessionInfo Time");
 		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfile, this, remember);
 		sessionInfo.addRpcAvailableListener(this);
 		sessionInfo.addSessionSettingsChangedListeners(this);
@@ -204,8 +202,6 @@ public class TorrentViewActivity
 					false);
 			return;
 		}
-
-		setProgressBarIndeterminateVisibility(true);
 
 	}
 
@@ -253,7 +249,6 @@ public class TorrentViewActivity
 					openTorrent(getIntent().getData());
 				}
 
-				setProgressBarIndeterminateVisibility(false);
 				if (tvCenter != null && VuzeRemoteApp.getNetworkState().isOnline()) {
 					tvCenter.setText("");
 				}
@@ -291,7 +286,9 @@ public class TorrentViewActivity
 		if (mSearchView != null) {
 			searchIsIconified = mSearchView.isIconified();
 		}
-		System.out.println("InvalidateOptionsMenu Called");
+		if (DEBUG) {
+			Log.d(TAG, "InvalidateOptionsMenu Called");
+		}
 		super.invalidateOptionsMenu();
 	}
 
@@ -338,18 +335,7 @@ public class TorrentViewActivity
 	@Override
 	protected void onStop() {
 		super.onStop();
-		if (DEBUG) {
-			Log.d(null, "EWR STOP");
-		}
 		VuzeEasyTracker.getInstance(this).activityStop(this);
-	}
-
-	@Override
-	protected void onDestroy() {
-		super.onDestroy();
-		if (DEBUG) {
-			Log.d(null, "EWR onDestroy");
-		}
 	}
 
 	/* (non-Javadoc)
@@ -424,7 +410,7 @@ public class TorrentViewActivity
 
 	protected boolean handleMenu(int itemId) {
 		if (DEBUG) {
-			System.out.println("HANDLE MENU " + itemId);
+			Log.d(TAG, "HANDLE MENU " + itemId);
 		}
 		switch (itemId) {
 			case android.R.id.home:
@@ -696,9 +682,11 @@ public class TorrentViewActivity
 				R.id.fragment2);
 		View fragmentView = findViewById(R.id.fragment2_container);
 
-		System.out.println("onTorrentSelectedListener: " + Arrays.toString(ids)
-				+ ";multi?" + inMultiMode + ";" + detailFrag);
-		if (detailFrag != null) {
+		if (DEBUG) {
+			Log.d(TAG, "onTorrentSelectedListener: " + Arrays.toString(ids)
+					+ ";multi?" + inMultiMode + ";" + detailFrag);
+		}
+		if (detailFrag != null && fragmentView != null) {
 			// If article frag is available, we're in two-pane layout...
 
 			// Call a method in the TorrentDetailsFragment to update its content
@@ -798,5 +786,10 @@ public class TorrentViewActivity
 	@Override
 	public SessionInfo getSessionInfo() {
 		return sessionInfo;
+	}
+	
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
 	}
 }

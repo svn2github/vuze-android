@@ -15,7 +15,7 @@ import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class PeersFragment
 	extends Fragment
-	implements SetTorrentIdListener
+	implements SetTorrentIdListener, RefreshTriggerListener
 {
 	private static final String TAG = "PeersFragment";
 
@@ -27,14 +27,10 @@ public class PeersFragment
 
 	private SessionInfo sessionInfo;
 
-	private TorrentIDGetter torrentIdGetter;
+	private long pausedTorrentID = -1;
 
 	public PeersFragment() {
 		super();
-	}
-
-	public void setTorrentIdGetter(TorrentIDGetter torrentIdGetter) {
-		this.torrentIdGetter = torrentIdGetter;
 	}
 
 	@Override
@@ -63,7 +59,7 @@ public class PeersFragment
 		setHasOptionsMenu(true);
 		return view;
 	}
-	
+
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
@@ -73,12 +69,13 @@ public class PeersFragment
 			sessionInfo = getter.getSessionInfo();
 		}
 	}
-	
+
 	@Override
 	public void onPause() {
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "onPause");
 		}
+		pausedTorrentID = torrentID;
 		setTorrentID(-1);
 
 		super.onPause();
@@ -87,39 +84,80 @@ public class PeersFragment
 	@Override
 	public void onResume() {
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onResume");
+			Log.d(TAG, "onResume " + this + ", pausedTorrentID=" + pausedTorrentID);
 		}
 		super.onResume();
 
-		// fragment attached and instanciated, ok to setTorrentID now
-		this.setTorrentID(torrentIdGetter.getTorrentID());
-	}
+		if (getActivity() instanceof SessionInfoGetter) {
+			SessionInfoGetter getter = (SessionInfoGetter) getActivity();
+			sessionInfo = getter.getSessionInfo();
+		}
 
+		if (sessionInfo != null) {
+			sessionInfo.addRefreshTriggerListener(this);
+		}
+
+		if (pausedTorrentID >= 0) {
+			setTorrentID(pausedTorrentID);
+		} else if (torrentID >= 0) {
+			setTorrentID(torrentID);
+		} else {
+			long newTorrentID = getArguments().getLong("torrentID", -1);
+			setTorrentID(newTorrentID);
+		}
+	}
 
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
 	 */
 	public void setTorrentID(long id) {
-		if (torrentID != id && adapter != null) {
+		if (getActivity() == null) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: No Activity");
+			}
+			pausedTorrentID = id;
+			return;
+		}
+		if (adapter == null) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: No Adapter");
+			}
+			pausedTorrentID = id;
+			return;
+		}
+
+		//boolean wasTorrent = torrentID >= 0;
+		boolean isTorrent = id >= 0;
+		boolean torrentIdChanged = id != torrentID;
+
+		if (sessionInfo == null) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: No sessionInfo");
+			}
+			pausedTorrentID = id;
+			return;
+		}
+		if (torrentIdChanged) {
 			adapter.clearList();
 		}
 
 		torrentID = id;
 
-		if (adapter != null) {
-			adapter.setSessionInfo(sessionInfo);
+		//System.out.println("torrent is " + torrent);
+		adapter.setSessionInfo(sessionInfo);
+		if (isTorrent) {
+			sessionInfo.getRpc().getTorrentPeerInfo(id,
+					new TorrentListReceivedListener() {
+						@Override
+						public void rpcTorrentListReceived(List<?> listTorrents) {
+							updateAdapterTorrentID(torrentID);
+						}
+					});
 		}
-		if (id < 0) {
-			updateAdapterTorrentID(id);
-			return;
+
+		if (torrentIdChanged) {
+			AndroidUtils.clearChecked(listview);
 		}
-		sessionInfo.getRpc().getTorrentPeerInfo(id,
-				new TorrentListReceivedListener() {
-					@Override
-					public void rpcTorrentListReceived(List<?> listTorrents) {
-						updateAdapterTorrentID(torrentID);
-					}
-				});
 	}
 
 	private void updateAdapterTorrentID(long id) {
@@ -136,7 +174,16 @@ public class PeersFragment
 				adapter.setTorrentID(torrentID);
 			}
 		});
-		System.out.println("DS CHANGED Peer " + adapter);
 	}
 
+	@Override
+	public void triggerRefresh() {
+		sessionInfo.getRpc().getTorrentPeerInfo(torrentID,
+				new TorrentListReceivedListener() {
+					@Override
+					public void rpcTorrentListReceived(List<?> listTorrents) {
+						updateAdapterTorrentID(torrentID);
+					}
+				});
+	}
 }

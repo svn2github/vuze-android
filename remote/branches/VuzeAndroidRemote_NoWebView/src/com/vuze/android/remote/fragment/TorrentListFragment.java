@@ -1,5 +1,6 @@
 package com.vuze.android.remote.fragment;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -101,7 +102,6 @@ public class TorrentListFragment
 			sessionInfo = getter.getSessionInfo();
 			sessionInfo.addRpcAvailableListener(this);
 		}
-
 	}
 
 	/* (non-Javadoc)
@@ -281,6 +281,7 @@ public class TorrentListFragment
 			// old style menu
 			registerForContextMenu(listview);
 		}
+		
 
 		listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 			@Override
@@ -290,7 +291,7 @@ public class TorrentListFragment
 
 				if (DEBUG) {
 					Log.d(
-							null,
+							TAG,
 							position + "/" + id + "CLICKED; checked? "
 									+ listview.isItemChecked(position) + "; last="
 									+ lastIdClicked + "; sel? "
@@ -315,7 +316,6 @@ public class TorrentListFragment
 						showContextualActions();
 						lastIdClicked = id;
 					} else if (lastIdClicked == id) {
-						Log.d(TAG, "Same id");
 						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 							finishActionMode();
 						}
@@ -327,7 +327,6 @@ public class TorrentListFragment
 						}
 						lastIdClicked = -1;
 					} else {
-						Log.d(TAG, "set id = " + lastIdClicked);
 						lastIdClicked = id;
 					}
 				}
@@ -386,6 +385,19 @@ public class TorrentListFragment
 		setHasOptionsMenu(true);
 
 		return view;
+	}
+	
+	@Override
+	public void onViewStateRestored(Bundle savedInstanceState) {
+		super.onViewStateRestored(savedInstanceState);
+		if (listview != null) {
+			if (mCallback != null) {
+				int choiceMode = listview.getChoiceMode();
+				mCallback.onTorrentSelectedListener(TorrentListFragment.this,
+						getSelectedIDs(listview),
+						choiceMode == ListView.CHOICE_MODE_MULTIPLE);
+			}
+		}
 	}
 
 	@Override
@@ -483,7 +495,9 @@ public class TorrentListFragment
 	// For Android 2.x
 	public void onCreateContextMenu(ContextMenu menu, View v,
 			ContextMenuInfo menuInfo) {
-		Log.d(TAG, "onCreateContextMenu");
+		if (DEBUG) {
+			Log.d(TAG, "onCreateContextMenu");
+		}
 		super.onCreateContextMenu(menu, v, menuInfo);
 
 		MenuInflater inflater = getActivity().getMenuInflater();
@@ -495,7 +509,9 @@ public class TorrentListFragment
 	@Override
 	// For Android 2.x
 	public boolean onContextItemSelected(MenuItem item) {
-		Log.d(TAG, "onContextItemSelected");
+		if (DEBUG) {
+			Log.d(TAG, "onContextItemSelected");
+		}
 		if (handleFragmentMenuItems(item.getItemId())) {
 			return true;
 		}
@@ -841,7 +857,7 @@ public class TorrentListFragment
 	@Override
 	public void filterBy(final long filterMode, final String name, boolean save) {
 		if (DEBUG) {
-			Log.d(null, "FILTER BY " + name);
+			Log.d(TAG, "FILTER BY " + name);
 		}
 
 		FragmentActivity activity = getActivity();
@@ -871,7 +887,7 @@ public class TorrentListFragment
 	public void sortBy(final String[] sortFieldIDs, final Boolean[] sortOrderAsc,
 			boolean save) {
 		if (DEBUG) {
-			Log.d(null, "SORT BY!");
+			Log.d(TAG, "SORT BY " + Arrays.toString(sortFieldIDs));
 		}
 		FragmentActivity activity = getActivity();
 		if (activity == null) {

@@ -1,34 +1,20 @@
 package com.vuze.android.remote.fragment;
 
+import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.util.SparseArray;
-import android.view.View;
-import android.view.ViewGroup;
+import android.support.v4.app.FragmentStatePagerAdapter;
 
-import com.vuze.android.remote.SessionInfo;
+import com.vuze.android.remote.SetTorrentIdListener;
 
 public class TorrentDetailsPagerAdapter
-	extends FragmentPagerAdapter
-	implements TorrentIDGetter
+	extends FragmentStatePagerAdapter
 {
-
-	private SparseArray<Fragment> pageReferences;
 
 	private long torrentID = -1;
 
 	public TorrentDetailsPagerAdapter(FragmentManager fm) {
 		super(fm);
-		pageReferences = new SparseArray<Fragment>();
-	}
-
-	/* (non-Javadoc)
-	 * @see com.vuze.android.remote.fragment.TorrentIDGetter#getTorrentID()
-	 */
-	@Override
-	public long getTorrentID() {
-		return torrentID;
 	}
 
 	@Override
@@ -37,31 +23,32 @@ public class TorrentDetailsPagerAdapter
 		switch (position) {
 			case 1:
 				fragment = new PeersFragment();
-				((PeersFragment) fragment).setTorrentIdGetter(this);
 				break;
 			default:
 				fragment = new FilesFragment();
-				((FilesFragment) fragment).setTorrentIdGetter(this);
 		}
+		
+		updateFragmentArgs(fragment);
 
-		pageReferences.put(position, fragment);
 		return fragment;
 	}
 
-	@SuppressWarnings("deprecation")
-	public void destroyItem(View container, int position, Object object) {
-		super.destroyItem(container, position, object);
-		pageReferences.remove(position);
-	}
-
-	@Override
-	public void destroyItem(ViewGroup container, int position, Object object) {
-		super.destroyItem(container, position, object);
-		pageReferences.remove(position);
-	}
-
-	public Fragment getFragment(int key) {
-		return pageReferences.get(key);
+	private void updateFragmentArgs(Fragment fragment) {
+		if (fragment == null) {
+			return;
+		}
+		if (fragment.getActivity() != null) {
+			if (fragment instanceof SetTorrentIdListener) {
+				((SetTorrentIdListener) fragment).setTorrentID(torrentID);
+			}
+		} else {
+  		Bundle arguments = fragment.getArguments();
+  		if (arguments == null) {
+  			arguments = new Bundle();
+  		}
+  		arguments.putLong("torrentID", torrentID);
+  		fragment.setArguments(arguments);
+		}
 	}
 
 	@Override

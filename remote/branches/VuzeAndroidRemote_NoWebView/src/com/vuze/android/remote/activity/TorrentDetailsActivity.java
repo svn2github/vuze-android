@@ -6,6 +6,7 @@ import java.util.Map;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -39,7 +40,16 @@ public class TorrentDetailsActivity
 
 		final Bundle extras = intent.getExtras();
 		if (extras == null) {
-			System.err.println("No extras!");
+			Log.e(TAG, "No extras!");
+			finish();
+			return;
+		}
+		
+		Resources res = getResources();
+		if (!res.getBoolean(R.bool.showTorrentDetailsActivity)) {
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "Don't show TorrentDetailsActivity");
+			}
 			finish();
 			return;
 		}
@@ -153,5 +163,4 @@ public class TorrentDetailsActivity
 	public SessionInfo getSessionInfo() {
 		return sessionInfo;
 	}
-
 }

@@ -1,15 +1,15 @@
 package com.vuze.android.remote.fragment;
 
+import java.util.List;
 import java.util.Map;
 
 import android.app.Activity;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
-import android.support.v4.view.ViewPager.OnPageChangeListener;
-import android.util.Log;
-import android.view.*;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.astuetz.PagerSlidingTabStrip;
@@ -47,43 +47,6 @@ public class TorrentDetailsFragment
 		// Bind the tabs to the ViewPager
 		PagerSlidingTabStrip tabs = (PagerSlidingTabStrip) view.findViewById(R.id.pager_title_strip);
 
-		tabs.setOnPageChangeListener(new OnPageChangeListener() {
-
-			private int currentItem;
-
-			@Override
-			public void onPageScrollStateChanged(int state) {
-			}
-
-			@Override
-			public void onPageScrolled(int position, float arg1, int arg2) {
-			}
-
-			@Override
-			public void onPageSelected(int position) {
-				// Not called for first page 0 view
-
-				// Set old page's torrent id to -1 so it doesn't update anymore
-				if (position != currentItem) {
-					Fragment item = pagerAdapter.getFragment(currentItem);
-					if (item instanceof SetTorrentIdListener) {
-						((SetTorrentIdListener) item).setTorrentID(-1);
-					}
-				}
-
-				if (torrentID < 0) {
-					return;
-				}
-				currentItem = mViewPager.getCurrentItem();
-
-				Fragment item = pagerAdapter.getFragment(currentItem);
-				if (item instanceof SetTorrentIdListener) {
-					((SetTorrentIdListener) item).setTorrentID(torrentID);
-				}
-
-			}
-		});
-
 		mViewPager.setAdapter(pagerAdapter);
 		tabs.setViewPager(mViewPager);
 
@@ -112,25 +75,15 @@ public class TorrentDetailsFragment
 		pagerAdapter.setSelection(torrentID);
 		getActivity().runOnUiThread(new Runnable() {
 			public void run() {
-				int currentItem = mViewPager.getCurrentItem();
-				Fragment item = pagerAdapter.getFragment(currentItem);
-				if (item instanceof SetTorrentIdListener) {
-					((SetTorrentIdListener) item).setTorrentID(torrentID);
+				List<Fragment> fragments = getFragmentManager().getFragments();
+				for (Fragment item : fragments) {
+  				if (item instanceof SetTorrentIdListener) {
+  					((SetTorrentIdListener) item).setTorrentID(torrentID);
+  				}
 				}
 			}
 		});
 	}
-
-	@Override
-	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-		if (AndroidUtils.DEBUG) {
-			Log.d("TorrentDetails", "onCreateOptionsMenu");
-		}
-
-		// Pre HoneyComb has a "Torrent Actions" menu handled by 
-		super.onCreateOptionsMenu(menu, inflater);
-	}
-	
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
