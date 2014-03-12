@@ -76,6 +76,8 @@ public class AndroidUtils
 {
 	public static final boolean DEBUG = true;
 
+	public static final boolean DEBUG_MENU = false;
+
 	private static boolean hasAlertDialogOpen = false;
 
 	public static class AlertDialogBuilder

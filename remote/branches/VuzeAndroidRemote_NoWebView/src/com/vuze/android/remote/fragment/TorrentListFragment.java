@@ -141,7 +141,7 @@ public class TorrentListFragment
 		});
 		*/
 
-		sessionInfo.getRpc().getAllTorrents(null);
+		sessionInfo.getRpc().getAllTorrents(TAG, null);
 
 		RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
 
@@ -173,7 +173,7 @@ public class TorrentListFragment
 	@Override
 	public void transmissionRpcAvailable(SessionInfo sessionInfo) {
 		adapter.setSessionInfo(sessionInfo);
-		sessionInfo.addTorrentListReceivedListener(this);
+		sessionInfo.addTorrentListReceivedListener(TAG, this);
 	}
 
 	/* (non-Javadoc)
@@ -244,10 +244,14 @@ public class TorrentListFragment
 			pullListView.setOnRefreshListener(new OnRefreshListener<ListView>() {
 				@Override
 				public void onRefresh(PullToRefreshBase<ListView> refreshView) {
-					sessionInfo.getRpc().getRecentTorrents(
+					if (sessionInfo == null) {
+						return;
+					}
+					sessionInfo.getRpc().getRecentTorrents(TAG,
 							new TorrentListReceivedListener() {
 								@Override
-								public void rpcTorrentListReceived(List<?> listTorrents) {
+								public void rpcTorrentListReceived(String callID,
+										List<?> listTorrents) {
 									FragmentActivity activity = getActivity();
 									if (activity == null) {
 										return;
@@ -281,7 +285,6 @@ public class TorrentListFragment
 			// old style menu
 			registerForContextMenu(listview);
 		}
-		
 
 		listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 			@Override
@@ -386,7 +389,7 @@ public class TorrentListFragment
 
 		return view;
 	}
-	
+
 	@Override
 	public void onViewStateRestored(Bundle savedInstanceState) {
 		super.onViewStateRestored(savedInstanceState);
@@ -469,8 +472,11 @@ public class TorrentListFragment
 	 * @see com.vuze.android.remote.rpc.TorrentListReceivedListener#rpcTorrentListReceived(java.util.List)
 	 */
 	@Override
-	public void rpcTorrentListReceived(final List<?> listTorrents) {
+	public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
 		lastUpdated = System.currentTimeMillis();
+		if (listTorrents == null || listTorrents.size() == 0) {
+			return;
+		}
 		FragmentActivity activity = getActivity();
 		if (activity == null) {
 			return;
@@ -495,7 +501,7 @@ public class TorrentListFragment
 	// For Android 2.x
 	public void onCreateContextMenu(ContextMenu menu, View v,
 			ContextMenuInfo menuInfo) {
-		if (DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onCreateContextMenu");
 		}
 		super.onCreateContextMenu(menu, v, menuInfo);
@@ -509,7 +515,7 @@ public class TorrentListFragment
 	@Override
 	// For Android 2.x
 	public boolean onContextItemSelected(MenuItem item) {
-		if (DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onContextItemSelected");
 		}
 		if (handleFragmentMenuItems(item.getItemId())) {
@@ -520,7 +526,7 @@ public class TorrentListFragment
 
 	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	private void setupHoneyCombListView(ListView lv) {
-		if (DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "MULTI:setup");
 		}
 
@@ -528,7 +534,7 @@ public class TorrentListFragment
 			// Called when the action mode is created; startActionMode() was called
 			@Override
 			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-				if (DEBUG) {
+				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:ON CREATEACTIONMODE");
 				}
 				mActionMode = mode;
@@ -544,7 +550,7 @@ public class TorrentListFragment
 			// may be called multiple times if the mode is invalidated.
 			@Override
 			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-				if (DEBUG) {
+				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onPrepareActionMode");
 				}
 
@@ -560,7 +566,7 @@ public class TorrentListFragment
 			// Called when the user selects a contextual menu item
 			@Override
 			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-				if (DEBUG) {
+				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onActionItemClicked");
 				}
 				if (TorrentListFragment.this.handleFragmentMenuItems(item.getItemId())) {
@@ -572,7 +578,7 @@ public class TorrentListFragment
 			// Called when the user exits the action mode
 			@Override
 			public void onDestroyActionMode(ActionMode mode) {
-				if (DEBUG) {
+				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onDestroyActionMode");
 				}
 				mActionMode = null;
@@ -591,7 +597,7 @@ public class TorrentListFragment
 			@Override
 			public void onItemCheckedStateChanged(ActionMode mode, int position,
 					long id, boolean checked) {
-				if (DEBUG) {
+				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:CHECK CHANGE");
 				}
 
@@ -621,7 +627,7 @@ public class TorrentListFragment
 	}
 
 	public boolean handleFragmentMenuItems(int itemId) {
-		if (DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "HANDLE MENU FRAG " + itemId);
 		}
 		if (sessionInfo == null) {
@@ -665,7 +671,7 @@ public class TorrentListFragment
 
 	public static boolean handleTorrentMenuActions(SessionInfo sessionInfo,
 			long[] ids, FragmentManager fm, int itemId) {
-		if (DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "HANDLE MENU FRAG " + itemId);
 		}
 		if (sessionInfo == null || ids == null || ids.length == 0) {
@@ -683,15 +689,15 @@ public class TorrentListFragment
 				return true;
 			}
 			case R.id.action_sel_start: {
-				sessionInfo.getRpc().startTorrents(ids, false, null);
+				sessionInfo.getRpc().startTorrents(TAG, ids, false, null);
 				return true;
 			}
 			case R.id.action_sel_forcestart: {
-				sessionInfo.getRpc().startTorrents(ids, true, null);
+				sessionInfo.getRpc().startTorrents(TAG, ids, true, null);
 				return true;
 			}
 			case R.id.action_sel_stop: {
-				sessionInfo.getRpc().stopTorrents(ids, null);
+				sessionInfo.getRpc().stopTorrents(TAG, ids, null);
 				return true;
 			}
 			case R.id.action_sel_relocate: {
@@ -801,7 +807,7 @@ public class TorrentListFragment
 	 */
 	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
-		if (AndroidUtils.DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onPrepareOptionsMenu");
 		}
 

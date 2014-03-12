@@ -186,6 +186,10 @@ public class TorrentListAdapter
 			this.filterMode = filterMode;
 			filter(constraint);
 		}
+		
+		public void refilter() {
+			filter(constraint);
+		}
 
 		@Override
 		protected FilterResults performFiltering(CharSequence _constraint) {
@@ -278,21 +282,7 @@ public class TorrentListAdapter
 		if (DEBUG) {
 			Log.d(TAG, "refreshDisplayList");
 		}
-		if (sessionInfo != null) {
-			TorrentFilter filter = getFilter();
-			// How does this work with filters?
-			Object[] keys = sessionInfo.getTorrentListKeys();
-			synchronized (mLock) {
-				for (Object key : keys) {
-					if (!displayList.contains(key)
-							&& constraintCheck(filter.constraint, key)
-							&& filterCheck(filter.filterMode, key)) {
-						displayList.add(key);
-					}
-				}
-			}
-		}
-		doSort();
+		getFilter().refilter();
 	}
 
 	public boolean constraintCheck(CharSequence constraint, Object key) {

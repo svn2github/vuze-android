@@ -27,6 +27,8 @@ import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent;
 public class TorrentDetailsFragment
 	extends Fragment
 {
+	private static final String TAG = "TorrentDetailsFragment";
+
 	ViewPager mViewPager;
 
 	private TorrentDetailsPagerAdapter pagerAdapter;
@@ -106,19 +108,19 @@ public class TorrentDetailsFragment
 				return true;
 			}
 			case R.id.action_sel_start: {
-				sessionInfo.getRpc().startTorrents(new long[] {
+				sessionInfo.getRpc().startTorrents(TAG, new long[] {
 					torrentID
 				}, false, null);
 				return true;
 			}
 			case R.id.action_sel_forcestart: {
-				sessionInfo.getRpc().startTorrents(new long[] {
+				sessionInfo.getRpc().startTorrents(TAG, new long[] {
 					torrentID
 				}, true, null);
 				return true;
 			}
 			case R.id.action_sel_stop: {
-				sessionInfo.getRpc().stopTorrents(new long[] {
+				sessionInfo.getRpc().stopTorrents(TAG, new long[] {
 					torrentID
 				}, null);
 				return true;

@@ -14,6 +14,7 @@ import android.widget.*;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.TextViewFlipper.FlipValidator;
 
 public class PeersAdapter
 	extends BaseAdapter
@@ -33,6 +34,32 @@ public class PeersAdapter
 		TextView tvDlRate;
 
 		TextView tvCC;
+
+		public String peerID = "";
+
+		public long torrentID = -1;
+	}
+
+	public static class ViewHolderFlipValidator
+		implements FlipValidator
+	{
+		private ViewHolder holder;
+
+		private String peerID;
+
+		private long torrentID;
+
+		public ViewHolderFlipValidator(ViewHolder holder, long torrentID,
+				String peerID) {
+			this.holder = holder;
+			this.torrentID = torrentID;
+			this.peerID = peerID;
+		}
+
+		@Override
+		public boolean isStillValid() {
+			return torrentID == holder.torrentID && holder.peerID.equals(peerID);
+		}
 	}
 
 	private Context context;
@@ -56,9 +83,12 @@ public class PeersAdapter
 
 	private long torrentID;
 
+	private TextViewFlipper flipper;
+
 	public PeersAdapter(Context context) {
 		this.context = context;
 		resources = context.getResources();
+		flipper = new TextViewFlipper(R.anim.anim_field_change);
 		displayList = new ArrayList<Object>();
 	}
 
@@ -100,42 +130,47 @@ public class PeersAdapter
 
 		Map<?, ?> item = getItem(position);
 
+		String peerID = MapUtils.getMapString(item, "address", "");
+		ViewHolderFlipValidator validator = new ViewHolderFlipValidator(holder,
+				torrentID, peerID);
+		boolean animateFlip = validator.isStillValid();
+		holder.peerID = peerID;
+		holder.torrentID = torrentID;
+
 		if (holder.tvName != null) {
-			holder.tvName.setText(MapUtils.getMapString(item, "clientName", "??"));
+			flipper.changeText(holder.tvName,
+					MapUtils.getMapString(item, "clientName", "??"), animateFlip,
+					validator);
 		}
 		if (holder.tvCC != null) {
-			holder.tvCC.setText(MapUtils.getMapString(item, "cc", ""));
+			flipper.changeText(holder.tvCC, MapUtils.getMapString(item, "cc", ""),
+					animateFlip, validator);
 		}
 		if (holder.tvUlRate != null) {
 			long rateUpload = MapUtils.getMapLong(item, "rateToPeer", 0);
 
-			if (rateUpload > 0) {
-				holder.tvUlRate.setText("\u25B2 "
-						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateUpload));
-			} else {
-				holder.tvUlRate.setText("");
-			}
+			String s = rateUpload > 0 ? "\u25B2 "
+					+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateUpload) : "";
+			flipper.changeText(holder.tvUlRate, s, animateFlip, validator);
 		}
 		if (holder.tvDlRate != null) {
 			long rateDownload = MapUtils.getMapLong(item, "rateToClient", 0);
 
-			if (rateDownload > 0) {
-				holder.tvDlRate.setText("\u25BC "
-						+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateDownload));
-			} else {
-				holder.tvDlRate.setText("");
-			}
+			String s = rateDownload > 0 ? "\u25BC "
+					+ DisplayFormatters.formatByteCountToKiBEtcPerSec(rateDownload) : "";
+			flipper.changeText(holder.tvDlRate, s, animateFlip, validator);
 		}
 		float pctDone = MapUtils.getMapFloat(item, "progress", 0f);
 		if (holder.tvProgress != null) {
 			NumberFormat format = NumberFormat.getPercentInstance();
 			format.setMaximumFractionDigits(1);
 			String s = format.format(pctDone);
-			holder.tvProgress.setText(s);
+			flipper.changeText(holder.tvProgress, s, animateFlip, validator);
 		}
 
 		if (holder.tvIP != null) {
-			holder.tvIP.setText(MapUtils.getMapString(item, "address", "??"));
+			String s = MapUtils.getMapString(item, "address", "??");
+			flipper.changeText(holder.tvIP, s, animateFlip, validator);
 		}
 
 		return rowView;
@@ -165,7 +200,7 @@ public class PeersAdapter
 		protected FilterResults performFiltering(CharSequence constraint) {
 			this.constraint = constraint;
 			if (AndroidUtils.DEBUG) {
-  			System.out.println("performFIlter Start");
+				System.out.println("performFIlter Start");
 			}
 			FilterResults results = new FilterResults();
 

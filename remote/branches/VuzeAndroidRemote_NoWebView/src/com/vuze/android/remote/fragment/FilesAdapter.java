@@ -35,9 +35,9 @@ public class FilesAdapter
 
 		TextView tvStatus;
 
-		public boolean animateFlip;
-
 		public int fileIndex = -1;
+
+		public long torrentID = -1;
 	}
 
 	public static class ViewHolderFlipValidator
@@ -47,14 +47,18 @@ public class FilesAdapter
 
 		private int fileIndex = -1;
 
-		public ViewHolderFlipValidator(ViewHolder holder, int fileIndex) {
+		private long torrentID;
+
+		public ViewHolderFlipValidator(ViewHolder holder, long torrentID,
+				int fileIndex) {
 			this.holder = holder;
+			this.torrentID = torrentID;
 			this.fileIndex = fileIndex;
 		}
 
 		@Override
 		public boolean isStillValid() {
-			return holder.fileIndex == fileIndex;
+			return holder.fileIndex == fileIndex && holder.torrentID == torrentID;
 		}
 	}
 
@@ -134,17 +138,17 @@ public class FilesAdapter
 		Map<?, ?> item = getItem(position);
 
 		int fileIndex = MapUtils.getMapInt(item, "index", -2);
-		holder.animateFlip = holder.fileIndex == fileIndex;
-		holder.fileIndex = fileIndex;
 		ViewHolderFlipValidator validator = new ViewHolderFlipValidator(holder,
-				fileIndex);
+				torrentID, fileIndex);
+		boolean animateFlip = validator.isStillValid();
+		holder.fileIndex = fileIndex;
+		holder.torrentID = torrentID;
 
 		boolean wanted = MapUtils.getMapBoolean(item, "wanted", true);
 
 		if (holder.tvName != null) {
 			flipper.changeText(holder.tvName,
-					MapUtils.getMapString(item, "name", "??"), holder.animateFlip,
-					validator);
+					MapUtils.getMapString(item, "name", "??"), animateFlip, validator);
 		}
 		long bytesCompleted = MapUtils.getMapLong(item, "bytesCompleted", 0);
 		long length = MapUtils.getMapLong(item, "length", -1);
@@ -153,10 +157,10 @@ public class FilesAdapter
 			if (holder.tvProgress != null) {
 				holder.tvProgress.setVisibility(wanted ? View.VISIBLE : View.INVISIBLE);
 				if (wanted) {
-  				NumberFormat format = NumberFormat.getPercentInstance();
-  				format.setMaximumFractionDigits(1);
-  				String s = format.format(pctDone);
-  				flipper.changeText(holder.tvProgress, s, holder.animateFlip, validator);
+					NumberFormat format = NumberFormat.getPercentInstance();
+					format.setMaximumFractionDigits(1);
+					String s = format.format(pctDone);
+					flipper.changeText(holder.tvProgress, s, animateFlip, validator);
 				}
 			}
 			if (holder.pb != null) {
@@ -170,7 +174,7 @@ public class FilesAdapter
 			String s = resources.getString(R.string.files_row_size,
 					DisplayFormatters.formatByteCountToKiBEtc(bytesCompleted),
 					DisplayFormatters.formatByteCountToKiBEtc(length));
-			flipper.changeText(holder.tvInfo, s, holder.animateFlip, validator);
+			flipper.changeText(holder.tvInfo, s, animateFlip, validator);
 		}
 		if (holder.tvStatus != null) {
 			int priority = MapUtils.getMapInt(item,
@@ -190,7 +194,7 @@ public class FilesAdapter
 			}
 
 			String s = resources.getString(id);
-			flipper.changeText(holder.tvStatus, s, holder.animateFlip, validator);
+			flipper.changeText(holder.tvStatus, s, animateFlip, validator);
 		}
 
 		return rowView;
@@ -284,9 +288,6 @@ public class FilesAdapter
 			super.notifyDataSetChanged();
 			return;
 		}
-		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "Sections start calc");
-		}
 		synchronized (mLock) {
 			List<String> categories = new ArrayList<String>();
 			List<Integer> categoriesStart = new ArrayList<Integer>();
@@ -336,9 +337,8 @@ public class FilesAdapter
 			sectionStarts = categoriesStart;
 		}
 		if (AndroidUtils.DEBUG) {
-  		Log.d(TAG, "Sections end calc");
-  		Log.d(TAG, "Sections: " + Arrays.toString(sections));
-  		Log.d(TAG, "SectionStarts: " + sectionStarts);
+			//Log.d(TAG, "Sections: " + Arrays.toString(sections));
+			//Log.d(TAG, "SectionStarts: " + sectionStarts);
 		}
 
 		super.notifyDataSetChanged();

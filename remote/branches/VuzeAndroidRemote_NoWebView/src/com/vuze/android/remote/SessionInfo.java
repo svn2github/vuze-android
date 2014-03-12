@@ -41,12 +41,25 @@ public class SessionInfo
 {
 	private static final String TAG = "SessionInfo";
 
+	private static final String[] FILE_FIELDS_LOCALHOST = new String[] {};
+
+	private static final String[] FILE_FIELDS_REMOTE = new String[] {
+		TransmissionVars.FIELD_FILES_NAME,
+		TransmissionVars.FIELD_FILES_LENGTH,
+		TransmissionVars.FIELD_FILES_CONTENT_URL,
+		TransmissionVars.FIELD_FILESTATS_BYTES_COMPLETED,
+		TransmissionVars.FIELD_FILESTATS_PRIORITY,
+		TransmissionVars.FIELD_FILESTATS_WANTED,
+	};
+
 	private static String[] SESSION_STATS_FIELDS = {
 		TransmissionVars.TR_SESSION_STATS_DOWNLOAD_SPEED,
 		TransmissionVars.TR_SESSION_STATS_UPLOAD_SPEED
 	};
 
 	private SessionSettings sessionSettings;
+
+	private boolean activityVisible;
 
 	private TransmissionRPC rpc;
 
@@ -128,6 +141,7 @@ public class SessionInfo
 				}
 
 				AndroidUtils.showConnectionError(activity, errMsg, false);
+				SessionInfoManager.removeSessionInfo(remoteProfile.getID());
 				return;
 			}
 
@@ -152,6 +166,7 @@ public class SessionInfo
 		} catch (final RPCException e) {
 			VuzeEasyTracker.getInstance(activity).logError(activity, e);
 			AndroidUtils.showConnectionError(activity, e.getMessage(), false);
+			SessionInfoManager.removeSessionInfo(remoteProfile.getID());
 			if (AndroidUtils.DEBUG) {
 				e.printStackTrace();
 			}
@@ -168,6 +183,7 @@ public class SessionInfo
 			if (!AndroidUtils.isURLAlive(rpcUrl)) {
 				AndroidUtils.showConnectionError(activity,
 						R.string.error_remote_not_found, false);
+				SessionInfoManager.removeSessionInfo(remoteProfile.getID());
 				return;
 			}
 
@@ -307,14 +323,16 @@ public class SessionInfo
 		this.rpc = rpc;
 
 		if (rpc != null) {
+			rpc.setDefaultFileFields(remoteProfile.isLocalHost() ? FILE_FIELDS_LOCALHOST : FILE_FIELDS_REMOTE);
+
 			for (SessionInfoListener l : availabilityListeners) {
 				l.transmissionRpcAvailable(this);
 			}
 
 			rpc.addTorrentListReceivedListener(new TorrentListReceivedListener() {
 				@Override
-				public void rpcTorrentListReceived(List<?> listTorrents) {
-					addTorrents(listTorrents);
+				public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
+					addTorrents(callID, listTorrents);
 				}
 			});
 
@@ -359,7 +377,7 @@ public class SessionInfo
 		"rawtypes",
 		"unchecked"
 	})
-	public void addTorrents(List<?> collection) {
+	public void addTorrents(String callID, List<?> collection) {
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "adding torrents " + collection.size());
 		}
@@ -372,6 +390,9 @@ public class SessionInfo
 				Object key = mapTorrent.get("id");
 				if (key instanceof Integer) {
 					key = Long.valueOf((Integer) key);
+				}
+				if (key == null || mapTorrent.size() == 1) {
+					continue;
 				}
 				Map old = mapOriginal.put(key, mapTorrent);
 				if (old != null) {
@@ -391,7 +412,7 @@ public class SessionInfo
 		}
 
 		for (TorrentListReceivedListener l : torrentListReceivedListeners) {
-			l.rpcTorrentListReceived(collection);
+			l.rpcTorrentListReceived(callID, collection);
 		}
 	}
 
@@ -419,18 +440,24 @@ public class SessionInfo
 					for (Object fileKey : mapUpdatedFile.keySet()) {
 						mapNewFile.put(fileKey, mapUpdatedFile.get(fileKey));
 					}
-					mapTorrent.put(key, listNewFiles);
 				}
+				mapTorrent.put(key, listNewFiles);
 			}
 		}
 	}
 
-	public boolean addTorrentListReceivedListener(TorrentListReceivedListener l) {
-		return addTorrentListReceivedListener(l, true);
+	public boolean addTorrentListReceivedListener(String callID,
+			TorrentListReceivedListener l) {
+		return addTorrentListReceivedListener(callID, l, true);
 	}
 
 	public boolean addTorrentListReceivedListener(TorrentListReceivedListener l,
 			boolean fire) {
+		return addTorrentListReceivedListener(TAG, l, fire);
+	}
+
+	public boolean addTorrentListReceivedListener(String callID,
+			TorrentListReceivedListener l, boolean fire) {
 		synchronized (torrentListReceivedListeners) {
 			if (torrentListReceivedListeners.contains(l)) {
 				return false;
@@ -438,7 +465,7 @@ public class SessionInfo
 			torrentListReceivedListeners.add(l);
 			List<Map<?, ?>> torrentList = getTorrentList();
 			if (torrentList.size() > 0 && fire) {
-				l.rpcTorrentListReceived(torrentList);
+				l.rpcTorrentListReceived(callID, torrentList);
 			}
 		}
 		return true;
@@ -521,13 +548,17 @@ public class SessionInfo
 		handler = new Handler(Looper.getMainLooper());
 		handler.postDelayed(new Runnable() {
 			public void run() {
-				if (AndroidUtils.DEBUG) {
-					Log.d(TAG, "Fire Handler");
-				}
-				triggerRefresh(true);
+				if (isActivityVisible()
+						&& remoteProfile != null
+						&& (VuzeRemoteApp.getNetworkState().isOnline() || remoteProfile.isLocalHost())) {
+					if (AndroidUtils.DEBUG) {
+						Log.d(TAG, "Fire Handler");
+					}
+					triggerRefresh(true);
 
-				for (RefreshTriggerListener l : refreshTriggerListeners) {
-					l.triggerRefresh();
+					for (RefreshTriggerListener l : refreshTriggerListeners) {
+						l.triggerRefresh();
+					}
 				}
 
 				long interval = remoteProfile.isUpdateIntervalEnabled()
@@ -543,6 +574,9 @@ public class SessionInfo
 	}
 
 	public void triggerRefresh(final boolean recentOnly) {
+		if (rpc == null) {
+			return;
+		}
 		synchronized (mLock) {
 			if (refreshing) {
 				if (AndroidUtils.DEBUG) {
@@ -565,16 +599,16 @@ public class SessionInfo
 
 				TorrentListReceivedListener listener = new TorrentListReceivedListener() {
 					@Override
-					public void rpcTorrentListReceived(List<?> listTorrents) {
+					public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
 						synchronized (mLock) {
 							refreshing = false;
 						}
 					}
 				};
 				if (recentOnly) {
-					rpc.getRecentTorrents(listener);
+					rpc.getRecentTorrents(TAG, listener);
 				} else {
-					rpc.getAllTorrents(listener);
+					rpc.getAllTorrents(TAG, listener);
 				}
 			}
 
@@ -691,6 +725,9 @@ public class SessionInfo
 
 	@Override
 	public void onlineStateChanged(boolean isOnline) {
+		if (!uiReady) {
+			return;
+		}
 		if (isOnline || getRemoteProfile().isLocalHost()) {
 			initRefreshHandler();
 		} else {
@@ -705,4 +742,17 @@ public class SessionInfo
 	public String getRpcRoot() {
 		return rpcRoot;
 	}
+
+	public boolean isActivityVisible() {
+		return activityVisible;
+	}
+
+	public void activityResumed() {
+		activityVisible = true;
+	}
+
+	public void activityPaused() {
+		activityVisible = false;
+	}
+
 }

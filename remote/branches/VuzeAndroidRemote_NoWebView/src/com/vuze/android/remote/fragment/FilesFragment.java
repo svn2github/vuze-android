@@ -126,16 +126,17 @@ public class FilesFragment
 			showProgressBarOnAttach = true;
 			return;
 		}
-		activity.runOnUiThread(new Runnable() {
+
+		progressBar.postDelayed(new Runnable() {
 			@Override
 			public void run() {
 				FragmentActivity activity = getActivity();
-				if (activity == null) {
+				if (activity == null || numProgresses <= 0) {
 					return;
 				}
 				progressBar.setVisibility(View.VISIBLE);
 			}
-		});
+		}, 600);
 	}
 
 	private void hideProgressBar() {
@@ -291,10 +292,10 @@ public class FilesFragment
 				@Override
 				public void onRefresh(PullToRefreshBase<ListView> refreshView) {
 					showProgressBar();
-					sessionInfo.getRpc().getTorrentFileInfo(torrentID, null, null,
+					sessionInfo.getRpc().getTorrentFileInfo(TAG, torrentID, null,
 							new TorrentListReceivedListener() {
 								@Override
-								public void rpcTorrentListReceived(List<?> listTorrents) {
+								public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
 									FragmentActivity activity = getActivity();
 									if (activity == null) {
 										return;
@@ -419,12 +420,12 @@ public class FilesFragment
 
 		if (!wasTorrent && isTorrent) {
 			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: add listener");
+				Log.d(TAG, "setTorrentID: add listener");
 			}
 			sessionInfo.addTorrentListReceivedListener(this, false);
 		} else if (wasTorrent && !isTorrent) {
 			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: remove listener");
+				Log.d(TAG, "setTorrentID: remove listener");
 			}
 			sessionInfo.removeTorrentListReceivedListener(this);
 		}
@@ -445,7 +446,7 @@ public class FilesFragment
 						Log.d(TAG, "setTorrentID: getFileInfo for " + id);
 					} // getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
 					showProgressBar();
-					sessionInfo.getRpc().getTorrentFileInfo(id, null, null, null);
+					sessionInfo.getRpc().getTorrentFileInfo(TAG, id, null, null);
 				}
 			}
 		}
@@ -524,20 +525,25 @@ public class FilesFragment
 			//System.out.println("mapFIle=" + mapFile);
 			isComplete = bytesCompleted == length;
 		}
+		
+		boolean isLocalHost = sessionInfo != null
+				&& !sessionInfo.getRemoteProfile().isLocalHost();
 
 		MenuItem menuLaunch = menu.findItem(R.id.action_sel_launch);
 		if (menuLaunch != null) {
-			boolean canLaunch = isComplete; //TODO: = && isOnline;
+			boolean canLaunch = isComplete && mapFile != null
+					&& mapFile.containsKey(TransmissionVars.FIELD_FILES_CONTENT_URL);
+			canLaunch &= (isLocalHost || VuzeRemoteApp.getNetworkState().isOnline());
 			menuLaunch.setEnabled(canLaunch);
 		}
 
 		MenuItem menuSave = menu.findItem(R.id.action_sel_save);
 		if (menuSave != null) {
-			boolean visible = sessionInfo != null
-					&& !sessionInfo.getRemoteProfile().isLocalHost();
+			boolean visible = isLocalHost;
 			menuSave.setVisible(visible);
 			if (visible) {
-				boolean canSave = isComplete;
+				boolean canSave = isComplete && mapFile != null
+						&& mapFile.containsKey(TransmissionVars.FIELD_FILES_CONTENT_URL);
 				menuSave.setEnabled(canSave);
 			}
 		}
@@ -588,7 +594,7 @@ public class FilesFragment
 			}
 			case R.id.action_sel_wanted: {
 				showProgressBar();
-				sessionInfo.getRpc().setWantState(torrentID, new int[] {
+				sessionInfo.getRpc().setWantState(TAG, torrentID, new int[] {
 					selectedFileIndex
 				}, true, null);
 				return true;
@@ -596,7 +602,7 @@ public class FilesFragment
 			case R.id.action_sel_unwanted: {
 				// TODO: Delete Prompt
 				showProgressBar();
-				sessionInfo.getRpc().setWantState(torrentID, new int[] {
+				sessionInfo.getRpc().setWantState(TAG, torrentID, new int[] {
 					selectedFileIndex
 				}, false, null);
 				return true;
@@ -613,7 +619,7 @@ public class FilesFragment
 					priority += 1;
 				}
 				showProgressBar();
-				sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
+				sessionInfo.getRpc().setFilePriority(TAG, torrentID, new int[] {
 					selectedFileIndex
 				}, priority, null);
 				return true;
@@ -630,7 +636,7 @@ public class FilesFragment
 					priority -= 1;
 				}
 				showProgressBar();
-				sessionInfo.getRpc().setFilePriority(torrentID, new int[] {
+				sessionInfo.getRpc().setFilePriority(TAG, torrentID, new int[] {
 					selectedFileIndex
 				}, priority, null);
 				return true;
@@ -788,7 +794,7 @@ public class FilesFragment
 		List<?> listFiles = MapUtils.getMapList(torrent, "fileStats", null);
 		if (listFiles == null || selectedFileIndex < 0
 				|| selectedFileIndex >= listFiles.size()) {
-			return null;
+			return getSelectedFile();
 		}
 		Object object = listFiles.get(selectedFileIndex);
 		if (object instanceof Map<?, ?>) {
@@ -836,9 +842,9 @@ public class FilesFragment
 	 */
 	@SuppressWarnings("rawtypes")
 	@Override
-	public void rpcTorrentListReceived(final List<?> listTorrents) {
+	public void rpcTorrentListReceived(String callID, final List<?> listTorrents) {
 		FragmentActivity activity = getActivity();
-		if (activity == null) {
+		if (activity == null || !TAG.equals(callID)) {
 			return;
 		}
 		boolean found = false;
@@ -887,7 +893,7 @@ public class FilesFragment
 
 	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
-		if (AndroidUtils.DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onPrepareOptionsMenu");
 		}
 
@@ -917,7 +923,7 @@ public class FilesFragment
 	// For Android 2.x
 	public void onCreateContextMenu(ContextMenu menu, View v,
 			ContextMenuInfo menuInfo) {
-		if (AndroidUtils.DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onCreateContextMenu");
 		}
 		super.onCreateContextMenu(menu, v, menuInfo);
@@ -931,7 +937,7 @@ public class FilesFragment
 	@Override
 	// For Android 2.x
 	public boolean onContextItemSelected(MenuItem item) {
-		if (AndroidUtils.DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onContextItemSelected");
 		}
 		if (handleMenu(item.getItemId())) {
@@ -943,7 +949,8 @@ public class FilesFragment
 	@Override
 	public void triggerRefresh() {
 		if (sessionInfo != null && torrentID >= 0) {
-			sessionInfo.getRpc().getTorrentFileInfo(torrentID, null, null, null);
+			showProgressBar();
+			sessionInfo.getRpc().getTorrentFileInfo(TAG, torrentID, null, null);
 		}
 	}
 

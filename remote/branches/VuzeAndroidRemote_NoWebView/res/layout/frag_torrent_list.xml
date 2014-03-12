@@ -27,6 +27,7 @@
 		android:choiceMode="multipleChoice"
 		ptr:ptrAnimationStyle="flip"
 		ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
+		ptr:ptrViewRefeshableViewProgressBarOnCenterWhileRefreshingEnabled="true"
 		ptr:ptrShowIndicator="false"
 		tools:ignore="MissingRegistered" />
 

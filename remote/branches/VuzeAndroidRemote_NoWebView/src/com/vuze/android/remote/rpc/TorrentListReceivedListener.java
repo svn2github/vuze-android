@@ -8,5 +8,5 @@ public interface TorrentListReceivedListener
 	 * 
 	 * @param listTorrents  List of Maps
 	 */
-	public void rpcTorrentListReceived(List<?> listTorrents);
+	public void rpcTorrentListReceived(String callID, List<?> listTorrents);
 }

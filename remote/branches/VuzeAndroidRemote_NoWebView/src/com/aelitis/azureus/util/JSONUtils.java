@@ -17,11 +17,13 @@
 
 package com.aelitis.azureus.util;
 
+import java.io.Reader;
 import java.util.*;
 
 import android.content.Context;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONReader;
 import com.vuze.android.remote.VuzeEasyTracker;
 
 /**
@@ -83,8 +85,25 @@ public class JSONUtils
 		return map;
 	}
 
+	public static Map decodeJSON(Reader json)
+			throws Exception {
+		Object object = parseWithException(json);
+		//System.out.println("decode: " + json + "\nto\n" + object);
+		if (object instanceof Map) {
+			return (Map) object;
+		}
+		// could be : ArrayList, String, Number, Boolean
+		Map map = new HashMap();
+		map.put("value", object);
+		return map;
+	}
+
 	private static Object parseWithException(String json) {
 		return JSON.parse(json);
+	}
+
+	private static Object parseWithException(Reader reader) {
+		return new JSONReader(reader).readObject();
 	}
 
 	public static List decodeJSONList(String json) {

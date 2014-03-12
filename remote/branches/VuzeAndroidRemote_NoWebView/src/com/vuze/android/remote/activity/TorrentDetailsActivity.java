@@ -83,17 +83,23 @@ public class TorrentDetailsActivity
 	@Override
 	protected void onPause() {
 		super.onPause();
-		sessionInfo.removeTorrentListReceivedListener(this);
+		if (sessionInfo != null) {
+  		sessionInfo.activityPaused();
+  		sessionInfo.removeTorrentListReceivedListener(this);
+		}
 	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
-		sessionInfo.addTorrentListReceivedListener(this);
+		if (sessionInfo != null) {
+			sessionInfo.activityResumed();
+			sessionInfo.addTorrentListReceivedListener(TAG, this);
+		}
 	}
 
 	@Override
-	public void rpcTorrentListReceived(List<?> listTorrents) {
+	public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
@@ -147,7 +153,7 @@ public class TorrentDetailsActivity
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		if (AndroidUtils.DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onCreateOptionsMenu");
 		}
 

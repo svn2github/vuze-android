@@ -13,15 +13,11 @@ import android.widget.ListView;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
-public class PeersFragment
+public class TorrentInfoFragment
 	extends Fragment
 	implements SetTorrentIdListener, RefreshTriggerListener
 {
-	private static final String TAG = "PeersFragment";
-
-	private ListView listview;
-
-	private PeersAdapter adapter;
+	private static final String TAG = "TorrentInfoFragment";
 
 	private long torrentID = -1;
 
@@ -29,34 +25,13 @@ public class PeersFragment
 
 	private long pausedTorrentID = -1;
 
-	public PeersFragment() {
+	public TorrentInfoFragment() {
 		super();
-	}
-
-	@Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		super.onActivityCreated(savedInstanceState);
-
-		adapter = new PeersAdapter(this.getActivity());
-		if (sessionInfo != null) {
-			adapter.setSessionInfo(sessionInfo);
-		}
-		listview.setItemsCanFocus(true);
-		listview.setAdapter(adapter);
 	}
 
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
-
 		View view = inflater.inflate(R.layout.frag_torrent_peers, container, false);
-
-		listview = (ListView) view.findViewById(R.id.peers_list);
-
-		listview.setItemsCanFocus(false);
-		listview.setClickable(true);
-		listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-
-		setHasOptionsMenu(true);
 		return view;
 	}
 
@@ -122,13 +97,6 @@ public class PeersFragment
 			pausedTorrentID = id;
 			return;
 		}
-		if (adapter == null) {
-			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: No Adapter");
-			}
-			pausedTorrentID = id;
-			return;
-		}
 
 		//boolean wasTorrent = torrentID >= 0;
 		boolean isTorrent = id >= 0;
@@ -141,54 +109,13 @@ public class PeersFragment
 			pausedTorrentID = id;
 			return;
 		}
-		if (torrentIdChanged) {
-			adapter.clearList();
-		}
 
 		torrentID = id;
-
-		//System.out.println("torrent is " + torrent);
-		adapter.setSessionInfo(sessionInfo);
-		if (isTorrent) {
-			sessionInfo.getRpc().getTorrentPeerInfo(TAG, id,
-					new TorrentListReceivedListener() {
-						@Override
-						public void rpcTorrentListReceived(String callID,
-								List<?> listTorrents) {
-							updateAdapterTorrentID(torrentID);
-						}
-					});
-		}
-
-		if (torrentIdChanged) {
-			AndroidUtils.clearChecked(listview);
-		}
-	}
-
-	private void updateAdapterTorrentID(long id) {
-		if (adapter == null) {
-			return;
-		}
-		FragmentActivity activity = getActivity();
-		if (activity == null) {
-			return;
-		}
-		activity.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				adapter.setTorrentID(torrentID);
-			}
-		});
 	}
 
 	@Override
 	public void triggerRefresh() {
-		sessionInfo.getRpc().getTorrentPeerInfo(TAG, torrentID,
-				new TorrentListReceivedListener() {
-					@Override
-					public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
-						updateAdapterTorrentID(torrentID);
-					}
-				});
+		// Right now, all the tabs are built, so even if we are on TorrentInfo,
+		// Files view is still built and firing off it's own refresh
 	}
 }

@@ -150,7 +150,7 @@ public class TorrentViewActivity
 			finish();
 			return;
 		}
-		
+
 		boolean remember = extras.getBoolean("com.vuze.android.remote.remember");
 		String remoteAsJSON = extras.getString("remote.json");
 		if (remoteAsJSON != null) {
@@ -266,6 +266,10 @@ public class TorrentViewActivity
 
 	@Override
 	protected void onNewIntent(Intent intent) {
+		if (DEBUG) {
+			Log.d(TAG, "onNewIntent " + intent);
+		}
+		super.onNewIntent(intent);
 		// Called via MetaSearch
 		openTorrent(intent.getData());
 	}
@@ -286,7 +290,7 @@ public class TorrentViewActivity
 		if (mSearchView != null) {
 			searchIsIconified = mSearchView.isIconified();
 		}
-		if (DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "InvalidateOptionsMenu Called");
 		}
 		super.invalidateOptionsMenu();
@@ -318,6 +322,7 @@ public class TorrentViewActivity
 	protected void onPause() {
 		VuzeRemoteApp.getNetworkState().removeListener(this);
 		if (sessionInfo != null) {
+			sessionInfo.activityPaused();
 			sessionInfo.removeSessionSettingsChangedListeners(TorrentViewActivity.this);
 		}
 		super.onPause();
@@ -327,6 +332,7 @@ public class TorrentViewActivity
 	protected void onResume() {
 		VuzeRemoteApp.getNetworkState().addListener(this);
 		if (sessionInfo != null) {
+			sessionInfo.activityResumed();
 			sessionInfo.addSessionSettingsChangedListeners(TorrentViewActivity.this);
 		}
 		super.onResume();
@@ -455,15 +461,16 @@ public class TorrentViewActivity
 
 			case R.id.action_logout:
 				new RemoteUtils(TorrentViewActivity.this).openRemoteList(getIntent());
+				SessionInfoManager.removeSessionInfo(remoteProfile.getID());
 				finish();
 				return true;
 
 			case R.id.action_start_all:
-				rpc.startTorrents(null, false, null);
+				rpc.startTorrents(TAG, null, false, null);
 				return true;
 
 			case R.id.action_stop_all:
-				rpc.stopTorrents(null, null);
+				rpc.stopTorrents(TAG, null, null);
 				return true;
 
 			case R.id.action_refresh:
@@ -492,7 +499,7 @@ public class TorrentViewActivity
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		if (AndroidUtils.DEBUG) {
+		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "onCreateOptionsMenu");
 		}
 
@@ -645,7 +652,7 @@ public class TorrentViewActivity
 	@SuppressWarnings("rawtypes")
 	@Override
 	public void torrentAdded(Map mapTorrentAdded, boolean duplicate) {
-		rpc.getRecentTorrents(null);
+		rpc.getRecentTorrents(TAG, null);
 	}
 
 	/* (non-Javadoc)

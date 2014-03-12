@@ -28,17 +28,22 @@ public class TransmissionRPC
 
 		private int[] fileIndexes;
 
-		private List<String> fileFields;
+		private String[] fileFields;
 
-		private ReplyMapReceivedListenerWithRefresh(ReplyMapReceivedListener l,
-				long[] ids) {
+		private String callID;
+
+		private ReplyMapReceivedListenerWithRefresh(String callID,
+				ReplyMapReceivedListener l, long[] ids) {
+			this.callID = callID;
 			this.l = l;
 			this.ids = ids;
 			this.fields = getBasicTorrentFieldIDs();
 		}
 
-		public ReplyMapReceivedListenerWithRefresh(ReplyMapReceivedListener l,
-				long[] torrentIDs, int[] fileIndexes, List<String> fileFields) {
+		public ReplyMapReceivedListenerWithRefresh(String callID,
+				ReplyMapReceivedListener l, long[] torrentIDs, int[] fileIndexes,
+				String[] fileFields) {
+			this.callID = callID;
 			this.l = l;
 			this.ids = torrentIDs;
 			this.fileIndexes = fileIndexes;
@@ -56,7 +61,7 @@ public class TransmissionRPC
 					} catch (InterruptedException e) {
 					}
 
-					getTorrents(ids, fields, fileIndexes, fileFields, null);
+					getTorrents(callID, ids, fields, fileIndexes, fileFields, null);
 				}
 			}).start();
 			if (l != null) {
@@ -111,6 +116,10 @@ public class TransmissionRPC
 
 	private SessionInfo sessionInfo;
 
+	protected boolean supportsGZIP;
+
+	private String[] defaultFileFields = {};
+
 	public TransmissionRPC(SessionInfo sessionInfo, String rpcURL,
 			String username, String ac) {
 		this.sessionInfo = sessionInfo;
@@ -150,9 +159,13 @@ public class TransmissionRPC
 					if (rpcVersionAZ < 0 && map.containsKey("az-version")) {
 						rpcVersionAZ = 0;
 					}
-					if (rpcVersionAZ >= 1) { // TODO: 2
+					if (rpcVersionAZ >= 2) {
 						hasFileCountField = true;
 					}
+					List listSupports = MapUtils.getMapList(map, "rpc-supports", null);
+					supportsGZIP = listSupports != null
+							&& listSupports.contains("rpc:receive-gzip");
+
 					if (AndroidUtils.DEBUG) {
 						Log.d(TAG, "Received Session-Get. " + map);
 					}
@@ -227,13 +240,13 @@ public class TransmissionRPC
 		});
 	}
 
-	public void getAllTorrents(TorrentListReceivedListener l) {
-		getTorrents(null, getBasicTorrentFieldIDs(), null, null, l);
+	public void getAllTorrents(String callID, TorrentListReceivedListener l) {
+		getTorrents(callID, null, getBasicTorrentFieldIDs(), null, null, l);
 	}
 
-	private void getTorrents(final Object ids, List<String> fields,
-			final int[] fileIndexes, final List<String> fileFields,
-			final TorrentListReceivedListener l) {
+	private void getTorrents(final String callID, final Object ids,
+			List<String> fields, final int[] fileIndexes,
+			String[] fileFields, final TorrentListReceivedListener l) {
 
 		Map<String, Object> map = new HashMap<String, Object>(2);
 		map.put("method", "torrent-get");
@@ -243,50 +256,61 @@ public class TransmissionRPC
 
 		mapArguments.put("fields", fields);
 
-		if (fileIndexes != null) {
-			mapArguments.put("file-indexes", fileIndexes);
-		}
-
-		if (fileFields != null) {
-			mapArguments.put("file-fields", fileFields);
-		}
-
 		if (ids != null) {
 			mapArguments.put("ids", ids);
 		}
 
-		if (fields != null && fields.contains("files")) {
-			// build "hc"
-			long[] torrentIDs = {};
-			if (ids instanceof long[]) {
-				torrentIDs = (long[]) ids;
-			} else if (ids instanceof Number) {
-				torrentIDs = new long[] {
-					((Number) ids).longValue()
-				};
-			}
-			for (long torrentID : torrentIDs) {
-				Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
-				if (mapTorrent != null) {
-					List listFiles = MapUtils.getMapList(mapTorrent, "files", null);
-					if (listFiles != null) {
-						List<Object> listHCs = new ArrayList<Object>();
-						for (int i = 0; i < listFiles.size(); i++) {
-							Map mapFIle = (Map) listFiles.get(i);
-							listHCs.add(mapFIle.get("hc"));
+		if (rpcVersionAZ >= 3) {
+
+			if (fields == null || fields.contains("files")) {
+				if (fileFields != null) {
+					mapArguments.put("file-fields", fileFields);
+				} else {
+					mapArguments.put("file-fields", defaultFileFields);
+				}
+
+				if (fields != null) {
+					fields.remove("fileStats");
+				}
+
+				// build "hc"
+				long[] torrentIDs = {};
+				if (ids instanceof long[]) {
+					torrentIDs = (long[]) ids;
+				} else if (ids instanceof Number) {
+					torrentIDs = new long[] {
+						((Number) ids).longValue()
+					};
+				}
+				for (long torrentID : torrentIDs) {
+					if (fileIndexes != null) {
+						mapArguments.put("file-indexes-" + torrentID, fileIndexes);
+					}
+
+					Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
+					if (mapTorrent != null) {
+						List listFiles = MapUtils.getMapList(mapTorrent, "files", null);
+						if (listFiles != null) {
+							List<Object> listHCs = new ArrayList<Object>();
+							for (int i = 0; i < listFiles.size(); i++) {
+								Map mapFIle = (Map) listFiles.get(i);
+								listHCs.add(mapFIle.get("hc"));
+							}
+							mapArguments.put("files-hc-" + torrentID, listHCs);
 						}
-						mapArguments.put("files-hc", listHCs);
 					}
 				}
+
 			}
 		}
+
 
 		String idList = (ids instanceof long[]) ? Arrays.toString(((long[]) ids))
 				: "" + ids;
 		sendRequest(
 				"getTorrents t=" + idList + "/f=" + Arrays.toString(fileIndexes) + ", "
 						+ (fields == null ? "null" : fields.size()) + "/"
-						+ (fileFields == null ? "null" : fileFields.size()), map,
+						+ (fileFields == null ? "null" : fileFields.length), map,
 				new ReplyMapReceivedListener() {
 
 					@SuppressWarnings({
@@ -315,10 +339,10 @@ public class TransmissionRPC
 						}
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
-							torrentListReceivedListener.rpcTorrentListReceived(list);
+							torrentListReceivedListener.rpcTorrentListReceived(callID, list);
 						}
 						if (l != null) {
-							l.rpcTorrentListReceived(list);
+							l.rpcTorrentListReceived(callID, list);
 						}
 					}
 
@@ -333,10 +357,16 @@ public class TransmissionRPC
 
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
-							torrentListReceivedListener.rpcTorrentListReceived(list);
+							torrentListReceivedListener.rpcTorrentListReceived(callID, list);
 						}
 						if (l != null) {
-							l.rpcTorrentListReceived(list);
+							l.rpcTorrentListReceived(callID, list);
+						}
+
+						if (AndroidUtils.DEBUG) {
+							Log.d(TAG, id + "] rpcFailure.  fake listener for "
+									+ listReceivedListeners.length + "/" + (l == null ? 0 : 1)
+									+ ", " + list);
 						}
 					}
 
@@ -369,10 +399,16 @@ public class TransmissionRPC
 
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
-							torrentListReceivedListener.rpcTorrentListReceived(list);
+							torrentListReceivedListener.rpcTorrentListReceived(callID, list);
 						}
 						if (l != null) {
-							l.rpcTorrentListReceived(list);
+							l.rpcTorrentListReceived(callID, list);
+						}
+
+						if (AndroidUtils.DEBUG) {
+							Log.d(TAG, id + "] rpcError.  fake listener for "
+									+ listReceivedListeners.length + "/" + (l == null ? 0 : 1)
+									+ ", " + list);
 						}
 					}
 				});
@@ -382,8 +418,8 @@ public class TransmissionRPC
 			final ReplyMapReceivedListener l) {
 		if (id == null || data == null) {
 			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "sendRequest(" + id + ","
-						+ JSONUtils.encodeToJSON(data) + "," + l + ")");
+				Log.e(TAG, "sendRequest(" + id + "," + JSONUtils.encodeToJSON(data)
+						+ "," + l + ")");
 			}
 			return;
 		}
@@ -393,7 +429,8 @@ public class TransmissionRPC
 			public void run() {
 				data.put("random", Integer.toHexString(cacheBuster++));
 				try {
-					Map reply = RestJsonClient.connect(id, rpcURL, data, headers, creds);
+					Map reply = RestJsonClient.connect(id, rpcURL, data, headers, creds,
+							supportsGZIP);
 
 					String result = MapUtils.getMapString(reply, "result", "");
 					if (l != null) {
@@ -423,9 +460,6 @@ public class TransmissionRPC
 					}
 					if (l != null) {
 						l.rpcError(id, e);
-					}
-					if (AndroidUtils.DEBUG) {
-						e.printStackTrace();
 					}
 				}
 			}
@@ -470,21 +504,25 @@ public class TransmissionRPC
 	/**
 	 * Get recently-active torrents, or all torrents if there are no recents
 	 */
-	public void getRecentTorrents(final TorrentListReceivedListener l) {
-		getTorrents("recently-active", getBasicTorrentFieldIDs(), null, null,
-				new TorrentListReceivedListener() {
+	public void getRecentTorrents(String callID,
+			final TorrentListReceivedListener l) {
+		getTorrents(callID, "recently-active", getBasicTorrentFieldIDs(), null,
+				null, new TorrentListReceivedListener() {
+					boolean doingAll = false;
+
 					@Override
-					public void rpcTorrentListReceived(List<?> listTorrents) {
+					public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
 						long diff = System.currentTimeMillis() - lastRecentTorrentGet;
-						if (listTorrents.size() == 0) {
+						if (!doingAll && listTorrents.size() == 0) {
 							if (diff >= RECENTLY_ACTIVE_MS) {
-								getAllTorrents(l);
+								doingAll = true;
+								getAllTorrents(callID, this);
 							}
 						} else {
 							lastRecentTorrentGet = System.currentTimeMillis();
 						}
 						if (l != null) {
-							l.rpcTorrentListReceived(listTorrents);
+							l.rpcTorrentListReceived(callID, listTorrents);
 						}
 					}
 				});
@@ -497,16 +535,16 @@ public class TransmissionRPC
 		return fieldIDs;
 	}
 
-	public void getTorrentFileInfo(Object ids, int[] fileIndexes,
-			List<String> fileFields, TorrentListReceivedListener l) {
-		getTorrents(ids, getFileInfoFields(), fileIndexes, fileFields, l);
+	public void getTorrentFileInfo(String callID, Object ids, int[] fileIndexes, TorrentListReceivedListener l) {
+		getTorrents(callID, ids, getFileInfoFields(), fileIndexes, defaultFileFields, l);
 	}
 
-	public void getTorrentPeerInfo(Object ids, TorrentListReceivedListener l) {
-		List<String> fieldIDs = getBasicTorrentFieldIDs();
+	public void getTorrentPeerInfo(String callID, Object ids,
+			TorrentListReceivedListener l) {
+		List<String> fieldIDs = new ArrayList<String>();
 		fieldIDs.add("peers");
 
-		getTorrents(ids, fieldIDs, null, null, l);
+		getTorrents(callID, ids, fieldIDs, null, null, l);
 	}
 
 	public void simpleRpcCall(String method, ReplyMapReceivedListener l) {
@@ -525,7 +563,7 @@ public class TransmissionRPC
 		sendRequest(method, map, l);
 	}
 
-	public void startTorrents(long[] ids, boolean forceStart,
+	public void startTorrents(String callID, long[] ids, boolean forceStart,
 			ReplyMapReceivedListener l) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("method", forceStart ? "torrent-start-now" : "torrent-start");
@@ -535,10 +573,11 @@ public class TransmissionRPC
 			mapArguments.put("ids", ids);
 		}
 		sendRequest("startTorrents", map, new ReplyMapReceivedListenerWithRefresh(
-				l, ids));
+				callID, l, ids));
 	}
 
-	public void stopTorrents(final long[] ids, final ReplyMapReceivedListener l) {
+	public void stopTorrents(String callID, long[] ids,
+			final ReplyMapReceivedListener l) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("method", "torrent-stop");
 		if (ids != null) {
@@ -546,12 +585,12 @@ public class TransmissionRPC
 			map.put("arguments", mapArguments);
 			mapArguments.put("ids", ids);
 		}
-		sendRequest("stopTorrents", map, new ReplyMapReceivedListenerWithRefresh(l,
-				ids));
+		sendRequest("stopTorrents", map, new ReplyMapReceivedListenerWithRefresh(
+				callID, l, ids));
 	}
 
-	public void setFilePriority(long torrentID, int[] fileIndexes, int priority,
-			final ReplyMapReceivedListener l) {
+	public void setFilePriority(String callID, long torrentID, int[] fileIndexes,
+			int priority, final ReplyMapReceivedListener l) {
 		long[] ids = {
 			torrentID
 		};
@@ -582,11 +621,12 @@ public class TransmissionRPC
 		mapArguments.put(key, fileIndexes);
 
 		sendRequest("setFilePriority", map,
-				new ReplyMapReceivedListenerWithRefresh(l, ids, fileIndexes, null));
+				new ReplyMapReceivedListenerWithRefresh(callID, l, ids, fileIndexes,
+						null));
 	}
 
-	public void setWantState(long torrentID, int[] fileIndexes, boolean wanted,
-			final ReplyMapReceivedListener l) {
+	public void setWantState(String callID, long torrentID, int[] fileIndexes,
+			boolean wanted, final ReplyMapReceivedListener l) {
 		long[] torrentIDs = {
 			torrentID
 		};
@@ -597,8 +637,8 @@ public class TransmissionRPC
 		mapArguments.put("ids", torrentIDs);
 		mapArguments.put(wanted ? "files-wanted" : "files-unwanted", fileIndexes);
 
-		sendRequest("setWantState", map, new ReplyMapReceivedListenerWithRefresh(l,
-				torrentIDs, fileIndexes, null));
+		sendRequest("setWantState", map, new ReplyMapReceivedListenerWithRefresh(
+				callID, l, torrentIDs, fileIndexes, null));
 	}
 
 	/**
@@ -695,6 +735,10 @@ public class TransmissionRPC
 
 	public int getRPCVersionAZ() {
 		return rpcVersionAZ;
+	}
+	
+	public void setDefaultFileFields(String[] fileFields) {
+		this.defaultFileFields = fileFields;
 	}
 
 }
