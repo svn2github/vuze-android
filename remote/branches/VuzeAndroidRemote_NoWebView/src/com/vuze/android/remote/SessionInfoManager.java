@@ -27,8 +27,16 @@ public class SessionInfoManager
 				sessionInfo = new SessionInfo(activity, remoteProfile,
 						rememberSettingChanges);
 				mapSessionInfo.put(id, sessionInfo);
+				Log.d("SessionInfo", "setting SessionInfo for " + id);
+
 			}
 			return sessionInfo;
+		}
+	}
+	
+	public static void removeSessionInfo(String id) {
+		synchronized (mapSessionInfo) {
+			mapSessionInfo.remove(id);
 		}
 	}
 
