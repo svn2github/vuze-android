@@ -60,22 +60,16 @@ public class JSONUtilsGSON
 	 * <p>
 	 *  If the json text is not a map, a map with the key "value" will be returned.
 	 *  the value of "value" will either be an List, String, Number, Boolean, or null
-	 *  <p>
-	 *  if the String is formatted badly, null is returned
 	 */
 	public static Map decodeJSON(String json) {
-		try {
-			Object object = parseWithException(json);
-			if (object instanceof Map) {
-				return (Map) object;
-			}
-			// could be : ArrayList, String, Number, Boolean
-			Map map = new HashMap();
-			map.put("value", object);
-			return map;
-		} catch (Throwable t) {
-			return null;
+		Object object = parseWithException(json);
+		if (object instanceof Map) {
+			return (Map) object;
 		}
+		// could be : ArrayList, String, Number, Boolean
+		Map map = new HashMap();
+		map.put("value", object);
+		return map;
 	}
 
 	private static Object parseWithException(String json) {
