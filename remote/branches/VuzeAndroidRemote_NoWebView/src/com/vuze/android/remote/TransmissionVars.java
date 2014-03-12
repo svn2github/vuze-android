@@ -277,12 +277,30 @@ public class TransmissionVars
 
 	//////////////////////////////////////////////////////////////////////////////
 
+	public static final String TR_SESSION_STATS_ACTIVE_TORRENT_COUNT = "activeTorrentCount";
+
+	public static final String TR_SESSION_STATS_PAUSED_TORRENT_COUNT = "pausedTorrentCount";
+
 	public static final String TR_SESSION_STATS_DOWNLOAD_SPEED = "downloadSpeed";
 
 	public static final String TR_SESSION_STATS_UPLOAD_SPEED = "uploadSpeed";
 
 	public static final String TR_SESSION_STATS_TORRENT_COUNT = "torrentCount";	
 
+	public static final String TR_SESSION_STATS_CURRENT = "current-stats";	
+
+	public static final String TR_SESSION_STATS_CUMULATIVE = "cumulative-stats";	
+
+	//////////////////////////////////////////////////////////////////////////////
+	
+	public static final String FIELD_FILESTATS_BYTES_COMPLETED = "bytesCompleted";	
+	public static final String FIELD_FILESTATS_WANTED = "wanted";
+	public static final String FIELD_FILESTATS_PRIORITY = "priority";
+	public static final String FIELD_FILES_LENGTH = "length";
+	public static final String FIELD_FILES_NAME = "name";
+	public static final String FIELD_FILES_CONTENT_URL = "contentURL";
+	public static final String FIELD_FILES_FULL_PATH = "fullPath";
+	
 	//////////////////////////////////////////////////////////////////////////////
 
 	public static long convertVuzePriority(int priority) {
