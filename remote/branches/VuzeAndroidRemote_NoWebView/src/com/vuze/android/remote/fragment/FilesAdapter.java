@@ -421,7 +421,9 @@ public class FilesAdapter
 	 */
 	@Override
 	public int getCount() {
-		return displayList == null ? 0 : displayList.size();
+		synchronized (mLock) {
+			return displayList == null ? 0 : displayList.size();
+		}
 	}
 
 	/* (non-Javadoc)
@@ -438,7 +440,13 @@ public class FilesAdapter
 		}
 		Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
 
-		Integer index = displayList.get(position);
+		Integer index;
+		synchronized (mLock) {
+			if (position < 0 || position > displayList.size()) {
+				return new HashMap();
+			}
+			index = displayList.get(position);
+		}
 		List<?> listFiles = MapUtils.getMapList(torrent, "files", null);
 		if (listFiles == null || index >= listFiles.size()) {
 			return new HashMap();
@@ -455,7 +463,10 @@ public class FilesAdapter
 	}
 
 	public void setTorrentID(long torrentID) {
-		this.torrentID = torrentID;
+		// sync because we don't want notifyDataSetChanged to be processing
+		synchronized (mLock) {
+			this.torrentID = torrentID;
+		}
 
 		getFilter().filter("");
 	}
