@@ -44,6 +44,8 @@ public class IntentHandler
 	implements GenericRemoteProfileListener
 {
 
+	private static final String TAG = "ProfileSelector";
+
 	private ListView listview;
 
 	private AppPreferences appPreferences;
@@ -61,8 +63,8 @@ public class IntentHandler
 		boolean forceOpen = (intent.getFlags() & Intent.FLAG_ACTIVITY_CLEAR_TOP) > 0;
 
 		if (AndroidUtils.DEBUG) {
-			System.out.println("ForceOpen? " + forceOpen);
-			System.out.println("IntentHandler intent = " + intent);
+			Log.d(TAG, "ForceOpen? " + forceOpen);
+			Log.d(TAG, "IntentHandler intent = " + intent);
 		}
 
 		appPreferences = VuzeRemoteApp.getAppPreferences();
@@ -100,38 +102,8 @@ public class IntentHandler
 			}
 		}
 
-		RemoteProfile[] remotes = appPreferences.getRemotes();
-
-		if (RPC.isLocalAvailable()) {
-			if (AndroidUtils.DEBUG) {
-				Log.d(null, "Local Vuze Detected");
-			}
-
-			boolean alreadyAdded = false;
-			for (RemoteProfile remoteProfile : remotes) {
-				if ("localhost".equals(remoteProfile.getHost())) {
-					alreadyAdded = true;
-					break;
-				}
-			}
-			if (!alreadyAdded) {
-				if (AndroidUtils.DEBUG) {
-					Log.d(null, "Adding localhost profile..");
-				}
-				RemoteProfile localProfile = new RemoteProfile(
-						RemoteProfile.TYPE_NORMAL);
-				localProfile.setHost("localhost");
-				localProfile.setNick(getString(R.string.local_name,
-						android.os.Build.MODEL));
-				RemoteProfile[] newRemotes = new RemoteProfile[remotes.length + 1];
-				newRemotes[0] = localProfile;
-				System.arraycopy(remotes, 0, newRemotes, 1, remotes.length);
-				remotes = newRemotes;
-			}
-		}
-		int numRemotes = remotes.length;
-
 		if (!forceOpen) {
+			int numRemotes = getRemotesWithLocal().length;
 			if (numRemotes == 0) {
 				// New User: Send them to Login (Account Creation)
 				Intent myIntent = new Intent(Intent.ACTION_VIEW, null, this,
@@ -152,11 +124,11 @@ public class IntentHandler
 							return;
 						}
 					} else {
-						System.err.println("Has Remotes, but no last remote");
+						Log.d(TAG, "Has Remotes, but no last remote");
 					}
 				} catch (Throwable t) {
 					if (AndroidUtils.DEBUG) {
-						t.printStackTrace();
+						Log.e(TAG, "onCreate", t);
 					}
 					VuzeEasyTracker.getInstance(this).logError(this, t);
 				}
@@ -165,7 +137,8 @@ public class IntentHandler
 
 		listview = (ListView) findViewById(R.id.lvRemotes);
 		listview.setItemsCanFocus(false);
-		adapter = new ProfileArrayAdapter(this, remotes);
+
+		adapter = new ProfileArrayAdapter(this);
 
 		listview.setAdapter(adapter);
 
@@ -178,7 +151,8 @@ public class IntentHandler
 
 				if (item instanceof RemoteProfile) {
 					RemoteProfile remote = (RemoteProfile) item;
-					new RemoteUtils(IntentHandler.this).openRemote(remote, true, false);
+					new RemoteUtils(IntentHandler.this).openRemote(remote, true,
+							intent.getData() != null);
 				}
 			}
 
@@ -187,6 +161,49 @@ public class IntentHandler
 		registerForContextMenu(listview);
 	}
 
+	private RemoteProfile[] getRemotesWithLocal() {
+		RemoteProfile[] remotes = appPreferences.getRemotes();
+
+		if (RPC.isLocalAvailable()) {
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "Local Vuze Detected");
+			}
+
+			boolean alreadyAdded = false;
+			for (RemoteProfile remoteProfile : remotes) {
+				if ("localhost".equals(remoteProfile.getHost())) {
+					alreadyAdded = true;
+					break;
+				}
+			}
+			if (!alreadyAdded) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "Adding localhost profile..");
+				}
+				RemoteProfile localProfile = new RemoteProfile(
+						RemoteProfile.TYPE_NORMAL);
+				localProfile.setHost("localhost");
+				localProfile.setNick(getString(R.string.local_name,
+						android.os.Build.MODEL));
+				RemoteProfile[] newRemotes = new RemoteProfile[remotes.length + 1];
+				newRemotes[0] = localProfile;
+				System.arraycopy(remotes, 0, newRemotes, 1, remotes.length);
+				remotes = newRemotes;
+			}
+		}
+		return remotes;
+	}
+	
+	@Override
+	protected void onResume() {
+		super.onResume();
+
+		if (adapter != null) {
+			RemoteProfile[] remotesWithLocal = getRemotesWithLocal();
+			adapter.addRemotes(remotesWithLocal);
+		}
+	}
+	
 	@Override
 	protected void onStart() {
 		super.onStart();
