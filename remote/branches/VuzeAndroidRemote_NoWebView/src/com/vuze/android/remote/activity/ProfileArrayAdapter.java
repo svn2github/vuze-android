@@ -2,8 +2,6 @@ package com.vuze.android.remote.activity;
 
 import java.util.Comparator;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.content.Context;
 import android.text.format.DateUtils;
 import android.view.*;
@@ -20,13 +18,19 @@ public class ProfileArrayAdapter
 
 	private Context context;
 
-	public ProfileArrayAdapter(Context context, RemoteProfile[] initialList) {
+	public ProfileArrayAdapter(Context context) {
 		super(context, R.layout.row_profile_selector);
 		this.context = context;
-
+	}
+	
+	public void addRemotes(RemoteProfile[] initialList) {
+		setNotifyOnChange(false);
+		clear();
 		for (RemoteProfile remoteProfile : initialList) {
 			add(remoteProfile);
 		}
+		setNotifyOnChange(true);
+		notifyDataSetChanged();
 	}
 
 	@Override
