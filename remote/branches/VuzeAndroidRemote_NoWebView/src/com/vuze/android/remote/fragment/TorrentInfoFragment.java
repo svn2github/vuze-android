@@ -177,7 +177,8 @@ public class TorrentInfoFragment
 				TransmissionVars.FIELD_TORRENT_POSITION, -1);
 		boolean done = MapUtils.getMapLong(mapTorrent,
 				TransmissionVars.FIELD_TORRENT_LEFT_UNTIL_DONE, 1) == 0;
-		s = (done ? "Seeding" : "Downloading") + " Position #" +  String.valueOf(position);
+		s = (done ? "Seeding" : "Downloading") + " Position #"
+				+ String.valueOf(position);
 		fillRow(a, R.id.torrentInfo_row_position, R.id.torrentInfo_val_position, s);
 
 		s = MapUtils.getMapString(mapTorrent,
@@ -249,7 +250,8 @@ public class TorrentInfoFragment
 
 		long etaSecs = MapUtils.getMapLong(mapTorrent,
 				TransmissionVars.FIELD_TORRENT_ETA, -1);
-		s = etaSecs > 0 ? DisplayFormatters.prettyFormat(etaSecs) : "";
+		s = etaSecs > 0 && etaSecs * 1000 < DateUtils.WEEK_IN_MILLIS
+				? DisplayFormatters.prettyFormat(etaSecs) : "";
 		fillRow(a, R.id.torrentInfo_row_eta, R.id.torrentInfo_val_eta, s);
 
 	}
@@ -276,5 +278,4 @@ public class TorrentInfoFragment
 			viewRow.setVisibility(View.VISIBLE);
 		}
 	}
-
 }
