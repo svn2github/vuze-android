@@ -101,7 +101,9 @@ public class RestJsonClient
 						"application/x-www-form-urlencoded; charset=UTF-8");
 			}
 
-			setupRequestFroyo(httpRequest);
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO) {
+				setupRequestFroyo(httpRequest);
+			}
 
 			if (headers != null) {
 				for (Header header : headers) {
