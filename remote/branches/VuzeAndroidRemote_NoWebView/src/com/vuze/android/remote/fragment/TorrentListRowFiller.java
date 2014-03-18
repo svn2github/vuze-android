@@ -150,7 +150,7 @@ public class TorrentListRowFiller
 		}
 		if (holder.tvETA != null) {
 			long etaSecs = MapUtils.getMapLong(item, "eta", -1);
-			String eta = etaSecs > 0 && etaSecs * 100 < DateUtils.WEEK_IN_MILLIS
+			String eta = etaSecs > 0 && etaSecs * 1000l < DateUtils.WEEK_IN_MILLIS
 					? DisplayFormatters.prettyFormat(etaSecs) : "";
 			flipper.changeText(holder.tvETA, eta, holder.animateFlip, validator);
 		}
