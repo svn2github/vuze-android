@@ -72,6 +72,7 @@ public class RemoteUtils
 		myIntent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
 		if (isMain) {
 			myIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+			myIntent.addFlags(Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
 		}
 		myIntent.setClass(activity, TorrentViewActivity.class);
 

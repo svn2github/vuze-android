@@ -1,3 +1,20 @@
+/**
+ * Copyright (C) Azureus Software, Inc, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * 
+ */
+
 package com.vuze.android.remote.fragment;
 
 import java.text.NumberFormat;
@@ -6,7 +23,6 @@ import java.util.*;
 import org.gudy.azureus2.core3.util.DisplayFormatters;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -73,7 +89,6 @@ public class PeersAdapter
 
 	private Comparator<? super Map<?, ?>> comparator;
 
-	private Resources resources;
 
 	private String[] sortFieldIDs;
 
@@ -87,7 +102,6 @@ public class PeersAdapter
 
 	public PeersAdapter(Context context) {
 		this.context = context;
-		resources = context.getResources();
 		flipper = new TextViewFlipper(R.anim.anim_field_change);
 		displayList = new ArrayList<Object>();
 	}
@@ -272,7 +286,7 @@ public class PeersAdapter
 					if (torrent == null) {
 						return;
 					}
-					final List listPeers = MapUtils.getMapList(torrent, "peers", null);
+					List<?> listPeers = MapUtils.getMapList(torrent, "peers", null);
 					//					System.out.println("listPeers=" + listPeers);
 					if (listPeers == null) {
 						return;
@@ -280,7 +294,7 @@ public class PeersAdapter
 					if (AndroidUtils.DEBUG) {
 						System.out.println("listPeers=" + listPeers.size());
 					}
-					displayList = new ArrayList(listPeers);
+					displayList = new ArrayList<Object>(listPeers);
 
 					doSort();
 				}
@@ -384,7 +398,7 @@ public class PeersAdapter
 	@Override
 	public Map<?, ?> getItem(int position) {
 		if (sessionInfo == null) {
-			return new HashMap();
+			return new HashMap<String, Object>();
 		}
 		return (Map<?, ?>) displayList.get(position);
 	}

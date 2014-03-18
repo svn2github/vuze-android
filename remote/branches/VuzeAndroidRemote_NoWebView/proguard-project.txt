@@ -19,10 +19,6 @@
 #   public *;
 #}
 
--keepclassmembers class com.vuze.android.remote.JSInterface {
-   public *;
-}
-
 -keepnames class com.android.util.Base64 {
    public *;
 }
@@ -31,8 +27,12 @@
 
 -keep public class * extends java.lang.Exception
 
+#-dontobfuscate
+
 -useuniqueclassmembernames
 
 -keepattributes LineNumberTable
 
 -flattenpackagehierarchy
+
+-whyareyoukeeping class com.handmark.pulltorefresh.library.extras.PullToRefreshWebView2

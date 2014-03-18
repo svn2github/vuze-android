@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) Azureus Software, Inc, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 package com.vuze.android.remote.fragment;
 
 import java.util.List;
@@ -7,7 +23,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
-import android.view.Menu;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.view.MenuItem;
 import android.view.View;
 
@@ -52,7 +68,37 @@ public class TorrentDetailsFragment
 		mViewPager.setAdapter(pagerAdapter);
 		tabs.setViewPager(mViewPager);
 
-		setHasOptionsMenu(true);
+		tabs.setOnPageChangeListener(new OnPageChangeListener() {
+			int oldPosition = 0;
+
+			@Override
+			public void onPageSelected(int position) {
+				Fragment oldFrag = pagerAdapter.findFragmentByPosition(
+						getFragmentManager(), oldPosition);
+				if (oldFrag instanceof FragmentPagerListener) {
+					FragmentPagerListener l = (FragmentPagerListener) oldFrag;
+					l.pageDeactivated();
+				}
+
+				oldPosition = position;
+
+				Fragment newFrag = pagerAdapter.findFragmentByPosition(
+						getFragmentManager(), position);
+				if (newFrag instanceof FragmentPagerListener) {
+					FragmentPagerListener l = (FragmentPagerListener) newFrag;
+					l.pageActivated();
+				}
+			}
+
+			@Override
+			public void onPageScrolled(int position, float positionOffset,
+					int positionOffsetPixels) {
+			}
+
+			@Override
+			public void onPageScrollStateChanged(int state) {
+			}
+		});
 
 		return view;
 	}
@@ -79,9 +125,9 @@ public class TorrentDetailsFragment
 			public void run() {
 				List<Fragment> fragments = getFragmentManager().getFragments();
 				for (Fragment item : fragments) {
-  				if (item instanceof SetTorrentIdListener) {
-  					((SetTorrentIdListener) item).setTorrentID(torrentID);
-  				}
+					if (item instanceof SetTorrentIdListener) {
+						((SetTorrentIdListener) item).setTorrentID(torrentID);
+					}
 				}
 			}
 		});
@@ -157,29 +203,4 @@ public class TorrentDetailsFragment
 		return false;
 	}
 
-	@Override
-	public void onPrepareOptionsMenu(Menu menu) {
-		super.onPrepareOptionsMenu(menu);
-
-		if (sessionInfo == null || torrentID < 0) {
-			return;
-		}
-		Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
-		int status = MapUtils.getMapInt(torrent,
-				TransmissionVars.FIELD_TORRENT_STATUS,
-				TransmissionVars.TR_STATUS_STOPPED);
-		boolean canStart = status == TransmissionVars.TR_STATUS_STOPPED;
-		boolean canStop = status != TransmissionVars.TR_STATUS_STOPPED;
-		MenuItem menuStart = menu.findItem(R.id.action_sel_start);
-		if (menuStart != null) {
-			menuStart.setVisible(canStart);
-		}
-
-		MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
-		if (menuStop != null) {
-			menuStop.setVisible(canStop);
-		}
-
-		AndroidUtils.fixupMenuAlpha(menu);
-	}
 }

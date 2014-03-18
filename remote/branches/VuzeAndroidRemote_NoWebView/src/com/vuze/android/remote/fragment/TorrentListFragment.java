@@ -1,3 +1,19 @@
+/**
+ * Copyright (C) Azureus Software, Inc, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 package com.vuze.android.remote.fragment;
 
 import java.util.Arrays;
@@ -11,16 +27,16 @@ import android.os.*;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.app.ActionBarActivity;
+import android.support.v7.view.ActionMode;
+import android.support.v7.view.ActionMode.Callback;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.util.Log;
 import android.util.SparseBooleanArray;
 import android.view.*;
-import android.view.ActionMode.Callback;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.AbsListView.MultiChoiceModeListener;
 import android.widget.*;
 import android.widget.AdapterView.OnItemLongClickListener;
 
@@ -59,7 +75,7 @@ public class TorrentListFragment
 
 	private ListView listview;
 
-	protected ActionMode mActionMode;
+	protected ActionModeWrapper mActionMode;
 
 	private TorrentListAdapter adapter;
 
@@ -86,6 +102,8 @@ public class TorrentListFragment
 	private boolean rebuildActionMode;
 
 	long lastIdClicked = -1;
+
+	private ActionModeWrapper.MultiChoiceModeListener multiChoiceModeListener;
 
 	@Override
 	public void onAttach(Activity activity) {
@@ -185,9 +203,7 @@ public class TorrentListFragment
 
 		View view = inflater.inflate(R.layout.frag_torrent_list, container, false);
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			setupHoneyComb();
-		}
+		setupActionModeCallback();
 
 		View oListView = view.findViewById(R.id.listTorrents);
 		if (oListView instanceof ListView) {
@@ -251,7 +267,7 @@ public class TorrentListFragment
 							new TorrentListReceivedListener() {
 								@Override
 								public void rpcTorrentListReceived(String callID,
-										List<?> listTorrents) {
+										List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
 									FragmentActivity activity = getActivity();
 									if (activity == null) {
 										return;
@@ -277,13 +293,11 @@ public class TorrentListFragment
 
 		listview.setAdapter(adapter);
 
+		setupMultiChoiceListener();
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyCombListView(listview);
-		}
-
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
-			// old style menu
-			registerForContextMenu(listview);
+		} else {
+			setupOldListView(listview);
 		}
 
 		listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -304,6 +318,12 @@ public class TorrentListFragment
 				boolean isChecked = listview.isItemChecked(position)
 						|| AndroidUtils.isChecked(listview, position);
 				int choiceMode = listview.getChoiceMode();
+
+				if (choiceMode == ListView.CHOICE_MODE_MULTIPLE) {
+					multiChoiceModeListener.onItemCheckedStateChanged(mActionMode,
+							position, id, isChecked);
+				}
+
 				if (choiceMode == ListView.CHOICE_MODE_MULTIPLE_MODAL) {
 					lastIdClicked = -1;
 					// CHOICE_MODE_MULTIPLE_MODAL doesn't check items
@@ -314,24 +334,19 @@ public class TorrentListFragment
 					}
 					// always isChecked, so we can't use it to uncheck
 					// maybe actionmode will help..
-					if (mActionMode == null
-							&& Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					if (mActionMode == null) {
 						showContextualActions();
 						lastIdClicked = id;
 					} else if (lastIdClicked == id) {
-						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-							finishActionMode();
-						}
 						listview.setItemChecked(position, false);
-						if (choiceMode == ListView.CHOICE_MODE_MULTIPLE) {
-							if (AndroidUtils.getCheckedItemCount(listview) == 0) {
-								listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-							}
-						}
 						lastIdClicked = -1;
 					} else {
 						lastIdClicked = id;
 					}
+				}
+
+				if (AndroidUtils.getCheckedItemCount(listview) == 0) {
+					finishActionMode();
 				}
 
 				if (mCallback != null) {
@@ -351,18 +366,22 @@ public class TorrentListFragment
 			@Override
 			public boolean onItemLongClick(AdapterView<?> parent, View view,
 					int position, long id) {
+				int[] selectedPositions = AndroidUtils.getCheckedPositions(listview);
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-					int[] selectedPositions = AndroidUtils.getCheckedPositions(listview);
 					switchListViewToMulti_HC();
-					for (int pos : selectedPositions) {
-						listview.setItemChecked(pos, true);
-					}
 				} else {
 					listview.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+					listview.setLongClickable(false);
+					((ActionBarActivity) getActivity()).startSupportActionMode(new InternalOlderListener());
 				}
-
+				for (int pos : selectedPositions) {
+					listview.setItemChecked(pos, true);
+				}
 				listview.setItemChecked(position, true);
 				lastIdClicked = id;
+
+				multiChoiceModeListener.onItemCheckedStateChanged(mActionMode,
+						position, id, true);
 				return true;
 			}
 		});
@@ -412,7 +431,6 @@ public class TorrentListFragment
 		super.onActivityCreated(savedInstanceState);
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	public void finishActionMode() {
 		if (mActionMode != null) {
 			mActionMode.finish();
@@ -428,10 +446,14 @@ public class TorrentListFragment
 			int key = checked.keyAt(i);
 			boolean value = checked.get(key);
 			if (value) {
-				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
-				if (mapTorrent != null) {
-					torrentMaps[pos] = mapTorrent;
-					pos++;
+				try {
+  				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
+  				if (mapTorrent != null) {
+  					torrentMaps[pos] = mapTorrent;
+  					pos++;
+  				}
+				} catch (IndexOutOfBoundsException e) {
+					// HeaderViewListAdapter will not call our Adapter, but throw OOB
 				}
 			}
 		}
@@ -452,11 +474,15 @@ public class TorrentListFragment
 			int key = checked.keyAt(i);
 			boolean value = checked.get(key);
 			if (value) {
-				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
-				long id = MapUtils.getMapLong(mapTorrent, "id", -1);
-				if (id >= 0) {
-					moreIDs[pos] = id;
-					pos++;
+				try {
+  				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
+  				long id = MapUtils.getMapLong(mapTorrent, "id", -1);
+  				if (id >= 0) {
+  					moreIDs[pos] = id;
+  					pos++;
+  				}
+				} catch (IndexOutOfBoundsException e) {
+					// HeaderViewListAdapter will not call our Adapter, but throw OOB
 				}
 			}
 		}
@@ -472,9 +498,10 @@ public class TorrentListFragment
 	 * @see com.vuze.android.remote.rpc.TorrentListReceivedListener#rpcTorrentListReceived(java.util.List)
 	 */
 	@Override
-	public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
+	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
+			List<?> removedTorrentIDs) {
 		lastUpdated = System.currentTimeMillis();
-		if (listTorrents == null || listTorrents.size() == 0) {
+		if (addedTorrentMaps == null || addedTorrentMaps.size() == 0) {
 			return;
 		}
 		FragmentActivity activity = getActivity();
@@ -497,43 +524,12 @@ public class TorrentListFragment
 		listview.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
 	}
 
-	@Override
-	// For Android 2.x
-	public void onCreateContextMenu(ContextMenu menu, View v,
-			ContextMenuInfo menuInfo) {
-		if (AndroidUtils.DEBUG_MENU) {
-			Log.d(TAG, "onCreateContextMenu");
-		}
-		super.onCreateContextMenu(menu, v, menuInfo);
+	private void setupMultiChoiceListener() {
+		multiChoiceModeListener = new ActionModeWrapper.MultiChoiceModeListener() {
 
-		MenuInflater inflater = getActivity().getMenuInflater();
-		inflater.inflate(R.menu.menu_context_torrent_details, menu);
-
-		prepareContextMenu(menu);
-	}
-
-	@Override
-	// For Android 2.x
-	public boolean onContextItemSelected(MenuItem item) {
-		if (AndroidUtils.DEBUG_MENU) {
-			Log.d(TAG, "onContextItemSelected");
-		}
-		if (handleFragmentMenuItems(item.getItemId())) {
-			return true;
-		}
-		return super.onContextItemSelected(item);
-	}
-
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-	private void setupHoneyCombListView(ListView lv) {
-		if (AndroidUtils.DEBUG_MENU) {
-			Log.d(TAG, "MULTI:setup");
-		}
-
-		lv.setMultiChoiceModeListener(new MultiChoiceModeListener() {
 			// Called when the action mode is created; startActionMode() was called
 			@Override
-			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+			public boolean onCreateActionMode(ActionModeWrapper mode, Menu menu) {
 				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:ON CREATEACTIONMODE");
 				}
@@ -549,7 +545,7 @@ public class TorrentListFragment
 			// Called each time the action mode is shown. Always called after onCreateActionMode, but
 			// may be called multiple times if the mode is invalidated.
 			@Override
-			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+			public boolean onPrepareActionMode(ActionModeWrapper mode, Menu menu) {
 				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onPrepareActionMode");
 				}
@@ -565,7 +561,7 @@ public class TorrentListFragment
 
 			// Called when the user selects a contextual menu item
 			@Override
-			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+			public boolean onActionItemClicked(ActionModeWrapper mode, MenuItem item) {
 				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onActionItemClicked");
 				}
@@ -577,10 +573,12 @@ public class TorrentListFragment
 
 			// Called when the user exits the action mode
 			@Override
-			public void onDestroyActionMode(ActionMode mode) {
+			public void onDestroyActionMode(ActionModeWrapper mode) {
 				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onDestroyActionMode");
 				}
+				AndroidUtils.clearChecked(listview);
+				lastIdClicked = -1;
 				mActionMode = null;
 				listview.post(new Runnable() {
 					@Override
@@ -595,8 +593,8 @@ public class TorrentListFragment
 			}
 
 			@Override
-			public void onItemCheckedStateChanged(ActionMode mode, int position,
-					long id, boolean checked) {
+			public void onItemCheckedStateChanged(ActionModeWrapper mode,
+					int position, long id, boolean checked) {
 				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:CHECK CHANGE");
 				}
@@ -609,7 +607,51 @@ public class TorrentListFragment
 					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
 							getSelectedIDs(listview), true);
 				}
-				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
+			}
+		};
+	}
+
+	private void setupOldListView(ListView lv) {
+
+	}
+
+	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	private void setupHoneyCombListView(ListView lv) {
+		if (AndroidUtils.DEBUG_MENU) {
+			Log.d(TAG, "MULTI:setup");
+		}
+
+		lv.setMultiChoiceModeListener(new AbsListView.MultiChoiceModeListener() {
+
+			@Override
+			public boolean onCreateActionMode(android.view.ActionMode mode, Menu menu) {
+				return multiChoiceModeListener.onCreateActionMode(
+						new ActionModeWrapper(mode), menu);
+			}
+
+			@Override
+			public boolean onPrepareActionMode(android.view.ActionMode mode, Menu menu) {
+				return multiChoiceModeListener.onPrepareActionMode(
+						new ActionModeWrapper(mode), menu);
+			}
+
+			@Override
+			public boolean onActionItemClicked(android.view.ActionMode mode,
+					MenuItem item) {
+				return multiChoiceModeListener.onActionItemClicked(
+						new ActionModeWrapper(mode), item);
+			}
+
+			@Override
+			public void onDestroyActionMode(android.view.ActionMode mode) {
+				multiChoiceModeListener.onDestroyActionMode(new ActionModeWrapper(mode));
+			}
+
+			@Override
+			public void onItemCheckedStateChanged(android.view.ActionMode mode,
+					int position, long id, boolean checked) {
+				multiChoiceModeListener.onItemCheckedStateChanged(
+						new ActionModeWrapper(mode), position, id, checked);
 			}
 		});
 
@@ -658,10 +700,6 @@ public class TorrentListFragment
 
 			case R.id.action_sortby:
 				DialogFragmentSortBy.open(getFragmentManager(), this);
-				return true;
-
-			case R.id.action_context:
-				getActivity().openContextMenu(listview);
 				return true;
 
 		}
@@ -725,9 +763,8 @@ public class TorrentListFragment
 		return false;
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-	private void setupHoneyComb() {
-		mActionModeCallback = new ActionMode.Callback() {
+	private void setupActionModeCallback() {
+		mActionModeCallback = new Callback() {
 
 			// Called when the action mode is created; startActionMode() was called
 			@Override
@@ -819,19 +856,12 @@ public class TorrentListFragment
 		if (menuStopAll != null) {
 			menuStopAll.setEnabled(haveActive);
 		}
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
-			MenuItem menuContext = menu.findItem(R.id.action_context);
-			if (menuContext != null) {
-				menuContext.setVisible(AndroidUtils.getCheckedItemCount(listview) > 0);
-			}
-		}
 
 		AndroidUtils.fixupMenuAlpha(menu);
 
 		super.onPrepareOptionsMenu(menu);
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 	private boolean showContextualActions() {
 		if (mActionMode != null) {
 			mActionMode.invalidate();
@@ -839,9 +869,15 @@ public class TorrentListFragment
 		}
 
 		// Start the CAB using the ActionMode.Callback defined above
-		mActionMode = getActivity().startActionMode(mActionModeCallback);
-		mActionMode.setSubtitle(R.string.multi_select_tip);
-		mActionMode.setTitle(R.string.context_torrent_title);
+		FragmentActivity activity = getActivity();
+		if (activity instanceof ActionBarActivity) {
+			ActionBarActivity abActivity = (ActionBarActivity) activity;
+
+			ActionMode am = abActivity.startSupportActionMode(mActionModeCallback);
+			mActionMode = new ActionModeWrapper(am);
+			mActionMode.setSubtitle(R.string.multi_select_tip);
+			mActionMode.setTitle(R.string.context_torrent_title);
+		}
 		return true;
 	}
 
@@ -975,11 +1011,38 @@ public class TorrentListFragment
 	}
 
 	public void clearSelection() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			finishActionMode();
-		} else {
-			AndroidUtils.clearChecked(listview);
-			lastIdClicked = -1;
+		finishActionMode();
+	}
+
+	private class InternalOlderListener
+		implements android.support.v7.view.ActionMode.Callback
+	{
+
+		@Override
+		public boolean onCreateActionMode(android.support.v7.view.ActionMode mode,
+				Menu menu) {
+			mActionMode = new ActionModeWrapper(mode);
+			return multiChoiceModeListener.onCreateActionMode(mActionMode, menu);
+		}
+
+		@Override
+		public boolean onPrepareActionMode(android.support.v7.view.ActionMode mode,
+				Menu menu) {
+			return multiChoiceModeListener.onPrepareActionMode(mActionMode, menu);
+		}
+
+		@Override
+		public boolean onActionItemClicked(android.support.v7.view.ActionMode mode,
+				MenuItem item) {
+			return multiChoiceModeListener.onActionItemClicked(mActionMode, item);
+		}
+
+		@Override
+		public void onDestroyActionMode(android.support.v7.view.ActionMode mode) {
+			multiChoiceModeListener.onDestroyActionMode(mActionMode);
+			listview.setLongClickable(true);
+			listview.clearChoices();
+			listview.requestLayout();
 		}
 	}
 }

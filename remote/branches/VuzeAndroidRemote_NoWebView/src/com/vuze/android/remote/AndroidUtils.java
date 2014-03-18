@@ -18,8 +18,7 @@
 package com.vuze.android.remote;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +77,8 @@ public class AndroidUtils
 
 	public static final boolean DEBUG_MENU = false;
 
+	private static final String TAG = "Utils";
+
 	private static boolean hasAlertDialogOpen = false;
 
 	public static class AlertDialogBuilder
@@ -121,7 +122,6 @@ public class AndroidUtils
 
 	public static void openSingleAlertDialog(AlertDialog.Builder builder,
 			final OnDismissListener dismissListener) {
-
 		// We should always be on the UI Thread, so no need to synchronize
 		if (hasAlertDialogOpen) {
 			return;
@@ -469,14 +469,20 @@ public class AndroidUtils
 	public static boolean isURLAlive(String URLName) {
 		try {
 			HttpURLConnection.setFollowRedirects(false);
+			
 			HttpURLConnection con = (HttpURLConnection) new URL(URLName).openConnection();
 			con.setConnectTimeout(2000);
 			con.setReadTimeout(2000);
 			con.setRequestMethod("HEAD");
 			con.getResponseCode();
-			//	Log.d(null, "conn result=" + con.getResponseCode() + ";" + con.getResponseMessage());
+			if (DEBUG) {
+				Log.d(TAG, "isLive? conn result=" + con.getResponseCode() + ";" + con.getResponseMessage());
+			}
 			return true;
 		} catch (Exception e) {
+			if (DEBUG) {
+				Log.e(TAG, "isLive", e);
+			}
 			return false;
 		}
 	}
@@ -645,6 +651,22 @@ public class AndroidUtils
 
 			@TargetApi(Build.VERSION_CODES.HONEYCOMB)
 			private void invalidateActionMode() {
+				if (mActionMode != null) {
+					mActionMode.invalidate();
+				}
+			}
+		});
+	}
+
+	public static void invalidateOptionsMenuHC(final Activity activity,
+			final android.support.v7.view.ActionMode mActionMode) {
+		if (activity == null) {
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				ActivityCompat.invalidateOptionsMenu(activity);
 				if (mActionMode != null) {
 					mActionMode.invalidate();
 				}
@@ -831,7 +853,11 @@ public class AndroidUtils
 			int key = checked.keyAt(i);
 			boolean value = checked.get(key);
 			if (value) {
-				return (Map<?, ?>) listview.getItemAtPosition(key);
+				try {
+					return (Map<?, ?>) listview.getItemAtPosition(key);
+				} catch (IndexOutOfBoundsException e) {
+					// HeaderViewListAdapter will not call our Adapter, but throw OOB
+				}
 			}
 		}
 		return null;

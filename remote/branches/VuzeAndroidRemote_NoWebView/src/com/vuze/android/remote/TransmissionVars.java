@@ -220,25 +220,29 @@ public class TransmissionVars
 	//////////////////////////////////////////////////////////////////////////////
 	//tr_idlelimit;
 	/* follow the global settings */
-	public static final long TR_IDLELIMIT_GLOBAL    = 0;
+	public static final long TR_IDLELIMIT_GLOBAL = 0;
+
 	/* override the global settings, seeding until a certain idle time */
-	public static final long TR_IDLELIMIT_SINGLE    = 1;
+	public static final long TR_IDLELIMIT_SINGLE = 1;
+
 	/* override the global settings, seeding regardless of activity */
 	public static final long TR_IDLELIMIT_UNLIMITED = 2;
-	
+
 	//////////////////////////////////////////////////////////////////////////////
 	//tr_ratiolimit;
-  /* follow the global settings */
-	public static final long TR_RATIOLIMIT_GLOBAL    = 0;
-  /* override the global settings, seeding until a certain ratio */
-	public static final long TR_RATIOLIMIT_SINGLE    = 1;
-  /* override the global settings, seeding regardless of ratio */
+	/* follow the global settings */
+	public static final long TR_RATIOLIMIT_GLOBAL = 0;
+
+	/* override the global settings, seeding until a certain ratio */
+	public static final long TR_RATIOLIMIT_SINGLE = 1;
+
+	/* override the global settings, seeding regardless of ratio */
 	public static final long TR_RATIOLIMIT_UNLIMITED = 2;
 
-	
 	public static final long TR_ETA_NOT_AVAIL = -1;
+
 	public static final long TR_ETA_UNKNOWN = -2;
-	
+
 	//////////////////////////////////////////////////////////////////////////////
 
 	public static final String FIELD_TORRENT_WANTED = "wanted";
@@ -275,6 +279,34 @@ public class TransmissionVars
 
 	public static final String FIELD_TORRENT_DATE_ADDED = "addedDate";
 
+	public static final String FIELD_TORRENT_DATE_STARTED = "startDate";
+
+	public static final String FIELD_TORRENT_DATE_ACTIVITY = "activityDate";
+
+	public static final String FIELD_TORRENT_DATE_DONE = "doneDate";
+
+	public static final String FIELD_TORRENT_SECONDS_DOWNLOADING = "secondsDownloading";
+
+	public static final String FIELD_TORRENT_SECONDS_SEEDING = "secondsSeeding";
+
+	public static final String FIELD_TORRENT_CREATOR = "creator";
+
+	public static final String FIELD_TORRENT_COMMENT = "comment";
+
+	public static final String FIELD_TORRENT_USER_COMMENT = "user-comment";
+
+	public static final String FIELD_TORRENT_DOWNLOAD_DIR = "downloadDir";
+
+	public static final String FIELD_TORRENT_DOWNLOADED_EVER = "downloadedEver";
+
+	public static final String FIELD_TORRENT_UPLOADED_EVER = "uploadedEver";
+
+	public static final String FIELD_TORRENT_PEERS = "peers";
+
+	public static final String FIELD_TORRENT_SEEDS = "seeds";
+
+	public static final String FIELD_TORRENT_LEFT_UNTIL_DONE = "leftUntilDone";
+
 	//////////////////////////////////////////////////////////////////////////////
 
 	public static final String TR_SESSION_STATS_ACTIVE_TORRENT_COUNT = "activeTorrentCount";
@@ -285,38 +317,49 @@ public class TransmissionVars
 
 	public static final String TR_SESSION_STATS_UPLOAD_SPEED = "uploadSpeed";
 
-	public static final String TR_SESSION_STATS_TORRENT_COUNT = "torrentCount";	
+	public static final String TR_SESSION_STATS_TORRENT_COUNT = "torrentCount";
 
-	public static final String TR_SESSION_STATS_CURRENT = "current-stats";	
+	public static final String TR_SESSION_STATS_CURRENT = "current-stats";
 
-	public static final String TR_SESSION_STATS_CUMULATIVE = "cumulative-stats";	
+	public static final String TR_SESSION_STATS_CUMULATIVE = "cumulative-stats";
 
 	//////////////////////////////////////////////////////////////////////////////
-	
-	public static final String FIELD_FILESTATS_BYTES_COMPLETED = "bytesCompleted";	
+
+	public static final String FIELD_FILESTATS_BYTES_COMPLETED = "bytesCompleted";
+
 	public static final String FIELD_FILESTATS_WANTED = "wanted";
+
 	public static final String FIELD_FILESTATS_PRIORITY = "priority";
+
 	public static final String FIELD_FILES_LENGTH = "length";
+
 	public static final String FIELD_FILES_NAME = "name";
+
 	public static final String FIELD_FILES_CONTENT_URL = "contentURL";
+
 	public static final String FIELD_FILES_FULL_PATH = "fullPath";
-	
+
 	//////////////////////////////////////////////////////////////////////////////
 
 	public static long convertVuzePriority(int priority) {
-		return priority == 0 ? TransmissionVars.TR_PRI_NORMAL
-				: priority < 0 ? TransmissionVars.TR_PRI_LOW
-						: TransmissionVars.TR_PRI_HIGH;
+		return priority == 0 ? TransmissionVars.TR_PRI_NORMAL : priority < 0
+				? TransmissionVars.TR_PRI_LOW : TransmissionVars.TR_PRI_HIGH;
 	}
-	
+
 	//////////////////////////////////////////////////////////////////////////////
-	
-	public static final int TR_STATUS_STOPPED        = 0; /* Torrent is stopped */
-	public static final int TR_STATUS_CHECK_WAIT     = 1; /* Queued to check files */
-	public static final int TR_STATUS_CHECK          = 2; /* Checking files */
-	public static final int TR_STATUS_DOWNLOAD_WAIT  = 3; /* Queued to download */
-	public static final int TR_STATUS_DOWNLOAD       = 4; /* Downloading */
-	public static final int TR_STATUS_SEED_WAIT      = 5; /* Queued to seed */
-	public static final int TR_STATUS_SEED           = 6; /* Seeding */
+
+	public static final int TR_STATUS_STOPPED = 0; /* Torrent is stopped */
+
+	public static final int TR_STATUS_CHECK_WAIT = 1; /* Queued to check files */
+
+	public static final int TR_STATUS_CHECK = 2; /* Checking files */
+
+	public static final int TR_STATUS_DOWNLOAD_WAIT = 3; /* Queued to download */
+
+	public static final int TR_STATUS_DOWNLOAD = 4; /* Downloading */
+
+	public static final int TR_STATUS_SEED_WAIT = 5; /* Queued to seed */
+
+	public static final int TR_STATUS_SEED = 6; /* Seeding */
 
 }

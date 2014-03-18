@@ -1,18 +1,35 @@
+/**
+ * Copyright (C) Azureus Software, Inc, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 package com.vuze.android.remote.activity;
 
 import java.util.List;
 import java.util.Map;
 
 import android.annotation.TargetApi;
-import android.app.ActionBar;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.*;
 
+import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.fragment.*;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
@@ -21,7 +38,7 @@ import com.vuze.android.remote.rpc.TorrentListReceivedListener;
  * Activity to hold {@link TorrentListFragment}.  Used for narrow screens.
  */
 public class TorrentDetailsActivity
-	extends FragmentActivity
+	extends ActionBarActivity
 	implements TorrentListReceivedListener, SessionInfoGetter
 {
 	private static final String TAG = "TorrentDetailsView";
@@ -44,7 +61,7 @@ public class TorrentDetailsActivity
 			finish();
 			return;
 		}
-		
+
 		Resources res = getResources();
 		if (!res.getBoolean(R.bool.showTorrentDetailsActivity)) {
 			if (AndroidUtils.DEBUG) {
@@ -61,6 +78,7 @@ public class TorrentDetailsActivity
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
 			setupHoneyComb();
 		}
+		setupActionBar();
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
 			setupIceCream();
 		}
@@ -84,8 +102,8 @@ public class TorrentDetailsActivity
 	protected void onPause() {
 		super.onPause();
 		if (sessionInfo != null) {
-  		sessionInfo.activityPaused();
-  		sessionInfo.removeTorrentListReceivedListener(this);
+			sessionInfo.activityPaused();
+			sessionInfo.removeTorrentListReceivedListener(this);
 		}
 	}
 
@@ -99,7 +117,8 @@ public class TorrentDetailsActivity
 	}
 
 	@Override
-	public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
+	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
+			List<?> removedTorrentIDs) {
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
@@ -118,9 +137,11 @@ public class TorrentDetailsActivity
 	private void setupHoneyComb() {
 		// needed because one of our test machines won't listen to <item name="android:windowActionBar">true</item>
 		requestWindowFeature(Window.FEATURE_ACTION_BAR);
+	}
 
+	private void setupActionBar() {
 		// enable ActionBar app icon to behave as action to toggle nav drawer
-		ActionBar actionBar = getActionBar();
+		ActionBar actionBar = getSupportActionBar();
 		if (actionBar == null) {
 			System.err.println("actionBar is null");
 			return;
@@ -163,6 +184,32 @@ public class TorrentDetailsActivity
 		getMenuInflater().inflate(R.menu.menu_context_torrent_details, menu);
 
 		return true;
+	}
+
+	@Override
+	protected boolean onPrepareOptionsPanel(View view, Menu menu) {
+
+		if (sessionInfo == null || torrentID < 0) {
+			return super.onPrepareOptionsMenu(menu);
+		}
+		Map<?, ?> torrent = sessionInfo.getTorrent(torrentID);
+		int status = MapUtils.getMapInt(torrent,
+				TransmissionVars.FIELD_TORRENT_STATUS,
+				TransmissionVars.TR_STATUS_STOPPED);
+		boolean canStart = status == TransmissionVars.TR_STATUS_STOPPED;
+		boolean canStop = status != TransmissionVars.TR_STATUS_STOPPED;
+		MenuItem menuStart = menu.findItem(R.id.action_sel_start);
+		if (menuStart != null) {
+			menuStart.setVisible(canStart);
+		}
+
+		MenuItem menuStop = menu.findItem(R.id.action_sel_stop);
+		if (menuStop != null) {
+			menuStop.setVisible(canStop);
+		}
+
+		AndroidUtils.fixupMenuAlpha(menu);
+		return super.onPrepareOptionsMenu(menu);
 	}
 
 	@Override

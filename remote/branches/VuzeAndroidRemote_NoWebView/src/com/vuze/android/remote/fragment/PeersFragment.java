@@ -1,33 +1,41 @@
+/**
+ * Copyright (C) Azureus Software, Inc, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * 
+ */
+
 package com.vuze.android.remote.fragment;
 
 import java.util.List;
 
-import android.app.Activity;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 
-import com.vuze.android.remote.*;
+import com.vuze.android.remote.AndroidUtils;
+import com.vuze.android.remote.R;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
 public class PeersFragment
-	extends Fragment
-	implements SetTorrentIdListener, RefreshTriggerListener
+	extends TorrentDetailPage
 {
 	private static final String TAG = "PeersFragment";
 
 	private ListView listview;
 
 	private PeersAdapter adapter;
-
-	private long torrentID = -1;
-
-	private SessionInfo sessionInfo;
-
-	private long pausedTorrentID = -1;
 
 	public PeersFragment() {
 		super();
@@ -56,105 +64,27 @@ public class PeersFragment
 		listview.setClickable(true);
 		listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 
-		setHasOptionsMenu(true);
 		return view;
 	}
 
-	@Override
-	public void onAttach(Activity activity) {
-		super.onAttach(activity);
-
-		if (activity instanceof SessionInfoGetter) {
-			SessionInfoGetter getter = (SessionInfoGetter) activity;
-			sessionInfo = getter.getSessionInfo();
-		}
-	}
-
-	@Override
-	public void onPause() {
-		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onPause");
-		}
-		pausedTorrentID = torrentID;
-		setTorrentID(-1);
-
-		if (sessionInfo != null) {
-			sessionInfo.removeRefreshTriggerListener(this);
-		}
-
-		super.onPause();
-	}
-
-	@Override
-	public void onResume() {
-		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onResume " + this + ", pausedTorrentID=" + pausedTorrentID);
-		}
-		super.onResume();
-
-		if (getActivity() instanceof SessionInfoGetter) {
-			SessionInfoGetter getter = (SessionInfoGetter) getActivity();
-			sessionInfo = getter.getSessionInfo();
-		}
-
-		if (sessionInfo != null) {
-			sessionInfo.addRefreshTriggerListener(this);
-		}
-
-		if (pausedTorrentID >= 0) {
-			setTorrentID(pausedTorrentID);
-		} else if (torrentID >= 0) {
-			setTorrentID(torrentID);
-		} else {
-			long newTorrentID = getArguments().getLong("torrentID", -1);
-			setTorrentID(newTorrentID);
-		}
-	}
-
 	/* (non-Javadoc)
-	 * @see com.vuze.android.remote.activity.SetTorrentIdListener#setTorrentID(com.vuze.android.remote.SessionInfo, long)
+	 * @see com.vuze.android.remote.fragment.TorrentDetailPage#updateTorrentID(long, boolean, boolean, boolean)
 	 */
-	public void setTorrentID(long id) {
-		if (getActivity() == null) {
-			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: No Activity");
-			}
-			pausedTorrentID = id;
-			return;
-		}
-		if (adapter == null) {
-			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: No Adapter");
-			}
-			pausedTorrentID = id;
-			return;
-		}
-
-		//boolean wasTorrent = torrentID >= 0;
-		boolean isTorrent = id >= 0;
-		boolean torrentIdChanged = id != torrentID;
-
-		if (sessionInfo == null) {
-			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: No sessionInfo");
-			}
-			pausedTorrentID = id;
-			return;
-		}
+	@Override
+	public void updateTorrentID(final long torrentID, boolean isTorrent,
+			boolean wasTorrent, boolean torrentIdChanged) {
 		if (torrentIdChanged) {
 			adapter.clearList();
 		}
 
-		torrentID = id;
-
 		//System.out.println("torrent is " + torrent);
 		adapter.setSessionInfo(sessionInfo);
 		if (isTorrent) {
-			sessionInfo.getRpc().getTorrentPeerInfo(TAG, id,
+			sessionInfo.getRpc().getTorrentPeerInfo(TAG, torrentID,
 					new TorrentListReceivedListener() {
 						@Override
 						public void rpcTorrentListReceived(String callID,
-								List<?> listTorrents) {
+								List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
 							updateAdapterTorrentID(torrentID);
 						}
 					});
@@ -186,9 +116,15 @@ public class PeersFragment
 		sessionInfo.getRpc().getTorrentPeerInfo(TAG, torrentID,
 				new TorrentListReceivedListener() {
 					@Override
-					public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
+					public void rpcTorrentListReceived(String callID,
+							List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
 						updateAdapterTorrentID(torrentID);
 					}
 				});
+	}
+
+	@Override
+	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
+			List<?> removedTorrentIDs) {
 	}
 }

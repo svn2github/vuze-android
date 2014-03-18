@@ -17,9 +17,12 @@
 
 package com.vuze.android.remote;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import jcifs.netbios.NbtAddress;
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
@@ -103,7 +106,7 @@ public class SessionInfo
 		VuzeRemoteApp.getNetworkState().addListener(this);
 	}
 
-	public SessionInfo(final Activity activity, RemoteProfile _remoteProfile,
+	public SessionInfo(final Activity activity, final RemoteProfile _remoteProfile,
 			boolean rememberSettingChanges) {
 		this((TransmissionRPC) null, _remoteProfile, rememberSettingChanges);
 
@@ -167,9 +170,6 @@ public class SessionInfo
 			VuzeEasyTracker.getInstance(activity).logError(activity, e);
 			AndroidUtils.showConnectionError(activity, e.getMessage(), false);
 			SessionInfoManager.removeSessionInfo(remoteProfile.getID());
-			if (AndroidUtils.DEBUG) {
-				e.printStackTrace();
-			}
 		}
 	}
 
@@ -177,8 +177,22 @@ public class SessionInfo
 			String protocol, String host, int port) {
 		try {
 
+			try {
+	      InetAddress.getByName(host);
+	    } catch (UnknownHostException e) {
+	    	try {
+	    		host = NbtAddress.getByName(host).getHostAddress();
+	    	} catch (Throwable t) {
+	    	}
+	    }
+			
+
 			rpcRoot = protocol + "://" + host + ":" + port + "/";
 			String rpcUrl = rpcRoot + "transmission/rpc";
+
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "rpc root = " + rpcRoot);
+			}
 
 			if (!AndroidUtils.isURLAlive(rpcUrl)) {
 				AndroidUtils.showConnectionError(activity,
@@ -194,16 +208,12 @@ public class SessionInfo
 				appPreferences.addRemoteProfile(remoteProfile);
 			}
 
-			if (AndroidUtils.DEBUG) {
-				Log.d(null, "rpc root = " + rpcRoot);
-			}
-
 			setRpc(new TransmissionRPC(this, rpcUrl, user, ac));
 		} catch (Exception e) {
-			VuzeEasyTracker.getInstance(activity).logError(activity, e);
 			if (AndroidUtils.DEBUG) {
-				e.printStackTrace();
+				Log.e(TAG, "open", e);
 			}
+			VuzeEasyTracker.getInstance(activity).logError(activity, e);
 		}
 	}
 
@@ -323,7 +333,8 @@ public class SessionInfo
 		this.rpc = rpc;
 
 		if (rpc != null) {
-			rpc.setDefaultFileFields(remoteProfile.isLocalHost() ? FILE_FIELDS_LOCALHOST : FILE_FIELDS_REMOTE);
+			rpc.setDefaultFileFields(remoteProfile.isLocalHost()
+					? FILE_FIELDS_LOCALHOST : FILE_FIELDS_REMOTE);
 
 			for (SessionInfoListener l : availabilityListeners) {
 				l.transmissionRpcAvailable(this);
@@ -331,8 +342,10 @@ public class SessionInfo
 
 			rpc.addTorrentListReceivedListener(new TorrentListReceivedListener() {
 				@Override
-				public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
-					addTorrents(callID, listTorrents);
+				public void rpcTorrentListReceived(String callID,
+						List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+					// XXX If this is a full refresh, we should clear list!
+					addRemoveTorrents(callID, addedTorrentMaps, removedTorrentIDs);
 				}
 			});
 
@@ -377,7 +390,8 @@ public class SessionInfo
 		"rawtypes",
 		"unchecked"
 	})
-	public void addTorrents(String callID, List<?> collection) {
+	public void addRemoveTorrents(String callID, List<?> collection,
+			List<?> removedTorrentIDs) {
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "adding torrents " + collection.size());
 		}
@@ -409,10 +423,19 @@ public class SessionInfo
 					mergeList("fileStats", mapTorrent, old);
 				}
 			}
+			
+			if (removedTorrentIDs != null) {
+				for (Object removedItem : removedTorrentIDs) {
+					if (removedItem instanceof Number) {
+						long torrentID = ((Number) removedItem).longValue();
+						mapOriginal.remove(torrentID);
+					}
+				}
+			}
 		}
 
 		for (TorrentListReceivedListener l : torrentListReceivedListeners) {
-			l.rpcTorrentListReceived(callID, collection);
+			l.rpcTorrentListReceived(callID, collection, removedTorrentIDs);
 		}
 	}
 
@@ -465,7 +488,7 @@ public class SessionInfo
 			torrentListReceivedListeners.add(l);
 			List<Map<?, ?>> torrentList = getTorrentList();
 			if (torrentList.size() > 0 && fire) {
-				l.rpcTorrentListReceived(callID, torrentList);
+				l.rpcTorrentListReceived(callID, torrentList, null);
 			}
 		}
 		return true;
@@ -599,7 +622,8 @@ public class SessionInfo
 
 				TorrentListReceivedListener listener = new TorrentListReceivedListener() {
 					@Override
-					public void rpcTorrentListReceived(String callID, List<?> listTorrents) {
+					public void rpcTorrentListReceived(String callID,
+							List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
 						synchronized (mLock) {
 							refreshing = false;
 						}
@@ -753,6 +777,8 @@ public class SessionInfo
 
 	public void activityPaused() {
 		activityVisible = false;
+		
+		// TODO: After x seconds, and still no activity, we should clean up (clear torrent list)
 	}
 
 }

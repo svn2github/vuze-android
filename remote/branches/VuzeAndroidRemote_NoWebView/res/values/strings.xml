@@ -77,7 +77,7 @@
 	<string name="no_network_connection">No Network Connection</string>
 	<string name="no_file_chooser">No suitable File Manager was found</string>
 	<string name="no_intent">No suitable application was found to launch</string>
-		<string name="button_browse">Browse&#8230;</string>
+	<string name="button_browse">Browse&#8230;</string>
 	<string name="error_remote_not_found">Unable to connect to your remote client.  It does not appear to be running.</string>
 	<string name="error_connecting">Error Connecting</string>
 	<string name="button_continue">Continue</string>
@@ -156,5 +156,8 @@ If you like our app, please rate us on the <A HREF="market://details?id=com.vuze
 	<string name="action_sel_priority_down">Decrease Priority</string>
 	<string name="action_sel_wanted">Want File</string>
 	<string name="action_sel_unwanted">Do not want</string>
-			
+	<string name="details_tab_files">Files</string>
+	<string name="details_tab_info">Info</string>
+	<string name="details_tab_peers">Connections</string>
+
 </resources>
