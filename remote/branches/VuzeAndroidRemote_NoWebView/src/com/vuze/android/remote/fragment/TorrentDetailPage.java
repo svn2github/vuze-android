@@ -101,10 +101,6 @@ public abstract class TorrentDetailPage
 
 	@Override
 	public void pageActivated() {
-		if (sessionInfo != null) {
-			sessionInfo.addRefreshTriggerListener(this);
-		}
-
 		if (pausedTorrentID >= 0) {
 			setTorrentID(pausedTorrentID);
 		} else if (torrentID >= 0) {
@@ -112,6 +108,10 @@ public abstract class TorrentDetailPage
 		} else {
 			long newTorrentID = getArguments().getLong("torrentID", -1);
 			setTorrentID(newTorrentID);
+		}
+
+		if (sessionInfo != null) {
+			sessionInfo.addRefreshTriggerListener(this);
 		}
 	}
 
