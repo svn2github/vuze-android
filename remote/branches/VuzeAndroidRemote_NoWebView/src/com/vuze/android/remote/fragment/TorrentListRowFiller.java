@@ -25,6 +25,7 @@ import org.gudy.azureus2.core3.util.DisplayFormatters;
 import android.content.Context;
 import android.content.res.Resources;
 import android.text.SpannableString;
+import android.text.format.DateUtils;
 import android.view.View;
 
 import com.aelitis.azureus.util.MapUtils;
@@ -89,7 +90,8 @@ public class TorrentListRowFiller
 		fillHolder(viewHolder, item, sessionInfo);
 	}
 
-	protected void fillHolder(ViewHolder holder, Map<?, ?> item, SessionInfo sessionInfo) {
+	protected void fillHolder(ViewHolder holder, Map<?, ?> item,
+			SessionInfo sessionInfo) {
 		long torrentID = MapUtils.getMapLong(item, "id", -1);
 
 		Resources resources = holder.tvName.getResources();
@@ -148,7 +150,8 @@ public class TorrentListRowFiller
 		}
 		if (holder.tvETA != null) {
 			long etaSecs = MapUtils.getMapLong(item, "eta", -1);
-			String eta = etaSecs > 0 ? DisplayFormatters.prettyFormat(etaSecs) : "";
+			String eta = etaSecs > 0 && etaSecs * 100 < DateUtils.WEEK_IN_MILLIS
+					? DisplayFormatters.prettyFormat(etaSecs) : "";
 			flipper.changeText(holder.tvETA, eta, holder.animateFlip, validator);
 		}
 		if (holder.tvUlRate != null) {
@@ -243,9 +246,8 @@ public class TorrentListRowFiller
 
 			SpannableString ss = new SpannableString(text);
 			String string = text.toString();
-			AndroidUtils.setSpanBubbles(ss, string, "|",
-					holder.tvStatus.getPaint(), color < 0 ? colorBGTagState : color,
-					colorFGTagState, colorBGTagState);
+			AndroidUtils.setSpanBubbles(ss, string, "|", holder.tvStatus.getPaint(),
+					color < 0 ? colorBGTagState : color, colorFGTagState, colorBGTagState);
 			flipper.changeText(holder.tvStatus, ss, holder.animateFlip, validator);
 		}
 
