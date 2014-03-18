@@ -34,5 +34,3 @@
 -keepattributes LineNumberTable
 
 -flattenpackagehierarchy
-
--whyareyoukeeping class com.handmark.pulltorefresh.library.extras.PullToRefreshWebView2

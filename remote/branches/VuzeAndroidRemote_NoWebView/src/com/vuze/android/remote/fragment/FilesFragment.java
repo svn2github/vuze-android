@@ -23,7 +23,12 @@ import java.util.Locale;
 import java.util.Map;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,6 +37,8 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.view.ActionMode;
 import android.support.v7.view.ActionMode.Callback;
+import android.text.Html;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.*;
@@ -578,10 +585,35 @@ public class FilesFragment
 		if (contentURL == null || contentURL.length() == 0) {
 			return false;
 		}
+
 		final File directory = AndroidUtils.getDownloadDir();
 		final File outFile = new File(directory, MapUtils.getMapString(
 				selectedFile, "name", "foo.txt"));
 
+		if (!VuzeRemoteApp.getNetworkState().isWifiConnected()) {
+			Resources resources = getActivity().getResources();
+			String message = resources.getString(
+					R.string.not_on_wifi,
+					resources.getString(R.string.save_content,
+							TextUtils.htmlEncode(outFile.getName())));
+			Builder builder = new AlertDialog.Builder(getActivity()).setMessage(
+					Html.fromHtml(message)).setPositiveButton(R.string.yes,
+					new OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							reallySaveFile(contentURL, outFile);
+						}
+					}).setNegativeButton(R.string.no, null);
+			builder.show();
+			return true;
+		}
+
+		reallySaveFile(contentURL, outFile);
+
+		return true;
+	}
+
+	protected void reallySaveFile(final String contentURL, final File outFile) {
 		showProgressBar();
 		new Thread(new Runnable() {
 
@@ -596,19 +628,49 @@ public class FilesFragment
 					@Override
 					public void run() {
 						hideProgressBar();
-						Toast.makeText(getActivity().getApplicationContext(),
-								"Saved " + outFile.getName(), Toast.LENGTH_SHORT).show();
+						Activity activity = getActivity();
+						if (activity == null) {
+							return;
+						}
+						Resources resources = activity.getResources();
+						String s = resources.getString(R.string.content_saved,
+								TextUtils.htmlEncode(outFile.getName()),
+								TextUtils.htmlEncode(outFile.getParent()));
+						Toast.makeText(activity.getApplicationContext(), Html.fromHtml(s),
+								Toast.LENGTH_SHORT).show();
 					}
 				});
 			}
 		}).start();
+	}
 
+	protected boolean launchFile(final Map<?, ?> selectedFile) {
+
+		if (!VuzeRemoteApp.getNetworkState().isWifiConnected()) {
+			String name = MapUtils.getMapString(selectedFile, "name", null);
+
+			Resources resources = getActivity().getResources();
+			String message = resources.getString(
+					R.string.not_on_wifi,
+					resources.getString(R.string.stream_content,
+							TextUtils.htmlEncode(name)));
+			Builder builder = new AlertDialog.Builder(getActivity()).setMessage(
+					Html.fromHtml(message)).setPositiveButton(R.string.yes,
+					new OnClickListener() {
+						@Override
+						public void onClick(DialogInterface dialog, int which) {
+							reallyLaunchFile(selectedFile);
+						}
+					}).setNegativeButton(R.string.no, null);
+			builder.show();
+		} else {
+			reallyLaunchFile(selectedFile);
+		}
 		return true;
 	}
 
 	@SuppressWarnings("unused")
-	protected boolean launchFile(Map<?, ?> selectedFile) {
-
+	protected boolean reallyLaunchFile(Map<?, ?> selectedFile) {
 		String fullPath = MapUtils.getMapString(selectedFile, "fullPath", null);
 		if (fullPath != null && fullPath.length() > 0) {
 			File file = new File(fullPath);
@@ -817,7 +879,7 @@ public class FilesFragment
 			sessionInfo.getRpc().getTorrentFileInfo(TAG, torrentID, null, null);
 		}
 	}
-	
+
 	@Override
 	public void pageDeactivated() {
 		finishActionMode();

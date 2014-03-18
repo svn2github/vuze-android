@@ -87,6 +87,7 @@
 <p>&middot; <a href="https://github.com/alibaba/fastjson">Fast JSON Processor</a>, Apache License v2, (c) 1999-2013 Alibaba Group Holding Ltd.</p>
 <p>&middot; <a href="https://github.com/nhnopensource/android-pull-to-refresh">nhnopensource / android-pull-to-refresh</a>, Apache License v2, (c) 2011, 2012 Chris Banes, (c) 2013 Naver Business Platform Corp.</p>
 <p>&middot; <a href="https://github.com/astuetz/PagerSlidingTabStrip">astuetz / PagerSlidingTabStrip</a>, Apache License v2, (c) 2013 Andreas Stuetz</p>
+<p>&middot; <a href="http://jcifs.samba.org/">jCIFS</a>, LGPL 2.1</p>
 ]]>
 	</string>
 	<string name="about_thanks_header">Portions of this app thanks to:</string>
@@ -159,5 +160,11 @@ If you like our app, please rate us on the <A HREF="market://details?id=com.vuze
 	<string name="details_tab_files">Files</string>
 	<string name="details_tab_info">Info</string>
 	<string name="details_tab_peers">Connections</string>
+	<string name="not_on_wifi">You are not connected via wifi.  Are you sure you want to %1$s now?</string>
+	<string name="stream_content">stream &lt;b>%1$s&lt;/b></string>
+	<string name="save_content">download &lt;b>%1$s&lt;/b> to your device</string>
+	<string name="content_saved">Saved &lt;b>%1$s&lt;/b> to &lt;b>%2$s&lt;/b></string>
+	<string name="yes">Yes</string>
+	<string name="no">No</string>
 
 </resources>
