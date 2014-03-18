@@ -740,6 +740,7 @@ public class SessionInfo
 		if (refreshTriggerListeners.contains(l)) {
 			return;
 		}
+		l.triggerRefresh();
 		refreshTriggerListeners.add(l);
 	}
 
