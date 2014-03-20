@@ -38,6 +38,10 @@ import com.vuze.android.remote.rpc.*;
  * - SessionSettings<BR>
  * - RPC<BR>
  * - torrents<BR>
+ * <BR>
+ * <BR>
+ * TODO:<BR>
+ * - clear files map after x minutes of non-use
  */
 public class SessionInfo
 	implements SessionSettingsReceivedListener, NetworkStateListener
@@ -69,7 +73,7 @@ public class SessionInfo
 	private RemoteProfile remoteProfile;
 
 	/** <Key, TorrentMap> */
-	private LinkedHashMap<Object, Map<?, ?>> mapOriginal;
+	private LinkedHashMap<Long, Map<?, ?>> mapOriginal;
 
 	private Object mLock = new Object();
 
@@ -99,7 +103,7 @@ public class SessionInfo
 			boolean rememberSettingChanges) {
 		this.remoteProfile = _remoteProfile;
 		this.rememberSettingChanges = rememberSettingChanges;
-		this.mapOriginal = new LinkedHashMap<Object, Map<?, ?>>();
+		this.mapOriginal = new LinkedHashMap<Long, Map<?, ?>>();
 
 		setRpc(rpc);
 
@@ -374,15 +378,15 @@ public class SessionInfo
 		}
 	}
 
-	public Object[] getTorrentListKeys() {
+	public Long[] getTorrentListKeys() {
 		synchronized (mLock) {
-			return mapOriginal.keySet().toArray();
+			return mapOriginal.keySet().toArray(new Long[0]);
 		}
 	}
 
-	public Map<?, ?> getTorrent(Object key) {
+	public Map<?, ?> getTorrent(Long id) {
 		synchronized (mLock) {
-			return mapOriginal.get(key);
+			return mapOriginal.get(id);
 		}
 	}
 
@@ -402,13 +406,19 @@ public class SessionInfo
 				}
 				Map mapTorrent = (Map) item;
 				Object key = mapTorrent.get("id");
-				if (key instanceof Integer) {
-					key = Long.valueOf((Integer) key);
-				}
-				if (key == null || mapTorrent.size() == 1) {
+				Long torrentID;
+				if (!(key instanceof Number)) {
 					continue;
 				}
-				Map old = mapOriginal.put(key, mapTorrent);
+				if (!(key instanceof Long)) {
+					torrentID = ((Number) key).longValue();
+				} else {
+					torrentID = (Long) key;
+				}
+				if (mapTorrent.size() == 1) {
+					continue;
+				}
+				Map old = mapOriginal.put(torrentID, mapTorrent);
 				if (old != null) {
 					// merge anything missing in new map with old
 					for (Iterator iterator = old.keySet().iterator(); iterator.hasNext();) {
