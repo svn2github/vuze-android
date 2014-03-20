@@ -371,9 +371,16 @@ public class FilesFragment
 					sessionInfo.getRpc().getTorrentFileInfo(TAG, torrentID, null, null);
 				}
 			}
+		} else {
+  		synchronized (mLock) {
+  			numProgresses = 1;
+  			hideProgressBar();
+  		}
 		}
 
-		AndroidUtils.clearChecked(listview);
+		if (torrentIdChanged) {
+			AndroidUtils.clearChecked(listview);
+		}
 	}
 
 	@Override
