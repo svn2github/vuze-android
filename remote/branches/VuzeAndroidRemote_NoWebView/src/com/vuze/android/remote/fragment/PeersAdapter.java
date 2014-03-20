@@ -422,4 +422,8 @@ public class PeersAdapter
 		}
 		notifyDataSetChanged();
 	}
+	
+	public void refreshList() {
+		getFilter().filter("");
+	}
 }

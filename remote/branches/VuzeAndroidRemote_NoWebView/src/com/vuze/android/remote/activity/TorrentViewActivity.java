@@ -52,7 +52,6 @@ import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.NetworkState.NetworkStateListener;
-import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent.DeleteTorrentDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
 import com.vuze.android.remote.dialog.*;
 import com.vuze.android.remote.dialog.DialogFragmentOpenTorrent.OpenTorrentDialogListener;
@@ -71,7 +70,7 @@ public class TorrentViewActivity
 	extends ActionBarActivity
 	implements OpenTorrentDialogListener, MoveDataDialogListener,
 	SessionSettingsChangedListener, TorrentAddedReceivedListener,
-	DeleteTorrentDialogListener, OnTorrentSelectedListener, SessionInfoListener,
+	OnTorrentSelectedListener, SessionInfoListener,
 	ActionModeBeingReplacedListener, NetworkStateListener, SessionInfoGetter
 {
 	private SearchView mSearchView;
@@ -693,14 +692,6 @@ public class TorrentViewActivity
 	@Override
 	public void torrentAddError(Exception e) {
 		AndroidUtils.showConnectionError(this, e.getMessage(), true);
-	}
-
-	/* (non-Javadoc)
-	 * @see com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent.DeleteTorrentDialogListener#deleteTorrent(java.lang.Object, boolean)
-	 */
-	@Override
-	public void deleteTorrent(Object torrentID, boolean deleteData) {
-		rpc.removeTorrent(torrentID, deleteData, null);
 	}
 
 	/* (non-Javadoc)

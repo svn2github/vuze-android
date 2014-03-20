@@ -160,12 +160,12 @@ public class FilesAdapter
 		boolean animateFlip = validator.isStillValid();
 		holder.fileIndex = fileIndex;
 		holder.torrentID = torrentID;
-
+		
 		boolean wanted = MapUtils.getMapBoolean(item, "wanted", true);
 
 		if (holder.tvName != null) {
 			flipper.changeText(holder.tvName,
-					MapUtils.getMapString(item, "name", "??"), animateFlip, validator);
+					MapUtils.getMapString(item, "name", " "), animateFlip, validator);
 		}
 		long bytesCompleted = MapUtils.getMapLong(item, "bytesCompleted", 0);
 		long length = MapUtils.getMapLong(item, "length", -1);

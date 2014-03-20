@@ -30,23 +30,18 @@ import android.widget.TextView;
 
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.AlertDialogBuilder;
+import com.vuze.android.remote.rpc.TransmissionRPC;
 
 public class DialogFragmentDeleteTorrent
 	extends DialogFragment
 {
-
-	public static interface DeleteTorrentDialogListener
-	{
-		public void deleteTorrent(Object id, boolean deleteData);
-	}
-
-	private DeleteTorrentDialogListener mListener;
-
 	private AlertDialog dialog;
 
-	private String torrentId;
+	private long torrentId;
 
 	private CheckBox cbDeleteData;
+
+	private SessionInfo sessionInfo;
 
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -64,9 +59,13 @@ public class DialogFragmentDeleteTorrent
 				new OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int id) {
-						if (mListener != null) {
-							mListener.deleteTorrent(torrentId, cbDeleteData.isChecked());
+						if (sessionInfo == null) {
+							return;
 						}
+						TransmissionRPC rpc = sessionInfo.getRpc();
+						rpc.removeTorrent(new long[] {
+							torrentId
+						}, cbDeleteData.isChecked(), null);
 					}
 				});
 		builder.setNegativeButton(android.R.string.cancel, new OnClickListener() {
@@ -86,22 +85,16 @@ public class DialogFragmentDeleteTorrent
 	private void setupVars(View view) {
 		Bundle args = getArguments();
 		String name = args.getString("name");
-		torrentId = args.getString("id");
+		torrentId = args.getLong("id");
+
+		String remoteProfileID = args.getString(SessionInfoManager.BUNDLE_KEY);
+		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID, null, true);
 
 		cbDeleteData = (CheckBox) view.findViewById(R.id.dialog_delete_datacheck);
 
 		TextView tv = (TextView) view.findViewById(R.id.dialog_delete_message);
 
 		tv.setText(getResources().getString(R.string.dialog_delete_message, name));
-	}
-
-	@Override
-	public void onAttach(Activity activity) {
-		super.onAttach(activity);
-
-		if (activity instanceof DeleteTorrentDialogListener) {
-			mListener = (DeleteTorrentDialogListener) activity;
-		}
 	}
 
 	@Override
@@ -116,12 +109,14 @@ public class DialogFragmentDeleteTorrent
 		VuzeEasyTracker.getInstance(this).activityStop(this);
 	}
 
-	public static void open(FragmentManager fragmentManager, String name,
-			long torrentID) {
+	public static void open(FragmentManager fragmentManager,
+			SessionInfo sessionInfo, String name, long torrentID) {
 		DialogFragmentDeleteTorrent dlg = new DialogFragmentDeleteTorrent();
 		Bundle bundle = new Bundle();
 		bundle.putString("name", name);
-		bundle.putString("id", "" + torrentID);
+		bundle.putLong("id", torrentID);
+		bundle.putString(SessionInfoManager.BUNDLE_KEY,
+				sessionInfo.getRemoteProfile().getID());
 
 		dlg.setArguments(bundle);
 		dlg.show(fragmentManager, "DeleteTorrentDialog");

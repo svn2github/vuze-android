@@ -16,13 +16,12 @@
 
 package com.vuze.android.remote.fragment;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.database.DataSetObserver;
 import android.os.*;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -52,14 +51,20 @@ import com.vuze.android.remote.AndroidUtils.ValueStringArray;
 import com.vuze.android.remote.R;
 import com.vuze.android.remote.dialog.*;
 import com.vuze.android.remote.dialog.DialogFragmentFilterBy.FilterByDialogListener;
+import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentSortBy.SortByDialogListener;
 import com.vuze.android.remote.fragment.TorrentListAdapter.TorrentFilter;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
+import com.vuze.android.remote.rpc.TransmissionRPC;
 
+/**
+ * TODO: Update selection on reordering, removing, etc
+ */
 public class TorrentListFragment
 	extends Fragment
-	implements TorrentListReceivedListener, FilterByDialogListener,
-	SortByDialogListener, SessionInfoListener, ActionModeBeingReplacedListener
+	implements MoveDataDialogListener, TorrentListReceivedListener,
+	FilterByDialogListener, SortByDialogListener, SessionInfoListener,
+	ActionModeBeingReplacedListener
 {
 	public interface OnTorrentSelectedListener
 	{
@@ -105,6 +110,8 @@ public class TorrentListFragment
 
 	private ActionModeWrapper.MultiChoiceModeListener multiChoiceModeListener;
 
+	private long[] selectedIDs = {};
+
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
@@ -114,6 +121,57 @@ public class TorrentListFragment
 		}
 
 		adapter = new TorrentListAdapter(activity);
+		adapter.registerDataSetObserver(new DataSetObserver() {
+			@Override
+			public void onChanged() {
+				long[] newSelectedIDs = getSelectedIDs(listview);
+				if (newSelectedIDs.length == 0 && selectedIDs.length == 0) {
+					return;
+				}
+				boolean redo = newSelectedIDs.length != selectedIDs.length;
+				if (!redo) {
+  				// No redo if all ids are found at same spot
+  				for (long newID : newSelectedIDs) {
+  					boolean found = false;
+  					for (long torrentID : selectedIDs) {
+  						if (torrentID == newID) {
+  							found = true;
+  							break;
+  						}
+  					}
+  					if (!found) {
+  						redo = true;
+  						break;
+  					}
+  				}
+				}
+				
+				if (redo) {
+					long[] oldSelectedIDs = new long[selectedIDs.length];
+					System.arraycopy(selectedIDs, 0, oldSelectedIDs, 0, oldSelectedIDs.length);
+					int count = listview.getCount();
+					listview.clearChoices();
+					int numFound = 0;
+					for (int i = 0; i < count; i++) {
+						long itemIdAtPosition = listview.getItemIdAtPosition(i);
+						for (long torrentID : oldSelectedIDs) {
+							if (torrentID == itemIdAtPosition) {
+								listview.setItemChecked(i, true);
+								numFound++;
+								break;
+							}
+						}
+						if (numFound == oldSelectedIDs.length) {
+							break;
+						}
+					}
+					
+					if (numFound != oldSelectedIDs.length) {
+						updateSelectedIDs();
+					}
+				}
+			}
+		});
 
 		if (activity instanceof SessionInfoGetter) {
 			SessionInfoGetter getter = (SessionInfoGetter) activity;
@@ -314,7 +372,7 @@ public class TorrentListFragment
 									+ lastIdClicked + "; sel? "
 									+ AndroidUtils.isChecked(listview, position));
 				}
-
+				
 				boolean isChecked = listview.isItemChecked(position)
 						|| AndroidUtils.isChecked(listview, position);
 				int choiceMode = listview.getChoiceMode();
@@ -349,11 +407,7 @@ public class TorrentListFragment
 					finishActionMode();
 				}
 
-				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
-							getSelectedIDs(listview),
-							choiceMode == ListView.CHOICE_MODE_MULTIPLE);
-				}
+				updateSelectedIDs();
 
 				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
 			}
@@ -413,12 +467,7 @@ public class TorrentListFragment
 	public void onViewStateRestored(Bundle savedInstanceState) {
 		super.onViewStateRestored(savedInstanceState);
 		if (listview != null) {
-			if (mCallback != null) {
-				int choiceMode = listview.getChoiceMode();
-				mCallback.onTorrentSelectedListener(TorrentListFragment.this,
-						getSelectedIDs(listview),
-						choiceMode == ListView.CHOICE_MODE_MULTIPLE);
-			}
+			updateSelectedIDs();
 		}
 	}
 
@@ -447,11 +496,11 @@ public class TorrentListFragment
 			boolean value = checked.get(key);
 			if (value) {
 				try {
-  				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
-  				if (mapTorrent != null) {
-  					torrentMaps[pos] = mapTorrent;
-  					pos++;
-  				}
+					Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
+					if (mapTorrent != null) {
+						torrentMaps[pos] = mapTorrent;
+						pos++;
+					}
 				} catch (IndexOutOfBoundsException e) {
 					// HeaderViewListAdapter will not call our Adapter, but throw OOB
 				}
@@ -466,6 +515,9 @@ public class TorrentListFragment
 	}
 
 	private static long[] getSelectedIDs(ListView listview) {
+		if (listview == null) {
+			return new long[] {};
+		}
 		SparseBooleanArray checked = listview.getCheckedItemPositions();
 		int size = checked.size(); // number of name-value pairs in the array
 		long[] moreIDs = new long[size];
@@ -475,12 +527,12 @@ public class TorrentListFragment
 			boolean value = checked.get(key);
 			if (value) {
 				try {
-  				Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
-  				long id = MapUtils.getMapLong(mapTorrent, "id", -1);
-  				if (id >= 0) {
-  					moreIDs[pos] = id;
-  					pos++;
-  				}
+					Map<?, ?> mapTorrent = (Map<?, ?>) listview.getItemAtPosition(key);
+					long id = MapUtils.getMapLong(mapTorrent, "id", -1);
+					if (id >= 0) {
+						moreIDs[pos] = id;
+						pos++;
+					}
 				} catch (IndexOutOfBoundsException e) {
 					// HeaderViewListAdapter will not call our Adapter, but throw OOB
 				}
@@ -501,7 +553,8 @@ public class TorrentListFragment
 	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
 			List<?> removedTorrentIDs) {
 		lastUpdated = System.currentTimeMillis();
-		if (addedTorrentMaps == null || addedTorrentMaps.size() == 0) {
+		if ((addedTorrentMaps == null || addedTorrentMaps.size() == 0)
+				&& (removedTorrentIDs == null || removedTorrentIDs.size() == 0)) {
 			return;
 		}
 		FragmentActivity activity = getActivity();
@@ -584,12 +637,9 @@ public class TorrentListFragment
 					@Override
 					public void run() {
 						listview.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+						updateSelectedIDs();
 					}
 				});
-				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
-							new long[] {}, false);
-				}
 			}
 
 			@Override
@@ -603,10 +653,7 @@ public class TorrentListFragment
 						R.string.context_torrent_subtitle_selected,
 						AndroidUtils.getCheckedItemCount(listview));
 				mode.setSubtitle(subtitle);
-				if (mCallback != null) {
-					mCallback.onTorrentSelectedListener(TorrentListFragment.this,
-							getSelectedIDs(listview), true);
-				}
+				updateSelectedIDs();
 			}
 		};
 	}
@@ -722,7 +769,7 @@ public class TorrentListFragment
 					long id = MapUtils.getMapLong(map, "id", -1);
 					String name = MapUtils.getMapString(map, "name", "");
 					// TODO: One at a time!
-					DialogFragmentDeleteTorrent.open(fm, name, id);
+					DialogFragmentDeleteTorrent.open(fm, sessionInfo, name, id);
 				}
 				return true;
 			}
@@ -806,12 +853,9 @@ public class TorrentListFragment
 
 				if (!actionModeBeingReplaced) {
 					listview.clearChoices();
+					updateSelectedIDs();
 					// Not sure why ListView doesn't invalidate by default
 					adapter.notifyDataSetInvalidated();
-					if (mCallback != null) {
-						mCallback.onTorrentSelectedListener(TorrentListFragment.this,
-								new long[] {}, false);
-					}
 				}
 			}
 		};
@@ -1043,6 +1087,46 @@ public class TorrentListFragment
 			listview.setLongClickable(true);
 			listview.clearChoices();
 			listview.requestLayout();
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener#moveDataTo(long, java.lang.String)
+	 */
+	@Override
+	public void moveDataTo(long id, String s) {
+		if (sessionInfo == null) {
+			return;
+		}
+		TransmissionRPC rpc = sessionInfo.getRpc();
+		rpc.moveTorrent(id, s, null);
+
+		VuzeEasyTracker.getInstance(this).send(
+				MapBuilder.createEvent("RemoteAction", "MoveData", null, null).build());
+	}
+
+	/* (non-Javadoc)
+	 * @see com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener#moveDataHistoryChanged(java.util.ArrayList)
+	 */
+	@Override
+	public void moveDataHistoryChanged(ArrayList<String> history) {
+		if (sessionInfo == null) {
+			return;
+		}
+		RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
+		if (remoteProfile == null) {
+			return;
+		}
+		remoteProfile.setSavePathHistory(history);
+		sessionInfo.saveProfileIfRemember();
+	}
+
+	private void updateSelectedIDs() {
+		selectedIDs = getSelectedIDs(listview);
+		if (mCallback != null) {
+			int choiceMode = listview.getChoiceMode();
+			mCallback.onTorrentSelectedListener(TorrentListFragment.this,
+					selectedIDs, choiceMode == ListView.CHOICE_MODE_MULTIPLE);
 		}
 	}
 }
