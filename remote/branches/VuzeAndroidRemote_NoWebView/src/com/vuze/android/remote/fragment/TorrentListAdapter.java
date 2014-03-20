@@ -107,7 +107,7 @@ public class TorrentListAdapter
 	private TorrentFilter filter;
 
 	/** List of they keys of all entries displayed, in the display order */
-	private List<Object> displayList;
+	private List<Long> displayList;
 
 	public Object mLock = new Object();
 
@@ -126,28 +126,55 @@ public class TorrentListAdapter
 
 		torrentListRowFiller = new TorrentListRowFiller(context);
 
-		displayList = new ArrayList<Object>();
+		displayList = new ArrayList<Long>();
 	}
 
 	public void setSessionInfo(SessionInfo sessionInfo) {
 		this.sessionInfo = sessionInfo;
 	}
 
-	public int getPosition(Map<?, ?> item) {
-		Object itemKey = item.get("id");
-		int position = -1;
+	public int getPosition(long torrentID) {
 		synchronized (mLock) {
 			int i = -1;
-			for (Iterator<?> iterator = displayList.iterator(); iterator.hasNext();) {
+			for (Iterator<Long> iterator = displayList.iterator(); iterator.hasNext();) {
 				i++;
-				Object key = iterator.next();
-				if (key.equals(itemKey)) {
-					position = i;
-					break;
+				Long key = iterator.next();
+				if (key.longValue() == torrentID) {
+					return i;
 				}
 			}
 		}
-		return position;
+		return -1;
+	}
+
+	/**
+	 * Note: This may not be the same positions as listview!
+	 */
+	public int[] getPositions(long[] torrentIDs) {
+		int positions[] = new int[torrentIDs.length];
+		synchronized (mLock) {
+			int i = -1;
+			int positionsPos = 0;
+			for (Iterator<Long> iterator = displayList.iterator(); iterator.hasNext();) {
+				i++;
+				long key = iterator.next();
+				for (long torrentID : torrentIDs) {
+					if (torrentID == key) {
+						positions[positionsPos++] = i;
+						break;
+					}
+				}
+			}
+		}
+		return positions;
+	}
+
+	public int getPosition(Map<?, ?> item) {
+		Object itemKey = item.get("id");
+		if (itemKey instanceof Number) {
+			return getPosition(((Number) itemKey).longValue());
+		}
+		return -1;
 	}
 
 	@Override
@@ -158,7 +185,7 @@ public class TorrentListAdapter
 	public void refreshView(int position, View view, ListView listView) {
 		getView(position, view, listView, true);
 	}
-
+	
 	public View getView(int position, View convertView, ViewGroup parent,
 			boolean requireHolder) {
 		View rowView = convertView;
@@ -220,8 +247,12 @@ public class TorrentListAdapter
 			boolean hasConstraint = constraint != null && constraint.length() > 0;
 
 			Object[] listTorrents = sessionInfo.getTorrentListKeys();
-			ArrayList<Object> listKeys = new ArrayList<Object>();
-			Collections.addAll(listKeys, listTorrents);
+			ArrayList<Long> listKeys = new ArrayList<Long>();
+			for (Object o : listTorrents) {
+				if (o instanceof Number) {
+					listKeys.add(((Number) o).longValue());
+				}
+			}
 
 			if (!hasConstraint && filterMode < 0) {
 				synchronized (mLock) {
@@ -238,8 +269,8 @@ public class TorrentListAdapter
 
 				if (filterMode >= 0 && filterMode != FILTERBY_ALL) {
 					synchronized (mLock) {
-						for (Iterator<Object> iterator = listKeys.iterator(); iterator.hasNext();) {
-							Object key = iterator.next();
+						for (Iterator<Long> iterator = listKeys.iterator(); iterator.hasNext();) {
+							Long key = iterator.next();
 
 							if (!filterCheck(filterMode, key)) {
 								iterator.remove();
@@ -254,10 +285,10 @@ public class TorrentListAdapter
 
 				if (hasConstraint) {
 					synchronized (mLock) {
-						for (Iterator<?> iterator = listKeys.iterator(); iterator.hasNext();) {
-							Object key = iterator.next();
+						for (Iterator<Long> iterator = listKeys.iterator(); iterator.hasNext();) {
+							Long torrentID = iterator.next();
 
-							if (!constraintCheck(constraint, key)) {
+							if (!constraintCheck(constraint, torrentID)) {
 								iterator.remove();
 							}
 						}
@@ -285,7 +316,7 @@ public class TorrentListAdapter
 			} else {
 				synchronized (mLock) {
 					if (results.values instanceof List) {
-						displayList = (List<Object>) results.values;
+						displayList = (List<Long>) results.values;
 						doSort();
 					}
 				}
@@ -301,11 +332,11 @@ public class TorrentListAdapter
 		getFilter().refilter();
 	}
 
-	public boolean constraintCheck(CharSequence constraint, Object key) {
+	public boolean constraintCheck(CharSequence constraint, Long torrentID) {
 		if (constraint == null || constraint.length() == 0) {
 			return true;
 		}
-		Map<?, ?> map = sessionInfo.getTorrent(key);
+		Map<?, ?> map = sessionInfo.getTorrent(torrentID);
 		if (map == null) {
 			return false;
 		}
@@ -315,8 +346,8 @@ public class TorrentListAdapter
 		return name.contains(constraint);
 	}
 
-	private boolean filterCheck(long filterMode, Object key) {
-		Map<?, ?> map = sessionInfo.getTorrent(key);
+	private boolean filterCheck(long filterMode, Long torrentID) {
+		Map<?, ?> map = sessionInfo.getTorrent(torrentID);
 		if (map == null) {
 			return false;
 		}
@@ -435,7 +466,7 @@ public class TorrentListAdapter
 
 			@Override
 			public Map<?, ?> mapGetter(Object o) {
-				return sessionInfo.getTorrent(o);
+				return sessionInfo.getTorrent((Long) o);
 			}
 
 			@SuppressWarnings("rawtypes")
@@ -474,8 +505,8 @@ public class TorrentListAdapter
 		if (sessionInfo == null) {
 			return new HashMap<Object, Object>();
 		}
-		Object key = displayList.get(position);
-		return sessionInfo.getTorrent(key);
+		Long torrentID = displayList.get(position);
+		return sessionInfo.getTorrent(torrentID);
 	}
 
 	/* (non-Javadoc)
@@ -483,7 +514,10 @@ public class TorrentListAdapter
 	 */
 	@Override
 	public long getItemId(int position) {
-		return position;
+		if (position < 0 || position >= displayList.size()) {
+			return -1;
+		}
+		return displayList.get(position);
 	}
 
 }
