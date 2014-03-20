@@ -64,11 +64,14 @@ public class RestJsonClient
 			Header[] headers, UsernamePasswordCredentials creds, boolean sendGzip)
 			throws RPCException {
 		long readTime = 0;
+		long connSetupTime = 0;
+		long connTime = 0;
 		int bytesRead = 0;
 		if (DEBUG_DETAILED) {
 			Log.d(TAG, id + "] Execute " + url);
 		}
 		long now = System.currentTimeMillis();
+		long then;
 
 		Map<?, ?> json = Collections.EMPTY_MAP;
 
@@ -92,9 +95,9 @@ public class RestJsonClient
 					Log.d(TAG, id + "]  Post: " + postString);
 				}
 
-				AbstractHttpEntity compressedEntity = (sendGzip && Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO)
+				AbstractHttpEntity entity = (sendGzip && Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO)
 						? getCompressedEntity(postString) : new StringEntity(postString);
-				post.setEntity(compressedEntity);
+				post.setEntity(entity);
 
 				post.setHeader("Accept", "application/json");
 				post.setHeader("Content-type",
@@ -114,13 +117,17 @@ public class RestJsonClient
 			// Execute the request
 			HttpResponse response;
 
+			then = System.currentTimeMillis();
+			if (AndroidUtils.DEBUG) {
+				connSetupTime = (then - now);
+				now = then;
+			}
+
 			response = httpclient.execute(httpRequest);
 
-			long then = System.currentTimeMillis();
-			if (DEBUG_DETAILED) {
-				if (AndroidUtils.DEBUG) {
-					Log.d(TAG, id + "]  conn ->" + (then - now) + "ms");
-				}
+			then = System.currentTimeMillis();
+			if (AndroidUtils.DEBUG) {
+				connTime = (then - now);
 				now = then;
 			}
 
@@ -193,6 +200,10 @@ public class RestJsonClient
 
 				} catch (Exception pe) {
 
+					if (response.getStatusLine().getStatusCode() == 409) {
+						throw new RPCException(response, "409");
+					}
+
 					try {
 						String line;
 						if (USE_STRINGBUFFER) {
@@ -240,9 +251,10 @@ public class RestJsonClient
 		}
 
 		if (AndroidUtils.DEBUG) {
-			long then = System.currentTimeMillis();
-			Log.d(TAG, id + "] read " + bytesRead + " in " + readTime
-					+ ", parsed in " + (then - now) + "ms");
+			then = System.currentTimeMillis();
+			Log.d(TAG, id + "] conn " + connSetupTime + "/" + connTime + "ms. Read "
+					+ bytesRead + " in " + readTime + "ms, parsed in " + (then - now)
+					+ "ms");
 		}
 		return json;
 	}
