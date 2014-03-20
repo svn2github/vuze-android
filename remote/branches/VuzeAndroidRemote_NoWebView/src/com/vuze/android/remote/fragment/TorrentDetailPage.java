@@ -40,6 +40,8 @@ public abstract class TorrentDetailPage
 
 	private long pausedTorrentID = -1;
 
+	private boolean viewActive = true;
+
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
@@ -89,6 +91,7 @@ public abstract class TorrentDetailPage
 
 	@Override
 	public void pageDeactivated() {
+		viewActive = false;
 		if (torrentID != -1) {
 			pausedTorrentID = torrentID;
 			setTorrentID(-1);
@@ -101,6 +104,7 @@ public abstract class TorrentDetailPage
 
 	@Override
 	public void pageActivated() {
+		viewActive = true;
 		if (pausedTorrentID >= 0) {
 			setTorrentID(pausedTorrentID);
 		} else if (torrentID >= 0) {
@@ -116,6 +120,13 @@ public abstract class TorrentDetailPage
 	}
 
 	public final void setTorrentID(long id) {
+		if (!viewActive) {
+			if (AndroidUtils.DEBUG) {
+				Log.e(TAG, "setTorrentID: view not Active");
+			}
+			pausedTorrentID = id;
+			return;
+		}
 		if (getActivity() == null) {
 			if (AndroidUtils.DEBUG) {
 				Log.e(TAG, "setTorrentID: No Activity");
