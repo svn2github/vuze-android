@@ -17,22 +17,18 @@
 package com.vuze.android.remote.fragment;
 
 import java.util.List;
-import java.util.Map;
 
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
-import android.view.MenuItem;
 import android.view.View;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.astuetz.PagerSlidingTabStrip;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.activity.TorrentDetailsActivity;
 import com.vuze.android.remote.activity.TorrentViewActivity;
-import com.vuze.android.remote.dialog.DialogFragmentDeleteTorrent;
 
 /**
  * Torrent Details Fragment<br>
@@ -132,75 +128,4 @@ public class TorrentDetailsFragment
 			}
 		});
 	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		if (handleMenu(item.getItemId())) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
-	}
-
-	protected boolean handleMenu(int itemId) {
-		if (sessionInfo == null || torrentID < 0) {
-			return false;
-		}
-		switch (itemId) {
-			case R.id.action_sel_remove: {
-				Map<?, ?> map = sessionInfo.getTorrent(torrentID);
-				long id = MapUtils.getMapLong(map, "id", -1);
-				String name = MapUtils.getMapString(map, "name", "");
-				DialogFragmentDeleteTorrent.open(getFragmentManager(), name, id);
-				return true;
-			}
-			case R.id.action_sel_start: {
-				sessionInfo.getRpc().startTorrents(TAG, new long[] {
-					torrentID
-				}, false, null);
-				return true;
-			}
-			case R.id.action_sel_forcestart: {
-				sessionInfo.getRpc().startTorrents(TAG, new long[] {
-					torrentID
-				}, true, null);
-				return true;
-			}
-			case R.id.action_sel_stop: {
-				sessionInfo.getRpc().stopTorrents(TAG, new long[] {
-					torrentID
-				}, null);
-				return true;
-			}
-			case R.id.action_sel_relocate:
-				AndroidUtils.openMoveDataDialog(sessionInfo.getTorrent(torrentID),
-						sessionInfo, getFragmentManager());
-				return true;
-			case R.id.action_sel_move_top: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-top", new long[] {
-					torrentID
-				}, null);
-				return true;
-			}
-			case R.id.action_sel_move_up: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-up", new long[] {
-					torrentID
-				}, null);
-				return true;
-			}
-			case R.id.action_sel_move_down: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-down", new long[] {
-					torrentID
-				}, null);
-				return true;
-			}
-			case R.id.action_sel_move_bottom: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-bottom", new long[] {
-					torrentID
-				}, null);
-				return true;
-			}
-		}
-		return false;
-	}
-
 }
