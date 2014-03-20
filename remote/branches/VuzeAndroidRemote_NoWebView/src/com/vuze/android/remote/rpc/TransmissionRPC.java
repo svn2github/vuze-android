@@ -262,7 +262,9 @@ public class TransmissionRPC
 
 	public void getTorrent(String callID, long torrentID, List<String> fields,
 			TorrentListReceivedListener l) {
-		getTorrents(callID, new long[] { torrentID }, fields, null, null, l);
+		getTorrents(callID, new long[] {
+			torrentID
+		}, fields, null, null, l);
 	}
 
 	private void getTorrents(final String callID, final Object ids,
@@ -357,6 +359,8 @@ public class TransmissionRPC
 												Collections.EMPTY_LIST).size());
 							}
 						}
+						// TODO: If we have a list of torrent IDs, and we don't get them back with
+						//       "success", then we should populate the listRemoved
 						List listRemoved = MapUtils.getMapList(optionalMap, "removed", null);
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {
@@ -720,33 +724,52 @@ public class TransmissionRPC
 		Map<String, Object> mapArguments = new HashMap<String, Object>();
 		map.put("arguments", mapArguments);
 
-		mapArguments.put("ids", new long[] {
+		long[] ids = new long[] {
 			id
-		});
+		};
+		mapArguments.put("ids", ids);
 		mapArguments.put("move", true);
 		mapArguments.put("location", newLocation);
 
-		sendRequest("torrent-set-location", map, listener);
+		sendRequest("torrent-set-location", map,
+				new ReplyMapReceivedListenerWithRefresh(TAG, listener, ids));
 	}
 
-	public void removeTorrent(Object id, boolean deleteData,
-			ReplyMapReceivedListener listener) {
+	public void removeTorrent(long[] ids, boolean deleteData,
+			final ReplyMapReceivedListener listener) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("method", "torrent-remove");
 
 		Map<String, Object> mapArguments = new HashMap<String, Object>();
 		map.put("arguments", mapArguments);
 
-		if (id instanceof Object[] || id instanceof Collection) {
-			mapArguments.put("ids", id);
-		} else {
-			mapArguments.put("ids", new Object[] {
-				id
-			});
-		}
+		mapArguments.put("ids", ids);
 		mapArguments.put("delete-local-data", deleteData);
 
-		sendRequest("torrent-remove", map, listener);
+		sendRequest("torrent-remove", map, new ReplyMapReceivedListener() {
+			
+			@Override
+			public void rpcSuccess(String id, Map<?, ?> optionalMap) {
+				getRecentTorrents(id, null);
+				if (listener != null) {
+					listener.rpcSuccess(id, optionalMap);
+				}
+			}
+			
+			@Override
+			public void rpcFailure(String id, String message) {
+				if (listener != null) {
+					listener.rpcFailure(id, message);
+				}
+			}
+			
+			@Override
+			public void rpcError(String id, Exception e) {
+				if (listener != null) {
+					listener.rpcError(id, e);
+				}
+			}
+		});
 	}
 
 	public void updateSettings(Map<String, Object> changes) {
