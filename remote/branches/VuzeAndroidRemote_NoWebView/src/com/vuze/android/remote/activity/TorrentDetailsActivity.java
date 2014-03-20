@@ -119,10 +119,26 @@ public class TorrentDetailsActivity
 
 	@Override
 	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
-			List<?> removedTorrentIDs) {
+			final List<?> removedTorrentIDs) {
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+
+				if (removedTorrentIDs != null) {
+					boolean found = false;
+					for (Object removedItem : removedTorrentIDs) {
+						if (removedItem instanceof Number) {
+							found = torrentID == ((Number) removedItem).longValue();
+						}
+					}
+					if (found) {
+						if (AndroidUtils.DEBUG) {
+							Log.d(TAG, "Closing Details View -- torrent rmeoved");
+						}
+						finish();
+						return;
+					}
+				}
 				Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
 				torrentListRowFiller.fillHolder(mapTorrent, sessionInfo);
 				ActivityCompat.invalidateOptionsMenu(TorrentDetailsActivity.this);
