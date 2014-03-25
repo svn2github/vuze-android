@@ -25,7 +25,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentActivity;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.*;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -40,7 +40,7 @@ import com.vuze.android.remote.dialog.DialogFragmentGenericRemoteProfile.Generic
 import com.vuze.android.remote.rpc.RPC;
 
 public class IntentHandler
-	extends FragmentActivity
+	extends ActionBarActivity
 	implements GenericRemoteProfileListener
 {
 
@@ -55,7 +55,6 @@ public class IntentHandler
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-
 		setContentView(R.layout.activity_intent_handler);
 
 		final Intent intent = getIntent();
@@ -319,5 +318,4 @@ public class IntentHandler
 	public void profileEditDone(RemoteProfile oldProfile, RemoteProfile newProfile) {
 		adapter.refreshList();
 	}
-
 }
