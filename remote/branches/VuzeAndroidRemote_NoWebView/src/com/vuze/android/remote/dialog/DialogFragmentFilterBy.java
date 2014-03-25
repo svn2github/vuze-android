@@ -45,8 +45,7 @@ public class DialogFragmentFilterBy
 		dlg.show(fragment.getFragmentManager(), "OpenFilterDialog");
 	}
 
-	public static void openFilterByDialog(
-			Fragment fragment, String id) {
+	public static void openFilterByDialog(Fragment fragment, String id) {
 		DialogFragmentFilterBy dlg = new DialogFragmentFilterBy();
 		dlg.setTargetFragment(fragment, 0);
 		Bundle bundle = new Bundle();
@@ -56,15 +55,18 @@ public class DialogFragmentFilterBy
 	}
 
 	private FilterByDialogListener mListener;
+
 	private ValueStringArray filterByList;
 
 	@Override
 	public Dialog onCreateDialog(Bundle savedInstanceState) {
 		Bundle arguments = getArguments();
 
-		String id = arguments == null ? null : arguments.getString(SessionInfoManager.BUNDLE_KEY);
+		String id = arguments == null ? null
+				: arguments.getString(SessionInfoManager.BUNDLE_KEY);
 		if (id != null) {
-			SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(id, getActivity(), true);
+			SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(id,
+					getActivity(), true);
 			List tags = sessionInfo.getTags();
 			if (tags != null && tags.size() > 0) {
 				TreeMap<String, Long> map = new TreeMap<String, Long>();
@@ -78,29 +80,29 @@ public class DialogFragmentFilterBy
 							// type-name will be "Manual" :(
 							name = "Tag: " + name;
 						} else {
-  						String typeName = MapUtils.getMapString(mapTag, "type-name", null);
-  						if (typeName != null) {
-  							name = typeName + ": " + name;
-  						}
+							String typeName = MapUtils.getMapString(mapTag, "type-name", null);
+							if (typeName != null) {
+								name = typeName + ": " + name;
+							}
 						}
 						map.put(name, uid);
 					}
 				}
-				
+
 				long[] vals = new long[map.size()];
 				String[] strings = map.keySet().toArray(new String[0]);
 				for (int i = 0; i < vals.length; i++) {
 					vals[i] = map.get(strings[i]);
 				}
-				
+
 				filterByList = new ValueStringArray(vals, strings);
 			}
-			
+
 		}
-		
+
 		if (filterByList == null) {
-			filterByList = AndroidUtils.getValueStringArray(
-					getResources(), R.array.filterby_list);
+			filterByList = AndroidUtils.getValueStringArray(getResources(),
+					R.array.filterby_list);
 		}
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -111,8 +113,10 @@ public class DialogFragmentFilterBy
 						if (mListener == null) {
 							return;
 						}
+						// quick hack to remove "Download State:".. should do something better
 						mListener.filterBy(filterByList.values[which],
-								filterByList.strings[which], true);
+								filterByList.strings[which].replaceAll("Download State: ", ""),
+								true);
 					}
 				});
 		return builder.create();

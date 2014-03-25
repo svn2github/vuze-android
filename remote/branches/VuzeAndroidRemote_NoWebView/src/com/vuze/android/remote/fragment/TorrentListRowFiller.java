@@ -116,15 +116,18 @@ public class TorrentListRowFiller
 					validator);
 		}
 
-		float pctDone = MapUtils.getMapFloat(item, "percentDone", 0f);
+		float pctDone = MapUtils.getMapFloat(item, "percentDone", -1f);
 		if (holder.tvProgress != null) {
 			NumberFormat format = NumberFormat.getPercentInstance();
 			format.setMaximumFractionDigits(1);
-			String s = format.format(pctDone);
+			String s = pctDone < 0 ? "" : format.format(pctDone);
 			flipper.changeText(holder.tvProgress, s, holder.animateFlip, validator);
 		}
 		if (holder.pb != null) {
-			holder.pb.setProgress((int) (pctDone * 10000));
+			holder.pb.setIndeterminate(pctDone < 0);
+			if (pctDone >= 0) {
+				holder.pb.setProgress((int) (pctDone * 10000));
+			}
 		}
 		if (holder.tvInfo != null) {
 			int fileCount = MapUtils.getMapInt(item, "fileCount", 0);

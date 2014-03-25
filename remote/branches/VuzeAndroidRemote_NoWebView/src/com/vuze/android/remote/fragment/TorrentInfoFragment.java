@@ -29,10 +29,10 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.aelitis.azureus.util.MapUtils;
-import com.vuze.android.remote.AndroidUtils;
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.TransmissionVars;
+import com.vuze.android.remote.*;
+import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
+import com.vuze.android.remote.rpc.TransmissionRPC;
 
 public class TorrentInfoFragment
 	extends TorrentDetailPage
@@ -76,7 +76,7 @@ public class TorrentInfoFragment
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.fragment.TorrentDetailPage#updateTorrentID(long, boolean, boolean, boolean)
 	 */
-	public void updateTorrentID(long torrentID, boolean isTorrent,
+	public void updateTorrentID(final long torrentID, boolean isTorrent,
 			boolean wasTorrent, boolean torrentIdChanged) {
 		if (!wasTorrent && isTorrent) {
 			if (AndroidUtils.DEBUG) {
@@ -91,35 +91,40 @@ public class TorrentInfoFragment
 		}
 
 		if (isTorrent) {
-			sessionInfo.getRpc().getTorrent(TAG, torrentID, Arrays.asList(fields),
-					new TorrentListReceivedListener() {
-						@Override
-						public void rpcTorrentListReceived(String callID,
-								List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
-						}
-					});
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.getTorrent(TAG, torrentID, Arrays.asList(fields),
+							new TorrentListReceivedListener() {
+								@Override
+								public void rpcTorrentListReceived(String callID,
+										List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+								}
+							});
+				}
+			});
 		}
 	}
 
 	@Override
 	public void triggerRefresh() {
-		// Right now, all the tabs are built, so even if we are on TorrentInfo,
-		// Files view is still built and firing off it's own refresh
-		sessionInfo.getRpc().getTorrent(TAG, torrentID, Arrays.asList(fields), null);
+		sessionInfo.executeRpc(new RpcExecuter() {
+			@Override
+			public void executeRpc(TransmissionRPC rpc) {
+				rpc.getTorrent(TAG, torrentID, Arrays.asList(fields), null);
+			}
+		});
 	}
 
 	@Override
 	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
 			List<?> removedTorrentIDs) {
-		FragmentActivity activity = getActivity();
-		if (activity != null) {
-			activity.runOnUiThread(new Runnable() {
-				@Override
-				public void run() {
-					fillDisplay();
-				}
-			});
-		}
+		AndroidUtils.runOnUIThread(this, new Runnable() {
+			@Override
+			public void run() {
+				fillDisplay();
+			}
+		});
 	}
 
 	public void fillDisplay() {
@@ -153,7 +158,8 @@ public class TorrentInfoFragment
 
 		float shareRatio = MapUtils.getMapFloat(mapTorrent,
 				TransmissionVars.FIELD_TORRENT_UPLOAD_RATIO, -1);
-		s = shareRatio < 0 ? "" : String.format("%.02f", shareRatio);
+		s = shareRatio < 0 ? "" : String.format(Locale.getDefault(), "%.02f",
+				shareRatio);
 		fillRow(a, R.id.torrentInfo_row_shareRatio,
 				R.id.torrentInfo_val_shareRatio, s);
 

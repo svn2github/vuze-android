@@ -49,6 +49,7 @@ import com.handmark.pulltorefresh.library.PullToRefreshBase.State;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.ValueStringArray;
 import com.vuze.android.remote.R;
+import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.dialog.*;
 import com.vuze.android.remote.dialog.DialogFragmentFilterBy.FilterByDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
@@ -72,6 +73,11 @@ public class TorrentListFragment
 				TorrentListFragment torrentListFragment, long[] ids, boolean inMultiMode);
 	}
 
+	// Although MultiChoiceMode is available in 3.0/v11 (HONEYCOMB), it crashes
+	// LV-909 on 3.1/v12 (HONEYCOMB).  Might work on 3.2/v13, but let's be safe
+	// use appcompat for all Honeycomb (and below)
+	private static final int VERSION_CODE_MULTIACTION = Build.VERSION_CODES.ICE_CREAM_SANDWICH;
+
 	private OnTorrentSelectedListener mCallback;
 
 	private static final boolean DEBUG = AndroidUtils.DEBUG;
@@ -87,10 +93,6 @@ public class TorrentListFragment
 	private SessionInfo sessionInfo;
 
 	private EditText filterEditText;
-
-	private boolean haveActive;
-
-	private boolean havePaused;
 
 	private Callback mActionModeCallback;
 
@@ -130,25 +132,26 @@ public class TorrentListFragment
 				}
 				boolean redo = newSelectedIDs.length != selectedIDs.length;
 				if (!redo) {
-  				// No redo if all ids are found at same spot
-  				for (long newID : newSelectedIDs) {
-  					boolean found = false;
-  					for (long torrentID : selectedIDs) {
-  						if (torrentID == newID) {
-  							found = true;
-  							break;
-  						}
-  					}
-  					if (!found) {
-  						redo = true;
-  						break;
-  					}
-  				}
+					// No redo if all ids are found at same spot
+					for (long newID : newSelectedIDs) {
+						boolean found = false;
+						for (long torrentID : selectedIDs) {
+							if (torrentID == newID) {
+								found = true;
+								break;
+							}
+						}
+						if (!found) {
+							redo = true;
+							break;
+						}
+					}
 				}
-				
+
 				if (redo) {
 					long[] oldSelectedIDs = new long[selectedIDs.length];
-					System.arraycopy(selectedIDs, 0, oldSelectedIDs, 0, oldSelectedIDs.length);
+					System.arraycopy(selectedIDs, 0, oldSelectedIDs, 0,
+							oldSelectedIDs.length);
 					int count = listview.getCount();
 					listview.clearChoices();
 					int numFound = 0;
@@ -165,7 +168,7 @@ public class TorrentListFragment
 							break;
 						}
 					}
-					
+
 					if (numFound != oldSelectedIDs.length) {
 						updateSelectedIDs();
 					}
@@ -176,6 +179,9 @@ public class TorrentListFragment
 		if (activity instanceof SessionInfoGetter) {
 			SessionInfoGetter getter = (SessionInfoGetter) activity;
 			sessionInfo = getter.getSessionInfo();
+			adapter.setSessionInfo(sessionInfo);
+			sessionInfo.addTorrentListReceivedListener(TAG, this);
+
 			sessionInfo.addRpcAvailableListener(this);
 		}
 	}
@@ -183,7 +189,7 @@ public class TorrentListFragment
 	/* (non-Javadoc)
 	 */
 	@Override
-	public void uiReady() {
+	public void uiReady(TransmissionRPC rpc) {
 		/*
 		sessionInfo.getRpc().simpleRpcCall("rcm-is-enabled" , new ReplyMapReceivedListener() {
 			
@@ -217,7 +223,7 @@ public class TorrentListFragment
 		});
 		*/
 
-		sessionInfo.getRpc().getAllTorrents(TAG, null);
+		rpc.getAllTorrents(TAG, null);
 
 		RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
 
@@ -248,8 +254,6 @@ public class TorrentListFragment
 
 	@Override
 	public void transmissionRpcAvailable(SessionInfo sessionInfo) {
-		adapter.setSessionInfo(sessionInfo);
-		sessionInfo.addTorrentListReceivedListener(TAG, this);
 	}
 
 	/* (non-Javadoc)
@@ -321,23 +325,19 @@ public class TorrentListFragment
 					if (sessionInfo == null) {
 						return;
 					}
-					sessionInfo.getRpc().getRecentTorrents(TAG,
-							new TorrentListReceivedListener() {
-								@Override
-								public void rpcTorrentListReceived(String callID,
-										List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
-									FragmentActivity activity = getActivity();
-									if (activity == null) {
-										return;
-									}
-									activity.runOnUiThread(new Runnable() {
+					sessionInfo.triggerRefresh(true, new TorrentListReceivedListener() {
+						@Override
+						public void rpcTorrentListReceived(String callID,
+								List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+							AndroidUtils.runOnUIThread(TorrentListFragment.this,
+									new Runnable() {
 										@Override
 										public void run() {
 											pullListView.onRefreshComplete();
 										}
 									});
-								}
-							});
+						}
+					});
 				}
 
 			});
@@ -352,7 +352,7 @@ public class TorrentListFragment
 		listview.setAdapter(adapter);
 
 		setupMultiChoiceListener();
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+		if (Build.VERSION.SDK_INT >= VERSION_CODE_MULTIACTION) {
 			setupHoneyCombListView(listview);
 		} else {
 			setupOldListView(listview);
@@ -372,7 +372,7 @@ public class TorrentListFragment
 									+ lastIdClicked + "; sel? "
 									+ AndroidUtils.isChecked(listview, position));
 				}
-				
+
 				boolean isChecked = listview.isItemChecked(position)
 						|| AndroidUtils.isChecked(listview, position);
 				int choiceMode = listview.getChoiceMode();
@@ -421,7 +421,7 @@ public class TorrentListFragment
 			public boolean onItemLongClick(AdapterView<?> parent, View view,
 					int position, long id) {
 				int[] selectedPositions = AndroidUtils.getCheckedPositions(listview);
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+				if (Build.VERSION.SDK_INT >= VERSION_CODE_MULTIACTION) {
 					switchListViewToMulti_HC();
 				} else {
 					listview.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
@@ -557,21 +557,20 @@ public class TorrentListFragment
 				&& (removedTorrentIDs == null || removedTorrentIDs.size() == 0)) {
 			return;
 		}
-		FragmentActivity activity = getActivity();
-		if (activity == null) {
-			return;
-		}
-		activity.runOnUiThread(new Runnable() {
+		AndroidUtils.runOnUIThread(this, new AndroidUtils.RunnableWithActivity() {
 			@Override
 			public void run() {
+				if (adapter == null) {
+					return;
+				}
 				adapter.refreshDisplayList();
 				updateTorrentCount(adapter.getCount());
-				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
+				AndroidUtils.invalidateOptionsMenuHC(activity, mActionMode);
 			}
 		});
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	@TargetApi(VERSION_CODE_MULTIACTION)
 	private void switchListViewToMulti_HC() {
 		// CHOICE_MODE_MULTIPLE_MODAL is for CAB
 		listview.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
@@ -662,7 +661,7 @@ public class TorrentListFragment
 
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
+	@TargetApi(VERSION_CODE_MULTIACTION)
 	private void setupHoneyCombListView(ListView lv) {
 		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "MULTI:setup");
@@ -755,7 +754,7 @@ public class TorrentListFragment
 	}
 
 	public static boolean handleTorrentMenuActions(SessionInfo sessionInfo,
-			long[] ids, FragmentManager fm, int itemId) {
+			final long[] ids, FragmentManager fm, int itemId) {
 		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "HANDLE MENU FRAG " + itemId);
 		}
@@ -774,15 +773,30 @@ public class TorrentListFragment
 				return true;
 			}
 			case R.id.action_sel_start: {
-				sessionInfo.getRpc().startTorrents(TAG, ids, false, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.startTorrents(TAG, ids, false, null);
+					}
+				});
 				return true;
 			}
 			case R.id.action_sel_forcestart: {
-				sessionInfo.getRpc().startTorrents(TAG, ids, true, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.startTorrents(TAG, ids, true, null);
+					}
+				});
 				return true;
 			}
 			case R.id.action_sel_stop: {
-				sessionInfo.getRpc().stopTorrents(TAG, ids, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.stopTorrents(TAG, ids, null);
+					}
+				});
 				return true;
 			}
 			case R.id.action_sel_relocate: {
@@ -791,19 +805,39 @@ public class TorrentListFragment
 				return true;
 			}
 			case R.id.action_sel_move_top: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-top", ids, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.simpleRpcCall("queue-move-top", ids, null);
+					}
+				});
 				return true;
 			}
 			case R.id.action_sel_move_up: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-up", ids, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.simpleRpcCall("queue-move-up", ids, null);
+					}
+				});
 				return true;
 			}
 			case R.id.action_sel_move_down: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-down", ids, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.simpleRpcCall("queue-move-down", ids, null);
+					}
+				});
 				return true;
 			}
 			case R.id.action_sel_move_bottom: {
-				sessionInfo.getRpc().simpleRpcCall("queue-move-bottom", ids, null);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.simpleRpcCall("queue-move-bottom", ids, null);
+					}
+				});
 				return true;
 			}
 		}
@@ -883,29 +917,6 @@ public class TorrentListFragment
 		menuStop.setVisible(canStop);
 	}
 
-	/* (non-Javadoc)
-	 * @see android.support.v4.app.Fragment#onPrepareOptionsMenu(android.view.Menu)
-	 */
-	@Override
-	public void onPrepareOptionsMenu(Menu menu) {
-		if (AndroidUtils.DEBUG_MENU) {
-			Log.d(TAG, "onPrepareOptionsMenu");
-		}
-
-		MenuItem menuStartAll = menu.findItem(R.id.action_start_all);
-		if (menuStartAll != null) {
-			menuStartAll.setEnabled(havePaused);
-		}
-		MenuItem menuStopAll = menu.findItem(R.id.action_stop_all);
-		if (menuStopAll != null) {
-			menuStopAll.setEnabled(haveActive);
-		}
-
-		AndroidUtils.fixupMenuAlpha(menu);
-
-		super.onPrepareOptionsMenu(menu);
-	}
-
 	private boolean showContextualActions() {
 		if (mActionMode != null) {
 			mActionMode.invalidate();
@@ -925,6 +936,7 @@ public class TorrentListFragment
 		return true;
 	}
 
+	/*
 	private void refreshRow(Map<?, ?> mapTorrent) {
 		int position = adapter.getPosition(mapTorrent);
 		if (position < 0) {
@@ -936,6 +948,7 @@ public class TorrentListFragment
 		}
 		adapter.refreshView(position, view, listview);
 	}
+	*/
 
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.dialog.DialogFragmentFilterBy.FilterByDialogListener#filterBy(long, java.lang.String, boolean)
@@ -946,12 +959,11 @@ public class TorrentListFragment
 			Log.d(TAG, "FILTER BY " + name);
 		}
 
-		FragmentActivity activity = getActivity();
-		if (activity == null) {
-			return;
-		}
-		activity.runOnUiThread(new Runnable() {
+		AndroidUtils.runOnUIThread(this, new Runnable() {
 			public void run() {
+				if (adapter == null) {
+					return;
+				}
 				// java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()
 				TorrentFilter filter = adapter.getFilter();
 				filter.setFilterMode(filterMode);
@@ -975,17 +987,16 @@ public class TorrentListFragment
 		if (DEBUG) {
 			Log.d(TAG, "SORT BY " + Arrays.toString(sortFieldIDs));
 		}
-		FragmentActivity activity = getActivity();
-		if (activity == null) {
-			return;
-		}
-		activity.runOnUiThread(new Runnable() {
+		AndroidUtils.runOnUIThread(this, new Runnable() {
 			public void run() {
+				if (adapter == null) {
+					return;
+				}
 				adapter.setSort(sortFieldIDs, sortOrderAsc);
 			}
 		});
 
-		if (save) {
+		if (save && sessionInfo != null) {
 			sessionInfo.getRemoteProfile().setSortBy(sortFieldIDs, sortOrderAsc);
 			sessionInfo.saveProfileIfRemember();
 		}
@@ -1017,11 +1028,7 @@ public class TorrentListFragment
 		if (tvTorrentCount == null) {
 			return;
 		}
-		FragmentActivity activity = getActivity();
-		if (activity == null) {
-			return;
-		}
-		activity.runOnUiThread(new Runnable() {
+		AndroidUtils.runOnUIThread(this, new Runnable() {
 			public void run() {
 				if (total == 0) {
 					tvTorrentCount.setText("");
@@ -1094,12 +1101,16 @@ public class TorrentListFragment
 	 * @see com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener#moveDataTo(long, java.lang.String)
 	 */
 	@Override
-	public void moveDataTo(long id, String s) {
+	public void moveDataTo(final long id, final String s) {
 		if (sessionInfo == null) {
 			return;
 		}
-		TransmissionRPC rpc = sessionInfo.getRpc();
-		rpc.moveTorrent(id, s, null);
+		sessionInfo.executeRpc(new RpcExecuter() {
+			@Override
+			public void executeRpc(TransmissionRPC rpc) {
+				rpc.moveTorrent(id, s, null);
+			}
+		});
 
 		VuzeEasyTracker.getInstance(this).send(
 				MapBuilder.createEvent("RemoteAction", "MoveData", null, null).build());

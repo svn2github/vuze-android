@@ -26,6 +26,7 @@ import jcifs.netbios.NbtAddress;
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.util.LongSparseArray;
 import android.util.Log;
 
 import com.aelitis.azureus.util.MapUtils;
@@ -47,6 +48,11 @@ public class SessionInfo
 	implements SessionSettingsReceivedListener, NetworkStateListener
 {
 	private static final String TAG = "SessionInfo";
+
+	public static interface RpcExecuter
+	{
+		public void executeRpc(TransmissionRPC rpc);
+	}
 
 	private static final String[] FILE_FIELDS_LOCALHOST = new String[] {};
 
@@ -73,7 +79,7 @@ public class SessionInfo
 	private RemoteProfile remoteProfile;
 
 	/** <Key, TorrentMap> */
-	private LinkedHashMap<Long, Map<?, ?>> mapOriginal;
+	private LongSparseArray<Map<?, ?>> mapOriginal;
 
 	private Object mLock = new Object();
 
@@ -93,26 +99,25 @@ public class SessionInfo
 
 	private Map<?, ?> mapSessionStats;
 
-	private Map<Long, Map<?, ?>> mapTags;
+	private LongSparseArray<Map<?, ?>> mapTags;
 
 	private boolean refreshing;
 
 	private String rpcRoot;
 
-	protected SessionInfo(TransmissionRPC rpc, RemoteProfile _remoteProfile,
-			boolean rememberSettingChanges) {
+	private long lastTorrentWithFiles = -1;
+
+	private List<RpcExecuter> rpcExecuteList = new ArrayList<>();
+	
+	private boolean needsFullTorrentRefresh = false;
+
+	public SessionInfo(final Activity activity,
+			final RemoteProfile _remoteProfile, boolean rememberSettingChanges) {
 		this.remoteProfile = _remoteProfile;
 		this.rememberSettingChanges = rememberSettingChanges;
-		this.mapOriginal = new LinkedHashMap<Long, Map<?, ?>>();
-
-		setRpc(rpc);
+		this.mapOriginal = new LongSparseArray<>();
 
 		VuzeRemoteApp.getNetworkState().addListener(this);
-	}
-
-	public SessionInfo(final Activity activity, final RemoteProfile _remoteProfile,
-			boolean rememberSettingChanges) {
-		this((TransmissionRPC) null, _remoteProfile, rememberSettingChanges);
 
 		// Bind and Open take a while, do it on the non-UI thread
 		Thread thread = new Thread("bindAndOpen") {
@@ -182,14 +187,13 @@ public class SessionInfo
 		try {
 
 			try {
-	      InetAddress.getByName(host);
-	    } catch (UnknownHostException e) {
-	    	try {
-	    		host = NbtAddress.getByName(host).getHostAddress();
-	    	} catch (Throwable t) {
-	    	}
-	    }
-			
+				InetAddress.getByName(host);
+			} catch (UnknownHostException e) {
+				try {
+					host = NbtAddress.getByName(host).getHostAddress();
+				} catch (Throwable t) {
+				}
+			}
 
 			rpcRoot = protocol + "://" + host + ":" + port + "/";
 			String rpcUrl = rpcRoot + "transmission/rpc";
@@ -253,7 +257,7 @@ public class SessionInfo
 						setUIReady();
 						return;
 					}
-					mapTags = new HashMap<Long, Map<?, ?>>();
+					mapTags = new LongSparseArray<>(tagList.size());
 					for (Object tag : tagList) {
 						if (tag instanceof Map) {
 							Map<?, ?> mapTag = (Map<?, ?>) tag;
@@ -281,9 +285,20 @@ public class SessionInfo
 		uiReady = true;
 		initRefreshHandler();
 		for (SessionInfoListener l : availabilityListeners) {
-			l.uiReady();
+			l.uiReady(rpc);
 		}
 		availabilityListeners.clear();
+
+		synchronized (rpcExecuteList) {
+			for (RpcExecuter exec : rpcExecuteList) {
+				try {
+					exec.executeRpc(rpc);
+				} catch (Throwable t) {
+					VuzeEasyTracker.getInstance().logError(null, t);
+				}
+			}
+			rpcExecuteList.clear();
+		}
 	}
 
 	public Map<?, ?> getTag(Long uid) {
@@ -298,7 +313,15 @@ public class SessionInfo
 		if (mapTags == null) {
 			return null;
 		}
-		return new ArrayList<Map<?, ?>>(mapTags.values());
+
+		ArrayList<Map<?, ?>> list = new ArrayList<Map<?, ?>>();
+
+		synchronized (mLock) {
+			for (int i = 0, num = mapTags.size(); i < num; i++) {
+				list.add(mapTags.valueAt(i));
+			}
+		}
+		return list;
 	}
 
 	/**
@@ -309,10 +332,18 @@ public class SessionInfo
 	}
 
 	/**
-	 * @return the rpc
+	 * Allows you to execute an RPC call, ensuring RPC is ready first (may
+	 * not be called on same thread)
 	 */
-	public TransmissionRPC getRpc() {
-		return rpc;
+	public void executeRpc(RpcExecuter exec) {
+		synchronized (rpcExecuteList) {
+			if (!uiReady) {
+				rpcExecuteList.add(exec);
+				return;
+			}
+		}
+
+		exec.executeRpc(rpc);
 	}
 
 	/**
@@ -365,26 +396,47 @@ public class SessionInfo
 	}
 
 	/*
-	public LinkedHashMap<Object, Map<?, ?>> getTorrentList() {
+	public HashMap<Object, Map<?, ?>> getTorrentList() {
 		synchronized (mLock) {
-			return new LinkedHashMap<Object, Map<?, ?>>(mapOriginal);
+			return new HashMap<Object, Map<?, ?>>(mapOriginal);
 		}
 	}
 	*/
 
+	/**
+	 * Get all torrent maps.  Might be slow (walks tree)
+	 */
 	public List<Map<?, ?>> getTorrentList() {
+		ArrayList<Map<?, ?>> list = new ArrayList<Map<?, ?>>();
+
 		synchronized (mLock) {
-			return new LinkedList<Map<?, ?>>(mapOriginal.values());
+			for (int i = 0, num = mapOriginal.size(); i < num; i++) {
+				list.add(mapOriginal.valueAt(i));
+			}
+		}
+		return list;
+	}
+
+	/*
+	public long[] getTorrentListKeys() {
+		synchronized (mLock) {
+			int num = mapOriginal.size();
+			long[] keys = new long[num];
+			for(int i = 0; i < num; i++) {
+				keys[i] = mapOriginal.keyAt(i);
+			}
+			return keys;
+		}
+	}
+	*/
+
+	public LongSparseArray<Map<?, ?>> getTorrentListSparseArray() {
+		synchronized (mLock) {
+			return mapOriginal.clone();
 		}
 	}
 
-	public Long[] getTorrentListKeys() {
-		synchronized (mLock) {
-			return mapOriginal.keySet().toArray(new Long[0]);
-		}
-	}
-
-	public Map<?, ?> getTorrent(Long id) {
+	public Map<?, ?> getTorrent(long id) {
 		synchronized (mLock) {
 			return mapOriginal.get(id);
 		}
@@ -406,19 +458,15 @@ public class SessionInfo
 				}
 				Map mapTorrent = (Map) item;
 				Object key = mapTorrent.get("id");
-				Long torrentID;
 				if (!(key instanceof Number)) {
 					continue;
-				}
-				if (!(key instanceof Long)) {
-					torrentID = ((Number) key).longValue();
-				} else {
-					torrentID = (Long) key;
 				}
 				if (mapTorrent.size() == 1) {
 					continue;
 				}
-				Map old = mapOriginal.put(torrentID, mapTorrent);
+				long torrentID = ((Number) key).longValue();
+				Map old = mapOriginal.get(torrentID);
+				mapOriginal.put(torrentID, mapTorrent);
 				if (old != null) {
 					// merge anything missing in new map with old
 					for (Iterator iterator = old.keySet().iterator(); iterator.hasNext();) {
@@ -429,11 +477,14 @@ public class SessionInfo
 						}
 					}
 
+					if (mapTorrent.containsKey("files")) {
+						lastTorrentWithFiles = torrentID;
+					}
 					mergeList("files", mapTorrent, old);
 					mergeList("fileStats", mapTorrent, old);
 				}
 			}
-			
+
 			if (removedTorrentIDs != null) {
 				for (Object removedItem : removedTorrentIDs) {
 					if (removedItem instanceof Number) {
@@ -587,7 +638,7 @@ public class SessionInfo
 					if (AndroidUtils.DEBUG) {
 						Log.d(TAG, "Fire Handler");
 					}
-					triggerRefresh(true);
+					triggerRefresh(true, null);
 
 					for (RefreshTriggerListener l : refreshTriggerListeners) {
 						l.triggerRefresh();
@@ -606,7 +657,8 @@ public class SessionInfo
 		}, interval * 1000);
 	}
 
-	public void triggerRefresh(final boolean recentOnly) {
+	public void triggerRefresh(final boolean recentOnly,
+			final TorrentListReceivedListener l) {
 		if (rpc == null) {
 			return;
 		}
@@ -637,21 +689,40 @@ public class SessionInfo
 						synchronized (mLock) {
 							refreshing = false;
 						}
+						if (l != null) {
+							l.rpcTorrentListReceived(callID, addedTorrentMaps,
+									removedTorrentIDs);
+						}
 					}
 				};
-				if (recentOnly) {
+				if (recentOnly && !needsFullTorrentRefresh) {
 					rpc.getRecentTorrents(TAG, listener);
 				} else {
 					rpc.getAllTorrents(TAG, listener);
+					needsFullTorrentRefresh = false;
 				}
 			}
 
 			@Override
 			public void rpcError(String id, Exception e) {
+				synchronized (mLock) {
+					refreshing = false;
+				}
+				if (l != null) {
+					l.rpcTorrentListReceived("", Collections.emptyList(),
+							Collections.emptyList());
+				}
 			}
 
 			@Override
 			public void rpcFailure(String id, String message) {
+				synchronized (mLock) {
+					refreshing = false;
+				}
+				if (l != null) {
+					l.rpcTorrentListReceived("", Collections.emptyList(),
+							Collections.emptyList());
+				}
 			}
 		});
 	}
@@ -731,7 +802,7 @@ public class SessionInfo
 				l.transmissionRpcAvailable(this);
 			}
 			if (uiReady) {
-				l.uiReady();
+				l.uiReady(rpc);
 			}
 		} else {
 			synchronized (availabilityListeners) {
@@ -784,12 +855,48 @@ public class SessionInfo
 
 	public void activityResumed() {
 		activityVisible = true;
+		if (needsFullTorrentRefresh) {
+			needsFullTorrentRefresh = false;
+			triggerRefresh(true, null);
+		}
 	}
 
 	public void activityPaused() {
 		activityVisible = false;
-		
-		// TODO: After x seconds, and still no activity, we should clean up (clear torrent list)
+	}
+
+	public void clearTorrentCache() {
+		synchronized (mLock) {
+			mapOriginal.clear();
+			needsFullTorrentRefresh = true;
+		}
+	}
+
+	public int clearTorrentFilesCaches(boolean keepLastUsedTorrentFiles) {
+		int num = 0;
+		synchronized (mLock) {
+			int size = mapOriginal.size();
+			if (size == 0) {
+				return num;
+			}
+			for (int i = size - 1; i >= 0; i--) {
+				long torrentID = mapOriginal.keyAt(i);
+				if (keepLastUsedTorrentFiles && lastTorrentWithFiles == torrentID) {
+					continue;
+				}
+				Map<?, ?> map = mapOriginal.valueAt(i);
+				if (map.containsKey("files")) {
+  				map.remove("files");
+  				map.remove("fileStats");
+  				num++;
+				}
+			}
+		}
+		return num;
+	}
+
+	public int getRPCVersionAZ() {
+		return rpc == null ? -1 : rpc.getRPCVersionAZ();
 	}
 
 }

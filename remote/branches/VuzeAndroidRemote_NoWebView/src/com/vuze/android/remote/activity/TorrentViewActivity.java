@@ -41,6 +41,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.SearchView.OnQueryTextListener;
+import android.text.Html;
 import android.util.Base64;
 import android.util.Log;
 import android.view.*;
@@ -52,8 +53,9 @@ import com.aelitis.azureus.util.MapUtils;
 import com.google.analytics.tracking.android.MapBuilder;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.NetworkState.NetworkStateListener;
-import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
+import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.dialog.*;
+import com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener;
 import com.vuze.android.remote.dialog.DialogFragmentOpenTorrent.OpenTorrentDialogListener;
 import com.vuze.android.remote.fragment.*;
 import com.vuze.android.remote.fragment.TorrentListFragment.OnTorrentSelectedListener;
@@ -100,8 +102,6 @@ public class TorrentViewActivity
 
 	protected String page;
 
-	protected TransmissionRPC rpc;
-
 	private SessionInfo sessionInfo;
 
 	private boolean isLocalHost;
@@ -140,9 +140,8 @@ public class TorrentViewActivity
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-
 		setDefaultKeyMode(DEFAULT_KEYS_SEARCH_LOCAL);
+		super.onCreate(savedInstanceState);
 
 		Intent intent = getIntent();
 		if (DEBUG) {
@@ -183,9 +182,6 @@ public class TorrentViewActivity
 		sessionInfo.addRpcAvailableListener(this);
 		sessionInfo.addSessionSettingsChangedListeners(this);
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			setupHoneyComb();
-		}
 		setupActionBar();
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
 			setupIceCream();
@@ -231,7 +227,7 @@ public class TorrentViewActivity
 	 * @see com.vuze.android.remote.SessionInfoListener#uiReady()
 	 */
 	@Override
-	public void uiReady() {
+	public void uiReady(final TransmissionRPC rpc) {
 		if (DEBUG) {
 			Log.d(TAG, "UI READY");
 		}
@@ -242,6 +238,9 @@ public class TorrentViewActivity
 
 		runOnUiThread(new Runnable() {
 			public void run() {
+				if (isFinishing()) {
+					return;
+				}
 				if (rpc.getRPCVersion() < 14) {
 					ui_showOldRPCDialog();
 				}
@@ -301,12 +300,6 @@ public class TorrentViewActivity
 		getActionBar().setHomeButtonEnabled(true);
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-	private void setupHoneyComb() {
-		// needed because one of our test machines won't listen to <item name="android:windowActionBar">true</item>
-		requestWindowFeature(Window.FEATURE_ACTION_BAR);
-	}
-
 	private void setupActionBar() {
 		ActionBar actionBar = getSupportActionBar();
 		if (actionBar == null) {
@@ -348,16 +341,24 @@ public class TorrentViewActivity
 	/* (non-Javadoc)
 	 * @see com.vuze.android.remote.DialogFragmentOpenTorrent.OpenTorrentDialogListener#openTorrent(java.lang.String)
 	 */
-	public void openTorrent(final String s) {
-		if (s == null || s.length() == 0) {
+	public void openTorrent(final String sTorrent) {
+		if (sTorrent == null || sTorrent.length() == 0 || sessionInfo == null) {
 			return;
 		}
-		rpc.addTorrentByUrl(s, false, this);
+		sessionInfo.executeRpc(new RpcExecuter() {
+			@Override
+			public void executeRpc(TransmissionRPC rpc) {
+				rpc.addTorrentByUrl(sTorrent, false, TorrentViewActivity.this);
+			}
+		});
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				Toast.makeText(TorrentViewActivity.this, "Adding " + s,
-						Toast.LENGTH_SHORT).show();
+				Context context = isFinishing() ? VuzeRemoteApp.getContext()
+						: TorrentViewActivity.this;
+				String s = context.getResources().getString(R.string.toast_adding_xxx,
+						sTorrent);
+				Toast.makeText(context, s, Toast.LENGTH_SHORT).show();
 			}
 		});
 
@@ -368,16 +369,27 @@ public class TorrentViewActivity
 
 	@SuppressLint("NewApi")
 	public void openTorrent(final String name, InputStream is) {
+		if (sessionInfo == null) {
+			return;
+		}
 		try {
 			byte[] bs = AndroidUtils.readInputStreamAsByteArray(is);
-			String metainfo = Base64.encodeToString(bs, Base64.DEFAULT).replaceAll(
+			final String metainfo = Base64.encodeToString(bs, Base64.DEFAULT).replaceAll(
 					"[\\r\\n]", "");
-			rpc.addTorrentByMeta(metainfo, false, this);
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.addTorrentByUrl(metainfo, false, TorrentViewActivity.this);
+				}
+			});
 			runOnUiThread(new Runnable() {
 				@Override
 				public void run() {
-					Toast.makeText(TorrentViewActivity.this, "Adding " + name,
-							Toast.LENGTH_SHORT).show();
+					Context context = isFinishing() ? VuzeRemoteApp.getContext()
+							: TorrentViewActivity.this;
+					String s = context.getResources().getString(
+							R.string.toast_adding_xxx, name);
+					Toast.makeText(context, s, Toast.LENGTH_SHORT).show();
 				}
 			});
 		} catch (IOException e) {
@@ -461,7 +473,7 @@ public class TorrentViewActivity
 					//NavUtils.navigateUpTo(this, upIntent);
 				}
 				return true;
-			case R.id.action_settings:
+			case R.id.action_settings: {
 				if (sessionInfo == null) {
 					return false;
 				}
@@ -469,33 +481,57 @@ public class TorrentViewActivity
 				AndroidUtils.showSessionSettings(getSupportFragmentManager(),
 						sessionInfo);
 				return true;
-			case R.id.action_add_torrent:
+			}
+			case R.id.action_add_torrent: {
 				DialogFragmentOpenTorrent dlg = new DialogFragmentOpenTorrent();
 				dlg.show(getSupportFragmentManager(), "OpenTorrentDialog");
 				break;
+			}
+
 			case R.id.action_search:
 				onSearchRequested();
 				return true;
 
-			case R.id.action_logout:
+			case R.id.action_logout: {
 				new RemoteUtils(TorrentViewActivity.this).openRemoteList(getIntent());
 				SessionInfoManager.removeSessionInfo(remoteProfile.getID());
 				finish();
 				return true;
+			}
 
-			case R.id.action_start_all:
-				rpc.startTorrents(TAG, null, false, null);
-				return true;
-
-			case R.id.action_stop_all:
-				rpc.stopTorrents(TAG, null, null);
-				return true;
-
-			case R.id.action_refresh:
+			case R.id.action_start_all: {
 				if (sessionInfo == null) {
 					return false;
 				}
-				sessionInfo.triggerRefresh(false);
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.startTorrents(TAG, null, false, null);
+					}
+				});
+
+				return true;
+			}
+
+			case R.id.action_stop_all: {
+				if (sessionInfo == null) {
+					return false;
+				}
+				sessionInfo.executeRpc(new RpcExecuter() {
+					@Override
+					public void executeRpc(TransmissionRPC rpc) {
+						rpc.stopTorrents(TAG, null, null);
+					}
+				});
+
+				return true;
+			}
+
+			case R.id.action_refresh: {
+				if (sessionInfo == null) {
+					return false;
+				}
+				sessionInfo.triggerRefresh(false, null);
 
 				disableRefreshButton = true;
 				invalidateOptionsMenuHC();
@@ -507,6 +543,42 @@ public class TorrentViewActivity
 					}
 				}, 10000);
 				return true;
+			}
+
+			case R.id.action_about: {
+				DialogFragmentAbout dlg = new DialogFragmentAbout();
+				dlg.show(getSupportFragmentManager(), "About");
+				return true;
+			}
+
+			case R.id.action_rate: {
+				final String appPackageName = getPackageName();
+				try {
+					startActivity(new Intent(Intent.ACTION_VIEW,
+							Uri.parse("market://details?id=" + appPackageName)));
+				} catch (android.content.ActivityNotFoundException anfe) {
+					startActivity(new Intent(Intent.ACTION_VIEW,
+							Uri.parse("http://play.google.com/store/apps/details?id="
+									+ appPackageName)));
+				}
+				return true;
+			}
+
+			case R.id.action_forum: {
+				String url = "http://www.vuze.com/forums/android-remote";
+				Intent i = new Intent(Intent.ACTION_VIEW);
+				i.setData(Uri.parse(url));
+				startActivity(i);
+				return true;
+			}
+
+			case R.id.action_vote: {
+				String url = "http://vote.vuze.com/forums/227649";
+				Intent i = new Intent(Intent.ACTION_VIEW);
+				i.setData(Uri.parse(url));
+				startActivity(i);
+				return true;
+			}
 		}
 		return false;
 	}
@@ -518,7 +590,7 @@ public class TorrentViewActivity
 		}
 
 		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.menu_web, menu);
+		getMenuInflater().inflate(R.menu.menu_torrent_list, menu);
 
 		MenuItem searchItem = menu.findItem(R.id.action_search);
 		setupSearchView(searchItem);
@@ -601,7 +673,7 @@ public class TorrentViewActivity
 	@Override
 	public boolean onSearchRequested() {
 		Bundle appData = new Bundle();
-		if (rpc.getRPCVersionAZ() >= 0) {
+		if (sessionInfo != null && sessionInfo.getRPCVersionAZ() >= 0) {
 			appData.putString("com.vuze.android.remote.searchsource",
 					sessionInfo.getRpcRoot());
 			appData.putString("com.vuze.android.remote.ac", remoteProfile.getAC());
@@ -622,11 +694,20 @@ public class TorrentViewActivity
 	 * @see com.vuze.android.remote.dialog.DialogFragmentMoveData.MoveDataDialogListener#moveDataTo(long, java.lang.String)
 	 */
 	@Override
-	public void moveDataTo(long id, String s) {
-		rpc.moveTorrent(id, s, null);
+	public void moveDataTo(final long id, final String s) {
+		if (sessionInfo == null) {
+			return;
+		}
+		sessionInfo.executeRpc(new RpcExecuter() {
+			@Override
+			public void executeRpc(TransmissionRPC rpc) {
+				rpc.moveTorrent(id, s, null);
 
-		VuzeEasyTracker.getInstance(this).send(
-				MapBuilder.createEvent("RemoteAction", "MoveData", null, null).build());
+				VuzeEasyTracker.getInstance().send(
+						MapBuilder.createEvent("RemoteAction", "MoveData", null, null).build());
+			}
+		});
+
 	}
 
 	/* (non-Javadoc)
@@ -647,11 +728,16 @@ public class TorrentViewActivity
 	public void speedChanged(final long downSpeed, final long upSpeed) {
 		runOnUiThread(new Runnable() {
 			public void run() {
+				if (isFinishing()) {
+					return;
+				}
 				if (tvDownSpeed != null) {
 					if (downSpeed <= 0) {
 						tvDownSpeed.setVisibility(View.GONE);
 					} else {
-						tvDownSpeed.setText(DisplayFormatters.formatByteCountToKiBEtcPerSec(downSpeed));
+						String s = "\u25BC "
+								+ DisplayFormatters.formatByteCountToKiBEtcPerSec(downSpeed);
+						tvDownSpeed.setText(Html.fromHtml(s));
 						tvDownSpeed.setVisibility(View.VISIBLE);
 					}
 				}
@@ -659,7 +745,9 @@ public class TorrentViewActivity
 					if (upSpeed <= 0) {
 						tvUpSpeed.setVisibility(View.GONE);
 					} else {
-						tvUpSpeed.setText(DisplayFormatters.formatByteCountToKiBEtcPerSec(upSpeed));
+						String s = "\u25B2 "
+								+ DisplayFormatters.formatByteCountToKiBEtcPerSec(upSpeed);
+						tvUpSpeed.setText(Html.fromHtml(s));
 						tvUpSpeed.setVisibility(View.VISIBLE);
 					}
 				}
@@ -674,11 +762,20 @@ public class TorrentViewActivity
 			@Override
 			public void run() {
 				String name = MapUtils.getMapString(mapTorrentAdded, "name", "Torrent");
-				Toast.makeText(TorrentViewActivity.this,
-						"'" + name + "' has been added", Toast.LENGTH_LONG).show();
+				Context context = isFinishing() ? VuzeRemoteApp.getContext()
+						: TorrentViewActivity.this;
+				String s = context.getResources().getString(R.string.toast_added, name);
+				Toast.makeText(context, s, Toast.LENGTH_LONG).show();
 			}
 		});
-		rpc.getRecentTorrents(TAG, null);
+		if (sessionInfo != null) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.getRecentTorrents(TAG, null);
+				}
+			});
+		}
 	}
 
 	/* (non-Javadoc)
@@ -738,7 +835,6 @@ public class TorrentViewActivity
 	 */
 	@Override
 	public void transmissionRpcAvailable(SessionInfo sessionInfo) {
-		rpc = sessionInfo.getRpc();
 	}
 
 	/* (non-Javadoc)
@@ -770,6 +866,9 @@ public class TorrentViewActivity
 	public void onlineStateChanged(final boolean isOnline) {
 		runOnUiThread(new Runnable() {
 			public void run() {
+				if (isFinishing()) {
+					return;
+				}
 				supportInvalidateOptionsMenu();
 				if (isOnline) {
 					if (uiReady && tvCenter != null) {

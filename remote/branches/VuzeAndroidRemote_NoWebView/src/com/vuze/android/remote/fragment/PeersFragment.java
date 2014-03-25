@@ -26,7 +26,9 @@ import android.widget.ListView;
 
 import com.vuze.android.remote.AndroidUtils;
 import com.vuze.android.remote.R;
+import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
+import com.vuze.android.remote.rpc.TransmissionRPC;
 
 public class PeersFragment
 	extends TorrentDetailPage
@@ -80,14 +82,19 @@ public class PeersFragment
 		//System.out.println("torrent is " + torrent);
 		adapter.setSessionInfo(sessionInfo);
 		if (isTorrent) {
-			sessionInfo.getRpc().getTorrentPeerInfo(TAG, torrentID,
-					new TorrentListReceivedListener() {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.getTorrentPeerInfo(TAG, torrentID,
+							new TorrentListReceivedListener() {
 						@Override
 						public void rpcTorrentListReceived(String callID,
 								List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
 							updateAdapterTorrentID(torrentID);
 						}
 					});
+				}
+			});
 		}
 
 		if (torrentIdChanged) {
@@ -113,14 +120,19 @@ public class PeersFragment
 
 	@Override
 	public void triggerRefresh() {
-		sessionInfo.getRpc().getTorrentPeerInfo(TAG, torrentID,
-				new TorrentListReceivedListener() {
+		sessionInfo.executeRpc(new RpcExecuter() {
+			@Override
+			public void executeRpc(TransmissionRPC rpc) {
+				rpc.getTorrentPeerInfo(TAG, torrentID,
+						new TorrentListReceivedListener() {
 					@Override
 					public void rpcTorrentListReceived(String callID,
 							List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
 						updateAdapterTorrentID(torrentID);
 					}
 				});
+			}
+		});
 	}
 
 	@Override

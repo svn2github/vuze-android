@@ -16,7 +16,6 @@
 
 package com.vuze.android.remote.fragment;
 
-import android.app.Activity;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 
@@ -41,16 +40,6 @@ public abstract class TorrentDetailPage
 	private long pausedTorrentID = -1;
 
 	private boolean viewActive = true;
-
-	@Override
-	public void onAttach(Activity activity) {
-		super.onAttach(activity);
-
-		if (activity instanceof SessionInfoGetter) {
-			SessionInfoGetter getter = (SessionInfoGetter) activity;
-			sessionInfo = getter.getSessionInfo();
-		}
-	}
 
 	@Override
 	public void onPause() {
@@ -148,11 +137,14 @@ public abstract class TorrentDetailPage
 		}
 
 		torrentID = id;
-
+		
 		updateTorrentID(torrentID, isTorrent, wasTorrent, torrentIdChanged);
 	}
 
-	public abstract void updateTorrentID(long torrentID2, boolean isTorrent,
+	/**
+	 * SessionInfo will not be null
+	 */
+	public abstract void updateTorrentID(long torrentID, boolean isTorrent,
 			boolean wasTorrent, boolean torrentIdChanged);
 
 }

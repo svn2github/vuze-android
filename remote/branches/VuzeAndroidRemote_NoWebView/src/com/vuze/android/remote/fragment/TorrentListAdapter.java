@@ -19,6 +19,7 @@ package com.vuze.android.remote.fragment;
 import java.util.*;
 
 import android.content.Context;
+import android.support.v4.util.LongSparseArray;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -185,7 +186,7 @@ public class TorrentListAdapter
 	public void refreshView(int position, View view, ListView listView) {
 		getView(position, view, listView, true);
 	}
-	
+
 	public View getView(int position, View convertView, ViewGroup parent,
 			boolean requireHolder) {
 		View rowView = convertView;
@@ -241,68 +242,70 @@ public class TorrentListAdapter
 			FilterResults results = new FilterResults();
 
 			if (sessionInfo == null) {
+				if (DEBUG) {
+					Log.d(TAG, "performFiltering skipped: No sessionInfo");
+				}
 				return results;
 			}
 
 			boolean hasConstraint = constraint != null && constraint.length() > 0;
 
-			Object[] listTorrents = sessionInfo.getTorrentListKeys();
-			ArrayList<Long> listKeys = new ArrayList<Long>();
-			for (Object o : listTorrents) {
-				if (o instanceof Number) {
-					listKeys.add(((Number) o).longValue());
-				}
+			LongSparseArray<Map<?, ?>> torrentList = sessionInfo.getTorrentListSparseArray();
+			int size = torrentList.size();
+
+			if (DEBUG) {
+				Log.d(TAG, "performFiltering: size=" + size + "/hasConstraint? "
+						+ hasConstraint + "/filter=" + filterMode);
 			}
 
-			if (!hasConstraint && filterMode < 0) {
-				synchronized (mLock) {
-					results.values = listKeys;
-					results.count = listKeys.size();
-				}
+			if (size > 0 && (hasConstraint || filterMode > 0)) {
 				if (DEBUG) {
-					Log.d(TAG, "filtering " + results.count);
-				}
-			} else {
-				if (DEBUG) {
-					Log.d(TAG, "filtering " + listKeys.size());
+					Log.d(TAG, "filtering " + torrentList.size());
 				}
 
 				if (filterMode >= 0 && filterMode != FILTERBY_ALL) {
 					synchronized (mLock) {
-						for (Iterator<Long> iterator = listKeys.iterator(); iterator.hasNext();) {
-							Long key = iterator.next();
+						for (int i = size - 1; i >= 0; i--) {
+							long key = torrentList.keyAt(i);
 
 							if (!filterCheck(filterMode, key)) {
-								iterator.remove();
+								torrentList.removeAt(i);
+								size--;
 							}
 						}
 					}
 				}
 
 				if (DEBUG) {
-					Log.d(TAG, "type filtered to " + listKeys.size());
+					Log.d(TAG, "type filtered to " + size);
 				}
 
 				if (hasConstraint) {
 					synchronized (mLock) {
-						for (Iterator<Long> iterator = listKeys.iterator(); iterator.hasNext();) {
-							Long torrentID = iterator.next();
+						for (int i = size - 1; i >= 0; i--) {
+							long key = torrentList.keyAt(i);
 
-							if (!constraintCheck(constraint, torrentID)) {
-								iterator.remove();
+							if (!constraintCheck(constraint, key)) {
+								torrentList.removeAt(i);
+								size--;
 							}
 						}
 					}
 
 					if (DEBUG) {
-						Log.d(TAG, "text filtered to " + listKeys.size());
+						Log.d(TAG, "text filtered to " + size);
 					}
 				}
-
-				results.values = listKeys;
-				results.count = listKeys.size();
-
 			}
+			int num = torrentList.size();
+			ArrayList<Long> keys = new ArrayList<>(num);
+			for (int i = 0; i < num; i++) {
+				keys.add(torrentList.keyAt(i));
+			}
+
+			results.values = keys;
+			results.count = keys.size();
+
 			return results;
 		}
 
@@ -322,17 +325,13 @@ public class TorrentListAdapter
 				}
 			}
 		}
-
 	}
 
 	public void refreshDisplayList() {
-		if (DEBUG) {
-			Log.d(TAG, "refreshDisplayList");
-		}
 		getFilter().refilter();
 	}
 
-	public boolean constraintCheck(CharSequence constraint, Long torrentID) {
+	public boolean constraintCheck(CharSequence constraint, long torrentID) {
 		if (constraint == null || constraint.length() == 0) {
 			return true;
 		}
@@ -346,7 +345,7 @@ public class TorrentListAdapter
 		return name.contains(constraint);
 	}
 
-	private boolean filterCheck(long filterMode, Long torrentID) {
+	private boolean filterCheck(long filterMode, long torrentID) {
 		Map<?, ?> map = sessionInfo.getTorrent(torrentID);
 		if (map == null) {
 			return false;

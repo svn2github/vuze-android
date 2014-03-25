@@ -30,6 +30,7 @@ import android.widget.TextView;
 
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.AlertDialogBuilder;
+import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.rpc.TransmissionRPC;
 
 public class DialogFragmentDeleteTorrent
@@ -62,10 +63,14 @@ public class DialogFragmentDeleteTorrent
 						if (sessionInfo == null) {
 							return;
 						}
-						TransmissionRPC rpc = sessionInfo.getRpc();
-						rpc.removeTorrent(new long[] {
-							torrentId
-						}, cbDeleteData.isChecked(), null);
+						sessionInfo.executeRpc(new RpcExecuter() {
+							@Override
+							public void executeRpc(TransmissionRPC rpc) {
+								rpc.removeTorrent(new long[] {
+									torrentId
+								}, cbDeleteData.isChecked(), null);
+							}
+						});
 					}
 				});
 		builder.setNegativeButton(android.R.string.cancel, new OnClickListener() {

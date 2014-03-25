@@ -18,7 +18,6 @@ package com.vuze.android.remote.fragment;
 
 import java.util.List;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
@@ -26,7 +25,9 @@ import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.view.View;
 
 import com.astuetz.PagerSlidingTabStrip;
-import com.vuze.android.remote.*;
+import com.vuze.android.remote.AndroidUtils;
+import com.vuze.android.remote.R;
+import com.vuze.android.remote.SetTorrentIdListener;
 import com.vuze.android.remote.activity.TorrentDetailsActivity;
 import com.vuze.android.remote.activity.TorrentViewActivity;
 
@@ -39,13 +40,9 @@ import com.vuze.android.remote.activity.TorrentViewActivity;
 public class TorrentDetailsFragment
 	extends Fragment
 {
-	private static final String TAG = "TorrentDetailsFragment";
-
 	ViewPager mViewPager;
 
 	private TorrentDetailsPagerAdapter pagerAdapter;
-
-	private SessionInfo sessionInfo;
 
 	private long torrentID;
 
@@ -99,25 +96,11 @@ public class TorrentDetailsFragment
 		return view;
 	}
 
-	@Override
-	public void onAttach(Activity activity) {
-		super.onAttach(activity);
-
-		final Bundle extras = getActivity().getIntent().getExtras();
-		if (extras == null) {
-			System.err.println("No extras!");
-			return;
-		}
-
-		String id = extras.getString(SessionInfoManager.BUNDLE_KEY);
-		sessionInfo = SessionInfoManager.getSessionInfo(id, activity, true);
-	}
-
 	// Called from Activity
 	public void setTorrentIDs(long[] newIDs) {
 		this.torrentID = newIDs != null && newIDs.length == 1 ? newIDs[0] : -1;
 		pagerAdapter.setSelection(torrentID);
-		getActivity().runOnUiThread(new Runnable() {
+		AndroidUtils.runOnUIThread(this, new Runnable() {
 			public void run() {
 				List<Fragment> fragments = getFragmentManager().getFragments();
 				for (Fragment item : fragments) {
