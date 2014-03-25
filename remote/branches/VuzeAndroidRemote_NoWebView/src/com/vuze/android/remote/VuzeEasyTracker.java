@@ -48,6 +48,16 @@ public class VuzeEasyTracker
 		return vuzeEasyTracker;
 	}
 
+	public static VuzeEasyTracker getInstance() {
+		synchronized (VuzeEasyTracker.class) {
+			if (vuzeEasyTracker == null) {
+				vuzeEasyTracker = new VuzeEasyTracker(VuzeRemoteApp.getContext());
+			}
+		}
+		return vuzeEasyTracker;
+	}
+
+
 	public static VuzeEasyTracker getInstance(Fragment fragment) {
 		synchronized (VuzeEasyTracker.class) {
 			if (vuzeEasyTracker == null) {
