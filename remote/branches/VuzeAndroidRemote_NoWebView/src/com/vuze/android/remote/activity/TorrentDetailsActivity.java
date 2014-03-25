@@ -76,9 +76,6 @@ public class TorrentDetailsActivity
 		String remoteProfileID = extras.getString(SessionInfoManager.BUNDLE_KEY);
 		sessionInfo = SessionInfoManager.getSessionInfo(remoteProfileID, this, true);
 
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			setupHoneyComb();
-		}
 		setupActionBar();
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
 			setupIceCream();
@@ -123,6 +120,9 @@ public class TorrentDetailsActivity
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				if (isFinishing()) {
+					return;
+				}
 
 				if (removedTorrentIDs != null) {
 					boolean found = false;
@@ -151,12 +151,6 @@ public class TorrentDetailsActivity
 		getActionBar().setHomeButtonEnabled(true);
 	}
 
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-	private void setupHoneyComb() {
-		// needed because one of our test machines won't listen to <item name="android:windowActionBar">true</item>
-		requestWindowFeature(Window.FEATURE_ACTION_BAR);
-	}
-
 	private void setupActionBar() {
 		// enable ActionBar app icon to behave as action to toggle nav drawer
 		ActionBar actionBar = getSupportActionBar();
@@ -166,10 +160,12 @@ public class TorrentDetailsActivity
 		}
 
 		RemoteProfile remoteProfile = sessionInfo.getRemoteProfile();
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
-			actionBar.setTitle(remoteProfile.getNick());
-		} else {
-			actionBar.setSubtitle(remoteProfile.getNick());
+		if (remoteProfile != null) {
+  		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
+  			actionBar.setTitle(remoteProfile.getNick());
+  		} else {
+  			actionBar.setSubtitle(remoteProfile.getNick());
+  		}
 		}
 
 		// enable ActionBar app icon to behave as action to toggle nav drawer
