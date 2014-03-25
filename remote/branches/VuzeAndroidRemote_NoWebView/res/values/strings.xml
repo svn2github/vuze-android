@@ -9,8 +9,6 @@
 	<string name="chkLoginRemember">Remember Login</string>
 	<string name="action_sortby">Sort</string>
 	<string name="action_filterby">Filter</string>
-	<string name="torrent_action_context">Torrent Actions</string>
-	<string name="file_action_context">File Actions</string>
 	<string name="filterby_title">Filter By</string>
 
 	<string-array name="filterby_list">
@@ -114,7 +112,7 @@ Go to ## Tools ## > !! Remote Pairing !! in the Vuze desktop client to find your
 	<string name="action_refresh">Refresh</string>
 	<string name="about_ideas">
 <![CDATA[
-If you have any feature ideas, or would like to vote on what gets worked on next, please visit our <a href="http://vote.vuze.com/forums/227649-android-remote">Idea Bank</a>
+If you have any feature ideas, or would like to vote on what gets worked on next, please visit our <a href="http://vote.vuze.com/forums/227649">Idea Bank</a>
 <p>
 If you like our app, please rate us on the <A HREF="market://details?id=com.vuze.android.remote">Google Play Store</a>!
 ]]>
@@ -166,5 +164,31 @@ If you like our app, please rate us on the <A HREF="market://details?id=com.vuze
 	<string name="content_saved">Saved &lt;b>%1$s&lt;/b> to &lt;b>%2$s&lt;/b></string>
 	<string name="yes">Yes</string>
 	<string name="no">No</string>
+	<string name="torrentInfo_title_timeline">Timeline</string>
+	<string name="torrentInfo_row_addedOn">Added On</string>
+	<string name="torrentInfo_row_startedOn">Started On</string>
+	<string name="torrentInfo_row_lastActiveOn">Last Active On</string>
+	<string name="torrentInfo_row_completedOn">Completed On</string>
+	<string name="torrentInfo_row_downloadingFor">Downloading For</string>
+	<string name="torrentInfo_row_seedingFor">Seeding For</string>
+	<string name="torrentInfo_row_eta">Completion ETA</string>
+	<string name="torrentInfo_title_content">Content</string>
+	<string name="torrentInfo_row_position">Queue Position</string>
+	<string name="torrentInfo_row_createdBy">Created By</string>
+	<string name="torrentInfo_row_comment">Comment</string>
+	<string name="torrentInfo_row_userComment">Your Comment</string>
+	<string name="torrentInfo_row_saveLocation">Save Location</string>
+	<string name="torrentInfo_title_sharing">Sharing</string>
+	<string name="torrentInfo_row_bytesUploaded">Uploaded</string>
+	<string name="torrentInfo_row_shareRatio">Share Ratio</string>
+	<string name="torrentInfo_row_peerCount">Peers</string>
+	<string name="torrentInfo_row_seedCount">Seeds</string>
+	<string name="menu_social">Social...</string>
+	<string name="action_vote">Vote on Features</string>
+	<string name="action_forum">Discussion Forum</string>
+	<string name="action_rate">Rate App</string>
+	<string name="edit_profile">Edit Profile</string>
+	<string name="toast_adding_xxx">Adding %1$s</string>
+	<string name="toast_added">\'%1$s\' has been added</string>
 
 </resources>
