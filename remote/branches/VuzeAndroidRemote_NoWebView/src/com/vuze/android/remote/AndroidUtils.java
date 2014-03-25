@@ -18,7 +18,8 @@
 package com.vuze.android.remote;
 
 import java.io.*;
-import java.net.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +93,12 @@ public class AndroidUtils
 			this.view = view;
 			this.builder = builder;
 		}
+	}
+
+	public static abstract class RunnableWithActivity
+		implements Runnable
+	{
+		public Activity activity;
 	}
 
 	/**
@@ -469,14 +476,17 @@ public class AndroidUtils
 	public static boolean isURLAlive(String URLName) {
 		try {
 			HttpURLConnection.setFollowRedirects(false);
-			
+
 			HttpURLConnection con = (HttpURLConnection) new URL(URLName).openConnection();
 			con.setConnectTimeout(2000);
 			con.setReadTimeout(2000);
 			con.setRequestMethod("HEAD");
 			con.getResponseCode();
 			if (DEBUG) {
-				Log.d(TAG, "isLive? conn result=" + con.getResponseCode() + ";" + con.getResponseMessage());
+				Log.d(
+						TAG,
+						"isLive? conn result=" + con.getResponseCode() + ";"
+								+ con.getResponseMessage());
 			}
 			return true;
 		} catch (Exception e) {
@@ -873,6 +883,31 @@ public class AndroidUtils
 				listview.setItemChecked(key, false);
 			}
 		}
+	}
+
+	/**
+	 * Same as {@link Activity#runOnUiThread(Runnable)}, except ensures
+	 * activity still exists while in UI Thread, before executing runnable
+	 */
+	public static void runOnUIThread(
+			final android.support.v4.app.Fragment fragment, final Runnable runnable) {
+		Activity activity = fragment.getActivity();
+		if (activity == null) {
+			return;
+		}
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				Activity activity = fragment.getActivity();
+				if (activity == null) {
+					return;
+				}
+				if (runnable instanceof RunnableWithActivity) {
+					((RunnableWithActivity) runnable).activity = activity;
+				}
+				runnable.run();
+			}
+		});
 	}
 
 }
