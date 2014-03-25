@@ -27,7 +27,7 @@
 				android:shadowDx="1"
 				android:shadowDy="1"
 				android:shadowRadius="1"
-				android:text="Timeline" />
+				android:text="@string/torrentInfo_title_timeline" />
 		</TableRow>
 
 		<TableRow
@@ -41,7 +41,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
-				android:text="Added On" />
+				android:text="@string/torrentInfo_row_addedOn" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_addedOn"
@@ -60,7 +60,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Started On" />
+				android:text="@string/torrentInfo_row_startedOn" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_startedOn"
@@ -80,7 +80,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Last Active On" />
+				android:text="@string/torrentInfo_row_lastActiveOn" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_lastActiveOn"
@@ -100,7 +100,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Completed On" />
+				android:text="@string/torrentInfo_row_completedOn" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_completedOn"
@@ -120,7 +120,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Downloading For" />
+				android:text="@string/torrentInfo_row_downloadingFor" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_downloadingFor"
@@ -140,7 +140,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Seeding For" />
+				android:text="@string/torrentInfo_row_seedingFor" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_seedingFor"
@@ -159,7 +159,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Completion ETA" />
+				android:text="@string/torrentInfo_row_eta" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_eta"
@@ -183,7 +183,7 @@
 				android:shadowDx="1"
 				android:shadowDy="1"
 				android:shadowRadius="1"
-				android:text="Content" />
+				android:text="@string/torrentInfo_title_content" />
 		</TableRow>
 
 		<TableRow
@@ -197,7 +197,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Queue Position" />
+				android:text="@string/torrentInfo_row_position" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_position"
@@ -216,7 +216,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Created By" />
+				android:text="@string/torrentInfo_row_createdBy" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_createdBy"
@@ -235,7 +235,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Comment" />
+				android:text="@string/torrentInfo_row_comment" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_comment"
@@ -254,7 +254,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Your Comment" />
+				android:text="@string/torrentInfo_row_userComment" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_userComment"
@@ -273,7 +273,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Save Location" />
+				android:text="@string/torrentInfo_row_saveLocation" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_saveLocation"
@@ -297,7 +297,7 @@
 				android:shadowDx="1"
 				android:shadowDy="1"
 				android:shadowRadius="1"
-				android:text="Sharing" />
+				android:text="@string/torrentInfo_title_sharing" />
 		</TableRow>
 
 		<TableRow
@@ -311,7 +311,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Uploaded" />
+				android:text="@string/torrentInfo_row_bytesUploaded" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_bytesUploaded"
@@ -330,7 +330,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Share Ratio" />
+				android:text="@string/torrentInfo_row_shareRatio" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_shareRatio"
@@ -349,7 +349,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Peers" />
+				android:text="@string/torrentInfo_row_peerCount" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_peerCount"
@@ -368,7 +368,7 @@
 				android:layout_height="wrap_content"
 				android:layout_marginRight="@dimen/torrentInfo_row_title_padding"
 				android:layout_marginLeft="@dimen/torrentInfo_group_padding_left"
-				android:text="Seeds" />
+				android:text="@string/torrentInfo_row_seedCount" />
 
 			<TextView
 				android:id="@+id/torrentInfo_val_seedCount"
