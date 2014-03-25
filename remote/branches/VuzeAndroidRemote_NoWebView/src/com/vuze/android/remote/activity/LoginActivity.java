@@ -21,18 +21,22 @@ import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.graphics.*;
+import android.graphics.PixelFormat;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.RectShape;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import android.support.v7.app.ActionBarActivity;
 import android.text.Html;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
-import android.text.style.*;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.ImageSpan;
 import android.view.*;
 import android.widget.*;
 import android.widget.TextView.OnEditorActionListener;
@@ -42,8 +46,11 @@ import com.vuze.android.remote.dialog.DialogFragmentAbout;
 import com.vuze.android.remote.dialog.DialogFragmentGenericRemoteProfile;
 import com.vuze.android.remote.dialog.DialogFragmentGenericRemoteProfile.GenericRemoteProfileListener;
 
+/**
+ * TODO: QR Scan button that links to QR reader apps like QR Droid (http://qrdroid.com/android-developers/ )
+ */
 public class LoginActivity
-	extends FragmentActivity
+	extends ActionBarActivity
 	implements GenericRemoteProfileListener
 {
 
@@ -54,13 +61,13 @@ public class LoginActivity
 	@SuppressWarnings("deprecation")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-
 		// These are an attempt to make the gradient look better on some
 		// android devices.  It doesn't on the ones I tested, but it can't hurt to
 		// have it here, right?
 		getWindow().setFormat(PixelFormat.RGBA_8888);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_DITHER);
+
+		super.onCreate(savedInstanceState);
 
 		Intent intent = getIntent();
 		Bundle extras = intent.getExtras();
@@ -71,14 +78,12 @@ public class LoginActivity
 
 		appPreferences = VuzeRemoteApp.getAppPreferences();
 
-		setContentView(R.layout.activity_login);
-
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
 			setupIceCream();
 		}
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			setupHoneyComb();
-		}
+
+		setContentView(R.layout.activity_login);
+
 
 		textAccessCode = (EditText) findViewById(R.id.editTextAccessCode);
 
@@ -210,10 +215,6 @@ public class LoginActivity
 	@TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
 	private void setupIceCream() {
 		getActionBar().setHomeButtonEnabled(true);
-	}
-
-	@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-	private void setupHoneyComb() {
 	}
 
 	@Override
