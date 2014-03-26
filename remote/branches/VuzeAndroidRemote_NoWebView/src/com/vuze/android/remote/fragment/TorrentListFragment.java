@@ -462,12 +462,26 @@ public class TorrentListFragment
 
 		return view;
 	}
+	
+	@Override
+	public void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		
+		outState.putString("filter_name", tvFilteringBy.getText().toString());
+	}
 
 	@Override
 	public void onViewStateRestored(Bundle savedInstanceState) {
 		super.onViewStateRestored(savedInstanceState);
 		if (listview != null) {
 			updateSelectedIDs();
+		}
+		
+		if (savedInstanceState != null) {
+  		String filterName = savedInstanceState.getString("filter_name");
+  		if (filterName != null && tvFilteringBy != null) {
+  			tvFilteringBy.setText(filterName);
+  		}
 		}
 	}
 
@@ -962,6 +976,9 @@ public class TorrentListFragment
 		AndroidUtils.runOnUIThread(this, new Runnable() {
 			public void run() {
 				if (adapter == null) {
+					if (DEBUG) {
+						Log.d(TAG, "No adapter in filterBy");
+					}
 					return;
 				}
 				// java.lang.RuntimeException: Can't create handler inside thread that has not called Looper.prepare()
@@ -969,6 +986,10 @@ public class TorrentListFragment
 				filter.setFilterMode(filterMode);
 				if (tvFilteringBy != null) {
 					tvFilteringBy.setText(name);
+				} else {
+					if (DEBUG) {
+						Log.d(TAG, "null field in filterBy");
+					}
 				}
 			}
 		});
