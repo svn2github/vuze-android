@@ -910,4 +910,17 @@ public class AndroidUtils
 		});
 	}
 
+	/**
+	 * Better line breaking for text view.  Puts invisible whitespace around<br>
+	 * . _ - \ /
+	 * <br>
+	 * and after<br>
+	 * ] ;
+	 * <br>
+	 */
+	public static String lineBreaker(String s) {
+		return s.replaceAll("([._\\-\\\\/]+)([^\\s])", "\u200B$1\u200B$2").replaceAll(
+				"([;\\]])([^\\s])", "$1\u200B$2");
+	}
+
 }
