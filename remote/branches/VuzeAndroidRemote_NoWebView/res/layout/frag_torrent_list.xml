@@ -24,6 +24,7 @@
 		android:id="@+id/listTorrents"
 		android:layout_width="fill_parent"
 		android:layout_height="fill_parent"
+		android:fastScrollEnabled="true"
 		android:choiceMode="multipleChoice"
 		ptr:ptrAnimationStyle="flip"
 		ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
