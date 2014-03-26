@@ -111,6 +111,8 @@ public class SessionInfo
 	
 	private boolean needsFullTorrentRefresh = false;
 
+	private String baseURL;
+
 	public SessionInfo(final Activity activity,
 			final RemoteProfile _remoteProfile, boolean rememberSettingChanges) {
 		this.remoteProfile = _remoteProfile;
@@ -216,6 +218,7 @@ public class SessionInfo
 				appPreferences.addRemoteProfile(remoteProfile);
 			}
 
+			baseURL = protocol + "://" + host;
 			setRpc(new TransmissionRPC(this, rpcUrl, user, ac));
 		} catch (Exception e) {
 			if (AndroidUtils.DEBUG) {
@@ -546,6 +549,9 @@ public class SessionInfo
 			if (torrentListReceivedListeners.contains(l)) {
 				return false;
 			}
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "addTorrentListReceivedListener " + callID + "/" + l);
+			}
 			torrentListReceivedListeners.add(l);
 			List<Map<?, ?>> torrentList = getTorrentList();
 			if (torrentList.size() > 0 && fire) {
@@ -557,6 +563,9 @@ public class SessionInfo
 
 	public void removeTorrentListReceivedListener(TorrentListReceivedListener l) {
 		synchronized (torrentListReceivedListeners) {
+			if (AndroidUtils.DEBUG) {
+				Log.d(TAG, "removeTorrentListReceivedListener " + l);
+			}
 			torrentListReceivedListeners.remove(l);
 		}
 	}
@@ -899,4 +908,7 @@ public class SessionInfo
 		return rpc == null ? -1 : rpc.getRPCVersionAZ();
 	}
 
+	public String getBaseURL() {
+		return baseURL;
+	}
 }
