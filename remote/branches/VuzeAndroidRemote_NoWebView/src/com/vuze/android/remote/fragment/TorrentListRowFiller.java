@@ -112,8 +112,8 @@ public class TorrentListRowFiller
 
 		if (holder.tvName != null) {
 			flipper.changeText(holder.tvName,
-					MapUtils.getMapString(item, "name", "??"), holder.animateFlip,
-					validator);
+					AndroidUtils.lineBreaker(MapUtils.getMapString(item, "name", " ")),
+					holder.animateFlip, validator);
 		}
 
 		float pctDone = MapUtils.getMapFloat(item, "percentDone", -1f);
