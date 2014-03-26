@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.util.Log;
 import android.view.View;
 
 import com.astuetz.PagerSlidingTabStrip;
@@ -33,13 +34,15 @@ import com.vuze.android.remote.activity.TorrentViewActivity;
 
 /**
  * Torrent Details Fragment<br>
- * - Contains {@link PeersFragment}, {@link FilesFragment}<br>
+ * - Contains {@link PeersFragment}, {@link FilesFragment}, {@link TorrentInfoFragment}<br>
  * - Contained in {@link TorrentViewActivity} for wide screens<br>
  * - Contained in {@link TorrentDetailsActivity} for narrow screens<br>
  */
 public class TorrentDetailsFragment
 	extends Fragment
 {
+	protected static final String TAG = "TorrentDetailsFrag";
+
 	ViewPager mViewPager;
 
 	private TorrentDetailsPagerAdapter pagerAdapter;
@@ -52,8 +55,9 @@ public class TorrentDetailsFragment
 		View view = inflater.inflate(R.layout.frag_torrent_details, container,
 				false);
 
-		pagerAdapter = new TorrentDetailsPagerAdapter(getFragmentManager());
 		mViewPager = (ViewPager) view.findViewById(R.id.pager);
+		pagerAdapter = new TorrentDetailsPagerAdapter(getFragmentManager(),
+				mViewPager);
 
 		// Bind the tabs to the ViewPager
 		PagerSlidingTabStrip tabs = (PagerSlidingTabStrip) view.findViewById(R.id.pager_title_strip);
@@ -66,6 +70,9 @@ public class TorrentDetailsFragment
 
 			@Override
 			public void onPageSelected(int position) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "page selected: " + position);
+				}
 				Fragment oldFrag = pagerAdapter.findFragmentByPosition(
 						getFragmentManager(), oldPosition);
 				if (oldFrag instanceof FragmentPagerListener) {
@@ -94,6 +101,32 @@ public class TorrentDetailsFragment
 		});
 
 		return view;
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+
+		Fragment newFrag = pagerAdapter.findFragmentByPosition(
+				getFragmentManager(), mViewPager.getCurrentItem());
+		// newFrag will be null on first view, so position 0 will not
+		// get pageActivated from here
+		if (newFrag instanceof FragmentPagerListener) {
+			FragmentPagerListener l = (FragmentPagerListener) newFrag;
+			l.pageActivated();
+		}
+	}
+	
+	@Override
+	public void onPause() {
+		Fragment newFrag = pagerAdapter.findFragmentByPosition(
+				getFragmentManager(), mViewPager.getCurrentItem());
+		if (newFrag instanceof FragmentPagerListener) {
+			FragmentPagerListener l = (FragmentPagerListener) newFrag;
+			l.pageDeactivated();
+		}
+
+		super.onPause();
 	}
 
 	// Called from Activity

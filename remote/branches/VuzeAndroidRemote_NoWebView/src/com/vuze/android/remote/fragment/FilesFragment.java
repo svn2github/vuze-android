@@ -58,6 +58,9 @@ import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
 
+/**
+ * TODO: Move progressbar logic out so all {@link TorrentDetailPage} can use it
+ */
 public class FilesFragment
 	extends TorrentDetailPage
 {
@@ -195,7 +198,7 @@ public class FilesFragment
 
 		View view = inflater.inflate(R.layout.frag_torrent_files, container, false);
 
-		progressBar = (ProgressBar) view.findViewById(R.id.files_pb);
+		progressBar = (ProgressBar) getActivity().findViewById(R.id.details_progress_bar);
 
 		View oListView = view.findViewById(R.id.files_list);
 		if (oListView instanceof ListView) {
@@ -369,17 +372,7 @@ public class FilesFragment
 					// already has files.. we are good to go, although might be a bit outdated
 					adapter.setTorrentID(torrentID);
 				} else {
-					if (AndroidUtils.DEBUG) {
-						Log.d(TAG, "setTorrentID: getFileInfo for " + torrentID);
-					} // getTorrentFileInfo will fire FileFragment's TorrentListReceivedListener
-					showProgressBar();
-					sessionInfo.executeRpc(new RpcExecuter() {
-						@Override
-						public void executeRpc(TransmissionRPC rpc) {
-							rpc.getTorrentFileInfo(TAG, torrentID, null, null);
-						}
-					});
-
+					triggerRefresh();
 				}
 			}
 		} else {
@@ -623,8 +616,7 @@ public class FilesFragment
 		if (sessionInfo.getRemoteProfile().isLocalHost()) {
 			return false;
 		}
-		final String contentURL = MapUtils.getMapString(selectedFile, "contentURL",
-				null);
+		final String contentURL = getContentURL(selectedFile);
 		if (contentURL == null || contentURL.length() == 0) {
 			return false;
 		}
@@ -654,6 +646,19 @@ public class FilesFragment
 		reallySaveFile(contentURL, outFile);
 
 		return true;
+	}
+
+	private String getContentURL(Map<?, ?> selectedFile) {
+		String contentURL = MapUtils.getMapString(selectedFile, "contentURL",
+				null);
+		if (contentURL == null || contentURL.length() == 0) {
+			return contentURL;
+		}
+		if (contentURL.charAt(0) == ':' || contentURL.charAt(0) == '/') {
+			contentURL = sessionInfo.getBaseURL() + contentURL;
+		}
+
+		return contentURL;
 	}
 
 	protected void reallySaveFile(final String contentURL, final File outFile) {
@@ -733,7 +738,7 @@ public class FilesFragment
 			}
 		}
 
-		String contentURL = MapUtils.getMapString(selectedFile, "contentURL", null);
+		final String contentURL = getContentURL(selectedFile);
 		if (contentURL != null && contentURL.length() > 0) {
 			Uri uri = Uri.parse(contentURL);
 			Intent intent = new Intent(Intent.ACTION_VIEW, uri);
@@ -906,34 +911,35 @@ public class FilesFragment
 
 	@Override
 	public void triggerRefresh() {
-		if (sessionInfo != null && torrentID >= 0) {
-			synchronized (mLock) {
-				if (refreshing) {
-					if (AndroidUtils.DEBUG) {
-						Log.d(TAG, "Skipping Refresh");
-					}
-					return;
-				}
-				refreshing = true;
-			}
-
-			showProgressBar();
-			sessionInfo.executeRpc(new RpcExecuter() {
-				@Override
-				public void executeRpc(TransmissionRPC rpc) {
-					rpc.getTorrentFileInfo(TAG, torrentID, null,
-							new TorrentListReceivedListener() {
-								@Override
-								public void rpcTorrentListReceived(String callID,
-										List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
-									synchronized (mLock) {
-										refreshing = false;
-									}
-								}
-							});
-				}
-			});
+		if (sessionInfo == null || torrentID < 0) {
+			return;
 		}
+		synchronized (mLock) {
+			if (refreshing) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "Skipping Refresh");
+				}
+				return;
+			}
+			refreshing = true;
+		}
+
+		showProgressBar();
+		sessionInfo.executeRpc(new RpcExecuter() {
+			@Override
+			public void executeRpc(TransmissionRPC rpc) {
+				rpc.getTorrentFileInfo(TAG, torrentID, null,
+						new TorrentListReceivedListener() {
+							@Override
+							public void rpcTorrentListReceived(String callID,
+									List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+								synchronized (mLock) {
+									refreshing = false;
+								}
+							}
+						});
+			}
+		});
 	}
 
 	@Override

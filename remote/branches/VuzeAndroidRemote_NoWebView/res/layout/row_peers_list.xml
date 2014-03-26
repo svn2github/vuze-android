@@ -34,7 +34,8 @@
 		android:layout_toLeftOf="@+id/peerrow_dl"
 		android:layout_toRightOf="@+id/peerrow_cc"
 		android:text="Vuze 5.2.0.0"
-		android:textAppearance="?android:attr/textAppearanceMedium" />
+		android:textAppearance="?android:attr/textAppearanceMedium"
+		android:textSize="@dimen/row_title_fontsize" />
 
 	<TextView
 		android:id="@+id/peerrow_pct"

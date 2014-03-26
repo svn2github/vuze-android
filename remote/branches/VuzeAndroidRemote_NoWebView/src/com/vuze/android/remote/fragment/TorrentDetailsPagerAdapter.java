@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.ViewPager;
 
 import com.vuze.android.remote.R;
 import com.vuze.android.remote.SetTorrentIdListener;
@@ -38,9 +39,11 @@ public class TorrentDetailsPagerAdapter
 	}
 	
 	private long torrentID = -1;
+	private ViewPager pager;
 	
-	public TorrentDetailsPagerAdapter(FragmentManager fm) {
+	public TorrentDetailsPagerAdapter(FragmentManager fm, ViewPager pager) {
 		super(fm);
+		this.pager = pager;
 	}
 
 	@Override
@@ -75,6 +78,14 @@ public class TorrentDetailsPagerAdapter
 			if (fragment instanceof SetTorrentIdListener) {
 				((SetTorrentIdListener) fragment).setTorrentID(torrentID);
 			}
+			if (position == pager.getCurrentItem()) {
+				// Special case for first item, which never gets an onPageSelected event
+				// Send pageActivated event.
+				if (fragment instanceof FragmentPagerListener) {
+					FragmentPagerListener l = (FragmentPagerListener) fragment;
+					l.pageActivated();
+				}
+			}
 		} else {
   		Bundle arguments = fragment.getArguments();
   		if (arguments == null) {
@@ -82,6 +93,9 @@ public class TorrentDetailsPagerAdapter
   		}
   		arguments.putLong("torrentID", torrentID);
   		arguments.putInt("pagerPosition", position);
+  		// Fragment will have to handle pageActivated call when it's view is
+  		// attached :(
+  		arguments.putBoolean("isActive", position == pager.getCurrentItem());
   		fragment.setArguments(arguments);
 		}
 	}

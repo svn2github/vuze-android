@@ -10,12 +10,13 @@
 
 	<TableLayout
 		android:id="@+id/torrentrow_table"
-		android:layout_width="wrap_content"
+		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_alignParentRight="true"
 		android:layout_alignParentTop="true"
 		android:layout_toRightOf="@+id/torrentrow_progress"
 		android:orientation="vertical"
+		android:shrinkColumns="0"
 		android:stretchColumns="1" >
 
 		<TableRow>
@@ -27,21 +28,26 @@
 				android:layout_span="2"
 				android:ellipsize="end"
 				android:maxLines="4"
-				android:textAppearance="?android:attr/textAppearanceMedium" />
+				android:shadowColor="#20000000"
+				android:shadowDx="1"
+				android:shadowDy="1"
+				android:shadowRadius="1"
+				android:textAppearance="?android:attr/textAppearanceMedium"
+				android:textSize="@dimen/row_title_fontsize" />
+
 		</TableRow>
 
-		<TableRow>
+		<TableRow android:layout_width="wrap_content" >
 
 			<LinearLayout
 				android:id="@+id/torrentrow_infos"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
 				android:orientation="vertical" >
 
 				<TextView
 					android:id="@+id/torrentrow_info"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
+					android:alpha="0.9"
 					android:textAppearance="?android:attr/textAppearanceSmall" />
 
 				<TextView
@@ -56,6 +62,7 @@
 					android:layout_height="wrap_content"
 					android:layout_marginTop="1dp"
 					android:lineSpacingExtra="1dp" />
+
 			</LinearLayout>
 
 			<LinearLayout

@@ -17,7 +17,8 @@
 		android:layout_toRightOf="@+id/filerow_progress"
 		android:ellipsize="none"
 		android:scrollHorizontally="false"
-		android:textAppearance="?android:attr/textAppearanceMedium" />
+		android:textAppearance="?android:attr/textAppearanceMedium"
+		android:textSize="@dimen/row_title_fontsize" />
 
 	<ProgressBar
 		android:id="@+id/filerow_progress"
@@ -43,7 +44,6 @@
 		android:layout_alignRight="@+id/filerow_progress"
 		android:layout_alignTop="@+id/filerow_progress"
 		android:gravity="center|center_vertical"
-		android:text="11%"
 		android:textAlignment="center"
 		android:textAppearance="?android:attr/textAppearanceMedium"
 		android:textSize="15sp" />
@@ -59,7 +59,6 @@
 		android:layout_toLeftOf="@+id/filerow_info"
 		android:gravity="bottom"
 		android:paddingBottom="3dp"
-		android:text="20M of 128MB"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 	<TextView
@@ -71,7 +70,6 @@
 		android:layout_below="@+id/filerow_name"
 		android:gravity="bottom"
 		android:paddingBottom="3dp"
-		android:text="File Priority"
 		android:textAppearance="?android:attr/textAppearanceSmall" />
 
 </com.android.music.CheckableRelativeLayout>

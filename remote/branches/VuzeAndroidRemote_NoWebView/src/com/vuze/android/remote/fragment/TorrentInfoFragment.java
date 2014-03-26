@@ -63,6 +63,10 @@ public class TorrentInfoFragment
 		TransmissionVars.FIELD_TORRENT_PEERS,
 	};
 
+	private Object mLock = new Object();
+
+	private boolean refreshing = false;
+
 	public TorrentInfoFragment() {
 		super();
 	}
@@ -91,27 +95,35 @@ public class TorrentInfoFragment
 		}
 
 		if (isTorrent) {
-			sessionInfo.executeRpc(new RpcExecuter() {
-				@Override
-				public void executeRpc(TransmissionRPC rpc) {
-					rpc.getTorrent(TAG, torrentID, Arrays.asList(fields),
-							new TorrentListReceivedListener() {
-								@Override
-								public void rpcTorrentListReceived(String callID,
-										List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
-								}
-							});
-				}
-			});
+			triggerRefresh();
 		}
 	}
 
 	@Override
 	public void triggerRefresh() {
+		synchronized (mLock) {
+			if (refreshing) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "Skipping Refresh");
+				}
+				return;
+			}
+			refreshing = true;
+		}
+
 		sessionInfo.executeRpc(new RpcExecuter() {
 			@Override
 			public void executeRpc(TransmissionRPC rpc) {
-				rpc.getTorrent(TAG, torrentID, Arrays.asList(fields), null);
+				rpc.getTorrent(TAG, torrentID, Arrays.asList(fields), 
+						new TorrentListReceivedListener() {
+					@Override
+					public void rpcTorrentListReceived(String callID,
+							List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+						synchronized (mLock) {
+							refreshing = false;
+						}
+					}
+				});
 			}
 		});
 	}
@@ -283,5 +295,13 @@ public class TorrentInfoFragment
 		if (viewRow.getVisibility() != View.VISIBLE) {
 			viewRow.setVisibility(View.VISIBLE);
 		}
+	}
+
+	@Override
+	public void pageDeactivated() {
+		synchronized (mLock) {
+			refreshing = false;
+		}
+		super.pageDeactivated();
 	}
 }

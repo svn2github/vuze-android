@@ -39,22 +39,12 @@ public abstract class TorrentDetailPage
 
 	private long pausedTorrentID = -1;
 
-	private boolean viewActive = true;
-
-	@Override
-	public void onPause() {
-		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onPause");
-		}
-		pageDeactivated();
-
-		super.onPause();
-	}
+	private boolean viewActive = false;
 
 	@Override
 	public void onResume() {
 		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "onResume " + this + ", pausedTorrentID=" + pausedTorrentID);
+			logD("onResume, pausedTorrentID=" + pausedTorrentID);
 		}
 		super.onResume();
 
@@ -64,8 +54,11 @@ public abstract class TorrentDetailPage
 		}
 
 		pagerPosition = getArguments().getInt("pagerPosition", pagerPosition);
-
-		pageActivated();
+		
+		boolean active = getArguments().getBoolean("isActive", false);
+		if (active) {
+			pageActivated();
+		}
 	}
 
 	@Override
@@ -80,6 +73,9 @@ public abstract class TorrentDetailPage
 
 	@Override
 	public void pageDeactivated() {
+		if (AndroidUtils.DEBUG) {
+			logD("pageDeactivated " + torrentID);
+		}
 		viewActive = false;
 		if (torrentID != -1) {
 			pausedTorrentID = torrentID;
@@ -88,11 +84,19 @@ public abstract class TorrentDetailPage
 
 		if (sessionInfo != null) {
 			sessionInfo.removeRefreshTriggerListener(this);
+		} else {
+			logD("No sessionInfo " + torrentID);
 		}
 	}
 
 	@Override
 	public void pageActivated() {
+		if (viewActive) {
+			return;
+		}
+		if (AndroidUtils.DEBUG) {
+			logD("pageActivated");
+		}
 		viewActive = true;
 		if (pausedTorrentID >= 0) {
 			setTorrentID(pausedTorrentID);
@@ -109,16 +113,16 @@ public abstract class TorrentDetailPage
 	}
 
 	public final void setTorrentID(long id) {
-		if (!viewActive) {
+		if (!viewActive && id != -1) {
 			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: view not Active");
+				logE("setTorrentID: view not Active " + torrentID);
 			}
 			pausedTorrentID = id;
 			return;
 		}
 		if (getActivity() == null) {
 			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: No Activity");
+				logE("setTorrentID: No Activity");
 			}
 			pausedTorrentID = id;
 			return;
@@ -130,7 +134,7 @@ public abstract class TorrentDetailPage
 
 		if (sessionInfo == null) {
 			if (AndroidUtils.DEBUG) {
-				Log.e(TAG, "setTorrentID: No sessionInfo");
+				logE("setTorrentID: No sessionInfo");
 			}
 			pausedTorrentID = id;
 			return;
@@ -140,6 +144,20 @@ public abstract class TorrentDetailPage
 		
 		updateTorrentID(torrentID, isTorrent, wasTorrent, torrentIdChanged);
 	}
+	
+	private void logD(String s) {
+		Log.d(TAG, getClass().getSimpleName() + "] " + s);
+	}
+
+	private void logE(String s) {
+		Log.e(TAG, getClass().getSimpleName() + "] " + s);
+	}
+	
+	/**
+	 * refresh request triggered on a timer length set by user.<br>
+	 * Also triggered on {@link #pageActivated()}
+	 */
+	public abstract void triggerRefresh();
 
 	/**
 	 * SessionInfo will not be null

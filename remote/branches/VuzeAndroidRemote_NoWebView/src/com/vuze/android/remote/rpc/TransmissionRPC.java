@@ -282,6 +282,8 @@ public class TransmissionRPC
 		if (ids != null) {
 			mapArguments.put("ids", ids);
 		}
+		
+		mapArguments.put("base-url", sessionInfo.getBaseURL());
 
 		if (rpcVersionAZ >= 3) {
 
@@ -792,5 +794,4 @@ public class TransmissionRPC
 	public void setDefaultFileFields(String[] fileFields) {
 		this.defaultFileFields = fileFields;
 	}
-
 }

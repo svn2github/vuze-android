@@ -9,4 +9,5 @@
 		<dimen name="torrentInfo_group_padding_top">3dp</dimen>
 		<dimen name="torrentInfo_group_padding_left">10dp</dimen>
 		<dimen name="torrentInfo_row_title_padding">10dp</dimen>
+		<dimen name="row_title_fontsize">17sp</dimen>
 </resources>
