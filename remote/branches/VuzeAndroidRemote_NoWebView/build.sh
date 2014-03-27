@@ -25,6 +25,7 @@ rm -rf "${DSTDIR}"
 echo Copying ${SRCDIR} to ${DSTDIR}
 
 cp -r "${SRCDIR}" "${DSTDIR}"
+sed -i .bk -e "s/false/true/g" "${DSTDIR}/res/values/analytics.xml"
 sed -i .bk -e "s/DEBUG = true/DEBUG = false/g" "${DSTDIR}/src/com/vuze/android/remote/AndroidUtils.java"
 rm -r "${DSTDIR}/src/com/vuze/android/remote/AndroidUtils.java.bk"
 rm -r "${DSTDIR}/src/com/aelitis/azureus/util/JSONUtilsGSON.java"
