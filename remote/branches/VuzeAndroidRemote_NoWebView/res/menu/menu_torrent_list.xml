@@ -18,16 +18,16 @@
 		android:visible="true"
 		vuzeapp:showAsAction="ifRoom"/>
 	<item
-		android:id="@+id/action_filter"
-		android:icon="@drawable/ic_menu_filter"
-		android:showAsAction="ifRoom"
-		android:title="@string/filter"
-		vuzeapp:showAsAction="ifRoom"/>
-	<item
 		android:id="@+id/action_sortby"
 		android:icon="@drawable/ic_menu_sort_by_size"
 		android:showAsAction="ifRoom"
 		android:title="@string/action_sortby"
+		vuzeapp:showAsAction="ifRoom"/>
+		<item
+		android:id="@+id/action_filter"
+		android:icon="@drawable/ic_menu_filter"
+		android:showAsAction="ifRoom"
+		android:title="@string/filter"
 		vuzeapp:showAsAction="ifRoom"/>
 	<item
 		android:id="@+id/action_filterby"
