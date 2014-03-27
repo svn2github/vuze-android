@@ -183,7 +183,7 @@ If you like our app, please rate us on the <A HREF="market://details?id=com.vuze
 	<string name="torrentInfo_row_shareRatio">Share Ratio</string>
 	<string name="torrentInfo_row_peerCount">Peers</string>
 	<string name="torrentInfo_row_seedCount">Seeds</string>
-	<string name="menu_social">Social...</string>
+	<string name="menu_social">Social&#8230;</string>
 	<string name="action_vote">Vote on Features</string>
 	<string name="action_forum">Discussion Forum</string>
 	<string name="action_rate">Rate App</string>

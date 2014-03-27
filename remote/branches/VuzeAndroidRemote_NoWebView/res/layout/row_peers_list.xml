@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.android.music.CheckableRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:background="@drawable/list_selector"
@@ -13,8 +14,8 @@
 		android:layout_alignLeft="@+id/peerrow_client"
 		android:layout_below="@+id/peerrow_client"
 		android:layout_toLeftOf="@+id/peerrow_ul"
-		android:text="255.255.255.255"
-		android:textSize="10sp" />
+		android:textSize="10sp"
+		tools:ignore="SmallSp" />
 
 	<TextView
 		android:id="@+id/peerrow_cc"
@@ -23,8 +24,7 @@
 		android:layout_alignParentLeft="true"
 		android:layout_centerVertical="true"
 		android:gravity="center_vertical"
-		android:maxLines="1"
-		android:text="CA" />
+		android:maxLines="1" />
 
 	<TextView
 		android:id="@+id/peerrow_client"
@@ -33,7 +33,6 @@
 		android:layout_alignParentTop="true"
 		android:layout_toLeftOf="@+id/peerrow_dl"
 		android:layout_toRightOf="@+id/peerrow_cc"
-		android:text="Vuze 5.2.0.0"
 		android:textAppearance="?android:attr/textAppearanceMedium"
 		android:textSize="@dimen/row_title_fontsize" />
 
@@ -44,23 +43,20 @@
 		android:layout_alignParentRight="true"
 		android:layout_centerVertical="true"
 		android:layout_marginLeft="5dp"
-		android:gravity="center_vertical"
-		android:text="99.8%" />
+		android:gravity="center_vertical" />
 
 	<TextView
 		android:id="@+id/peerrow_dl"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_alignParentTop="true"
-		android:layout_toLeftOf="@+id/peerrow_pct"
-		android:text="10.8 kB/s" />
+		android:layout_toLeftOf="@+id/peerrow_pct" />
 
 	<TextView
 		android:id="@+id/peerrow_ul"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_below="@+id/peerrow_dl"
-		android:layout_toLeftOf="@+id/peerrow_pct"
-		android:text="10.8 kB/s" />
+		android:layout_toLeftOf="@+id/peerrow_pct" />
 
 </com.android.music.CheckableRelativeLayout>

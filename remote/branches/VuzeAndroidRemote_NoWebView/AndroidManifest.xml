@@ -35,13 +35,11 @@
 			android:name="com.vuze.android.remote.activity.LoginActivity"
 			android:configChanges="keyboardHidden"
 			android:label="@string/app_name"
+			android:theme="@style/AppThemeNoBackground"
 			android:parentActivityName="com.vuze.android.remote.activity.IntentHandler" >
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
 				android:value="com.vuze.android.remote.activity.IntentHandler" />
-			<meta-data
-				android:name="android.support.UI_OPTIONS"
-				android:value="none" />
 		</activity>
 		<activity
 			android:name="com.vuze.android.remote.activity.TorrentDetailsActivity"

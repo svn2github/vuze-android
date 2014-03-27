@@ -59,7 +59,6 @@ import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
 
 /**
- * TODO: Update selection on reordering, removing, etc
  */
 public class TorrentListFragment
 	extends Fragment

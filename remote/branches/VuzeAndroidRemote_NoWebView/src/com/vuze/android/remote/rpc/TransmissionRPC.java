@@ -361,8 +361,8 @@ public class TransmissionRPC
 												Collections.EMPTY_LIST).size());
 							}
 						}
-						// TODO: If we have a list of torrent IDs, and we don't get them back with
-						//       "success", then we should populate the listRemoved
+						// TODO: If we request a list of torrent IDs, and we don't get them
+						//       back on "success", then we should populate the listRemoved
 						List listRemoved = MapUtils.getMapList(optionalMap, "removed", null);
 						TorrentListReceivedListener[] listReceivedListeners = getTorrentListReceivedListeners();
 						for (TorrentListReceivedListener torrentListReceivedListener : listReceivedListeners) {

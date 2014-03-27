@@ -684,8 +684,6 @@ public class SessionInfo
 			Log.d(TAG, "Refresh Triggered");
 		}
 
-		// XXX Don't do this when we have no focus!
-
 		rpc.getSessionStats(SESSION_STATS_FIELDS, new ReplyMapReceivedListener() {
 			@Override
 			public void rpcSuccess(String id, Map<?, ?> optionalMap) {
