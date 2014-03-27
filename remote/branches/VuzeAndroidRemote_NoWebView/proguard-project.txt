@@ -23,9 +23,9 @@
    public *;
 }
 
--optimizationpasses 3
+-optimizationpasses 5
 
--keep public class * extends java.lang.Exception
+-keep public class com.vuze.android.remote.rpc.RPCException
 
 #-dontobfuscate
 
