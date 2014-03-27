@@ -232,6 +232,7 @@ public class RestJsonClient
 
 					}
 
+					Log.e(TAG, id, pe);
 					throw new RPCException(pe);
 				} finally {
 					closeOnNewThread(USE_STRINGBUFFER ? isr : br);
@@ -243,7 +244,6 @@ public class RestJsonClient
 
 			}
 		} catch (RPCException e) {
-			Log.e(TAG, id, e);
 			throw e;
 		} catch (Throwable e) {
 			Log.e(TAG, id, e);
