@@ -23,7 +23,7 @@
 		android:showAsAction="ifRoom"
 		android:title="@string/action_sortby"
 		vuzeapp:showAsAction="ifRoom"/>
-		<item
+	<item
 		android:id="@+id/action_filter"
 		android:icon="@drawable/ic_menu_filter"
 		android:showAsAction="ifRoom"

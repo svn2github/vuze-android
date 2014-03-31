@@ -54,14 +54,16 @@
 					android:id="@+id/torrentrow_state"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:textAppearance="?android:attr/textAppearanceSmall" />
+					android:textAppearance="?android:attr/textAppearanceSmall"
+					android:textSize="@dimen/torrentrow_state_size" />
 
 				<TextView
 					android:id="@+id/torrentrow_tags"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_marginTop="1dp"
-					android:lineSpacingExtra="1dp" />
+					android:lineSpacingExtra="1dp"
+					android:textSize="@dimen/torrentrow_tag_size" />
 
 			</LinearLayout>
 
@@ -105,8 +107,8 @@
 		android:max="10000"
 		android:maxHeight="500dp"
 		android:maxWidth="500dp"
-		android:minHeight="90dp"
-		android:minWidth="90dp"
+		android:minHeight="@dimen/torrentrow_ring_size"
+		android:minWidth="@dimen/torrentrow_ring_size"
 		android:progress="8000"
 		android:progressDrawable="@drawable/progress_ring" />
 
@@ -126,14 +128,15 @@
 			android:layout_height="wrap_content"
 			android:gravity="center"
 			android:textAlignment="center"
-			android:textAppearance="?android:attr/textAppearanceMedium" />
+			android:textSize="@dimen/torrentrow_pct_size" />
 
 		<TextView
 			android:id="@+id/torrentrow_eta"
 			android:layout_width="fill_parent"
 			android:layout_height="wrap_content"
 			android:gravity="center"
-			android:textSize="12sp" />
+			android:textSize="@dimen/torrentrow_eta_size" />
+
 	</LinearLayout>
 
 </com.android.music.CheckableRelativeLayout>

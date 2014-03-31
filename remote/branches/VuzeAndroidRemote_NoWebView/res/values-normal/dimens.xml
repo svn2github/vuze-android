@@ -1,3 +1,8 @@
+<!--
+Duplicate of values/dimens.xml
+We have override values in values-small/dimens.xml, and, at least in the dev
+layout viewer, these dimens will be used on anything "small and above"
+-->
 <resources>
 
 	<dimen name="activity_horizontal_margin">16dp</dimen>

@@ -2,14 +2,15 @@
 
 	<item android:id="@android:id/background">
 		<shape
+
 			android:shape="ring"
 			android:useLevel="false" >
 			<solid android:color="#00000000" />
 
 			<stroke
-				android:dashGap="5dp"
-				android:dashWidth="0.5dp"
-				android:width="1dp"
+				android:dashGap="@dimen/ring_bg_dashGap"
+				android:dashWidth="@dimen/ring_bg_dashWidth"
+				android:width="@dimen/ring_bg_width"
 				android:color="@color/ringdots" />
 		</shape>
 	</item>
@@ -24,6 +25,7 @@
 					android:pivotY="50%"
 					android:toDegrees="-90" >
 					<shape
+						
 						android:shape="ring"
 						android:useLevel="true" >
 						<solid android:color="#2a8bcb" />
@@ -55,7 +57,7 @@
 						<solid android:color="#00000000" />
 
 						<stroke
-							android:width="11dp"
+							android:width="@dimen/ring_done_width"
 							android:color="#40A080" />
 					</shape>
 				</inset>
