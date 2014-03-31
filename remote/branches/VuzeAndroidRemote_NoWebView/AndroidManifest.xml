@@ -90,6 +90,8 @@
 		<activity
 			android:name="com.vuze.android.remote.activity.IntentHandler"
 			android:configChanges="keyboardHidden|orientation|screenSize"
+			android:launchMode="singleTask"
+			android:alwaysRetainTaskState="true"
 			android:label="@string/app_name" >
 			<meta-data
 				android:name="android.support.UI_OPTIONS"
