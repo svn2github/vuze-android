@@ -190,5 +190,6 @@ If you like our app, please rate us on the <A HREF="market://details?id=com.vuze
 	<string name="edit_profile">Edit Profile</string>
 	<string name="toast_adding_xxx">Adding %1$s</string>
 	<string name="toast_added">\'%1$s\' has been added</string>
+	<string name="action_update_tracker">Ask for more peers</string>
 
 </resources>
