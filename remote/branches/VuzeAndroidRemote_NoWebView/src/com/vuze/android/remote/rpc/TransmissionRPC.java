@@ -282,7 +282,7 @@ public class TransmissionRPC
 		if (ids != null) {
 			mapArguments.put("ids", ids);
 		}
-		
+
 		mapArguments.put("base-url", sessionInfo.getBaseURL());
 
 		if (rpcVersionAZ >= 3) {
@@ -598,6 +598,19 @@ public class TransmissionRPC
 		sendRequest(method, map, l);
 	}
 
+	public void simpleRpcCallWithRefresh(String callID, String method,
+			long[] ids, ReplyMapReceivedListener l) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", method);
+		if (ids != null) {
+			Map<String, Object> mapArguments = new HashMap<String, Object>();
+			map.put("arguments", mapArguments);
+			mapArguments.put("ids", ids);
+		}
+		sendRequest(method, map, new ReplyMapReceivedListenerWithRefresh(callID, l,
+				ids));
+	}
+
 	public void startTorrents(String callID, long[] ids, boolean forceStart,
 			ReplyMapReceivedListener l) {
 		Map<String, Object> map = new HashMap<String, Object>();
@@ -749,7 +762,7 @@ public class TransmissionRPC
 		mapArguments.put("delete-local-data", deleteData);
 
 		sendRequest("torrent-remove", map, new ReplyMapReceivedListener() {
-			
+
 			@Override
 			public void rpcSuccess(String id, Map<?, ?> optionalMap) {
 				getRecentTorrents(id, null);
@@ -757,14 +770,14 @@ public class TransmissionRPC
 					listener.rpcSuccess(id, optionalMap);
 				}
 			}
-			
+
 			@Override
 			public void rpcFailure(String id, String message) {
 				if (listener != null) {
 					listener.rpcFailure(id, message);
 				}
 			}
-			
+
 			@Override
 			public void rpcError(String id, Exception e) {
 				if (listener != null) {
