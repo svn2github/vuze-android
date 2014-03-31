@@ -151,7 +151,7 @@ public class TorrentViewActivity
 
 		final Bundle extras = intent.getExtras();
 		if (extras == null) {
-			System.err.println("No extras!");
+			Log.e(TAG, "No extras!");
 			finish();
 			return;
 		}
@@ -248,6 +248,7 @@ public class TorrentViewActivity
 				String dataString = getIntent().getDataString();
 				if (dataString != null) {
 					openTorrent(getIntent().getData());
+					getIntent().setData(null);
 				}
 
 				if (tvCenter != null && VuzeRemoteApp.getNetworkState().isOnline()) {
@@ -379,7 +380,7 @@ public class TorrentViewActivity
 			sessionInfo.executeRpc(new RpcExecuter() {
 				@Override
 				public void executeRpc(TransmissionRPC rpc) {
-					rpc.addTorrentByUrl(metainfo, false, TorrentViewActivity.this);
+					rpc.addTorrentByMeta(metainfo, false, TorrentViewActivity.this);
 				}
 			});
 			runOnUiThread(new Runnable() {
