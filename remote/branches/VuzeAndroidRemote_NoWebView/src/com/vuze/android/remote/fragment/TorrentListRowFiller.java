@@ -236,7 +236,7 @@ public class TorrentListRowFiller
 						continue;
 					}
 					if (name == null) {
-						name = o.toString();
+						continue;
 					}
 					if (text.length() > 0) {
 						text.append(" ");
@@ -285,7 +285,7 @@ public class TorrentListRowFiller
 						}
 					}
 					if (name == null) {
-						name = o.toString();
+						continue;
 					}
 					if (sb.length() > 0) {
 						sb.append(" ");
@@ -308,13 +308,13 @@ public class TorrentListRowFiller
 				String string = sb.toString();
 				int color = -1;
 				AndroidUtils.setSpanBubbles(ss, string, "~0~",
-						holder.tvStatus.getPaint(), color < 0 ? colorBGTagType0 : color,
+						holder.tvTags.getPaint(), color < 0 ? colorBGTagType0 : color,
 						colorFGTagType0, colorBGTagType0);
 				AndroidUtils.setSpanBubbles(ss, string, "~1~",
-						holder.tvStatus.getPaint(), color < 0 ? colorBGTagCat : color,
+						holder.tvTags.getPaint(), color < 0 ? colorBGTagCat : color,
 						colorFGTagCat, colorBGTagCat);
 				AndroidUtils.setSpanBubbles(ss, string, "~3~",
-						holder.tvStatus.getPaint(), color < 0 ? colorBGTagManual : color,
+						holder.tvTags.getPaint(), color < 0 ? colorBGTagManual : color,
 						colorFGTagManual, colorBGTagManual);
 				flipper.changeText(holder.tvTags, ss, holder.animateFlip, validator);
 			}
