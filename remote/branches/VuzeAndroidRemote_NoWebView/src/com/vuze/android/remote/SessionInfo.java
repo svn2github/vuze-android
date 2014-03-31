@@ -39,10 +39,6 @@ import com.vuze.android.remote.rpc.*;
  * - SessionSettings<BR>
  * - RPC<BR>
  * - torrents<BR>
- * <BR>
- * <BR>
- * TODO:<BR>
- * - clear files map after x minutes of non-use
  */
 public class SessionInfo
 	implements SessionSettingsReceivedListener, NetworkStateListener
@@ -112,6 +108,8 @@ public class SessionInfo
 	private boolean needsFullTorrentRefresh = false;
 
 	private String baseURL;
+	
+	private boolean needsTagRefresh = false;
 
 	public SessionInfo(final Activity activity,
 			final RemoteProfile _remoteProfile, boolean rememberSettingChanges) {
@@ -308,8 +306,11 @@ public class SessionInfo
 		if (mapTags == null) {
 			return null;
 		}
-		// TODO: if .get is null, maybe repull tag list?
-		return mapTags.get(uid);
+		Map<?, ?> map = mapTags.get(uid);
+		if (map == null) {
+			needsTagRefresh = true;
+		}
+		return map;
 	}
 
 	public List<Map<?, ?>> getTags() {
@@ -682,6 +683,38 @@ public class SessionInfo
 		}
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "Refresh Triggered");
+		}
+		
+		if (needsTagRefresh) {
+			rpc.simpleRpcCall("tags-get-list", new ReplyMapReceivedListener() {
+
+				@Override
+				public void rpcSuccess(String id, Map<?, ?> optionalMap) {
+					needsTagRefresh = false;
+					List<?> tagList = MapUtils.getMapList(optionalMap, "tags", null);
+					if (tagList == null) {
+						mapTags = null;
+						return;
+					}
+					mapTags = new LongSparseArray<>(tagList.size());
+					for (Object tag : tagList) {
+						if (tag instanceof Map) {
+							Map<?, ?> mapTag = (Map<?, ?>) tag;
+							mapTags.put(MapUtils.getMapLong(mapTag, "uid", 0), mapTag);
+						}
+					}
+				}
+
+				@Override
+				public void rpcFailure(String id, String message) {
+					needsTagRefresh = false;
+				}
+
+				@Override
+				public void rpcError(String id, Exception e) {
+					needsTagRefresh = false;
+				}
+			});
 		}
 
 		rpc.getSessionStats(SESSION_STATS_FIELDS, new ReplyMapReceivedListener() {
