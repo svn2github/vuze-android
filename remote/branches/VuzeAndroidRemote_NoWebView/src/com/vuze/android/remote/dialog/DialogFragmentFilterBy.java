@@ -67,12 +67,12 @@ public class DialogFragmentFilterBy
 		if (id != null) {
 			SessionInfo sessionInfo = SessionInfoManager.getSessionInfo(id,
 					getActivity(), true);
-			List tags = sessionInfo.getTags();
+			List<Map<?, ?>> tags = sessionInfo.getTags();
 			if (tags != null && tags.size() > 0) {
 				TreeMap<String, Long> map = new TreeMap<String, Long>();
 				for (Object o : tags) {
 					if (o instanceof Map) {
-						Map mapTag = (Map) o;
+						Map<?, ?> mapTag = (Map<?, ?>) o;
 						long uid = MapUtils.getMapLong(mapTag, "uid", 0);
 						String name = MapUtils.getMapString(mapTag, "name", "??");
 						int type = MapUtils.getMapInt(mapTag, "type", 0);
