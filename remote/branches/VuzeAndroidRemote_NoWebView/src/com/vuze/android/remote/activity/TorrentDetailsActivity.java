@@ -24,11 +24,12 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.view.*;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 
 import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
@@ -141,7 +142,8 @@ public class TorrentDetailsActivity
 				}
 				Map<?, ?> mapTorrent = sessionInfo.getTorrent(torrentID);
 				torrentListRowFiller.fillHolder(mapTorrent, sessionInfo);
-				ActivityCompat.invalidateOptionsMenu(TorrentDetailsActivity.this);
+				
+				AndroidUtils.invalidateOptionsMenuHC(TorrentDetailsActivity.this);
 			}
 		});
 	}
@@ -201,7 +203,10 @@ public class TorrentDetailsActivity
 	}
 
 	@Override
-	protected boolean onPrepareOptionsPanel(View view, Menu menu) {
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		if (AndroidUtils.DEBUG_MENU) {
+			Log.d(TAG, "onPrepareOptionsMenu");
+		}
 
 		if (sessionInfo == null || torrentID < 0) {
 			return super.onPrepareOptionsMenu(menu);
