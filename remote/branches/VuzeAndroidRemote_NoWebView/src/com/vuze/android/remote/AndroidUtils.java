@@ -46,6 +46,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.*;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.text.Html;
 import android.text.SpannableString;
@@ -646,6 +647,10 @@ public class AndroidUtils
 		}
 	}
 
+	public static void invalidateOptionsMenuHC(final Activity activity) {
+		invalidateOptionsMenuHC(activity, (android.support.v7.view.ActionMode) null);
+	}
+
 	public static void invalidateOptionsMenuHC(final Activity activity,
 			final ActionMode mActionMode) {
 		if (activity == null) {
@@ -654,7 +659,12 @@ public class AndroidUtils
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				ActivityCompat.invalidateOptionsMenu(activity);
+				if (activity instanceof FragmentActivity) {
+					FragmentActivity aba = (FragmentActivity) activity;
+					aba.supportInvalidateOptionsMenu();
+				} else {
+					ActivityCompat.invalidateOptionsMenu(activity);
+				}
 				invalidateActionMode();
 			}
 
@@ -675,7 +685,12 @@ public class AndroidUtils
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				ActivityCompat.invalidateOptionsMenu(activity);
+				if (activity instanceof FragmentActivity) {
+					FragmentActivity aba = (FragmentActivity) activity;
+					aba.supportInvalidateOptionsMenu();
+				} else {
+					ActivityCompat.invalidateOptionsMenu(activity);
+				}
 				if (mActionMode != null) {
 					mActionMode.invalidate();
 				}
