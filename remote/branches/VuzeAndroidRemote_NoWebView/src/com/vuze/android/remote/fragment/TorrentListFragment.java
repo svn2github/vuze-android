@@ -461,11 +461,11 @@ public class TorrentListFragment
 
 		return view;
 	}
-	
+
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
-		
+
 		outState.putString("filter_name", tvFilteringBy.getText().toString());
 	}
 
@@ -475,12 +475,12 @@ public class TorrentListFragment
 		if (listview != null) {
 			updateSelectedIDs();
 		}
-		
+
 		if (savedInstanceState != null) {
-  		String filterName = savedInstanceState.getString("filter_name");
-  		if (filterName != null && tvFilteringBy != null) {
-  			tvFilteringBy.setText(filterName);
-  		}
+			String filterName = savedInstanceState.getString("filter_name");
+			if (filterName != null && tvFilteringBy != null) {
+				tvFilteringBy.setText(filterName);
+			}
 		}
 	}
 
@@ -661,10 +661,12 @@ public class TorrentListFragment
 					Log.d(TAG, "MULTI:CHECK CHANGE");
 				}
 
-				String subtitle = getResources().getString(
-						R.string.context_torrent_subtitle_selected,
-						AndroidUtils.getCheckedItemCount(listview));
-				mode.setSubtitle(subtitle);
+				if (mode != null) {
+					String subtitle = getResources().getString(
+							R.string.context_torrent_subtitle_selected,
+							AndroidUtils.getCheckedItemCount(listview));
+					mode.setSubtitle(subtitle);
+				}
 				updateSelectedIDs();
 			}
 		};
@@ -1157,7 +1159,7 @@ public class TorrentListFragment
 		if (mCallback != null) {
 			int choiceMode = listview.getChoiceMode();
 			mCallback.onTorrentSelectedListener(TorrentListFragment.this,
-					selectedIDs, choiceMode == ListView.CHOICE_MODE_MULTIPLE);
+					selectedIDs, choiceMode != ListView.CHOICE_MODE_SINGLE);
 		}
 	}
 }
