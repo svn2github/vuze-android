@@ -18,15 +18,17 @@
 package com.vuze.android.remote.fragment;
 
 import java.util.List;
+import java.util.Map;
 
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.view.View;
+import android.view.*;
 import android.widget.ListView;
 
 import com.vuze.android.remote.AndroidUtils;
 import com.vuze.android.remote.R;
 import com.vuze.android.remote.SessionInfo.RpcExecuter;
+import com.vuze.android.remote.rpc.ReplyMapReceivedListener;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
 
@@ -58,6 +60,7 @@ public class PeersFragment
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {
 
+		setHasOptionsMenu(true);
 		View view = inflater.inflate(R.layout.frag_torrent_peers, container, false);
 
 		listview = (ListView) view.findViewById(R.id.peers_list);
@@ -87,12 +90,12 @@ public class PeersFragment
 				public void executeRpc(TransmissionRPC rpc) {
 					rpc.getTorrentPeerInfo(TAG, torrentID,
 							new TorrentListReceivedListener() {
-						@Override
-						public void rpcTorrentListReceived(String callID,
-								List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
-							updateAdapterTorrentID(torrentID);
-						}
-					});
+								@Override
+								public void rpcTorrentListReceived(String callID,
+										List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+									updateAdapterTorrentID(torrentID);
+								}
+							});
 				}
 			});
 		}
@@ -125,12 +128,12 @@ public class PeersFragment
 			public void executeRpc(TransmissionRPC rpc) {
 				rpc.getTorrentPeerInfo(TAG, torrentID,
 						new TorrentListReceivedListener() {
-					@Override
-					public void rpcTorrentListReceived(String callID,
-							List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
-						updateAdapterTorrentID(torrentID);
-					}
-				});
+							@Override
+							public void rpcTorrentListReceived(String callID,
+									List<?> addedTorrentMaps, List<?> removedTorrentIDs) {
+								updateAdapterTorrentID(torrentID);
+							}
+						});
 			}
 		});
 	}
@@ -138,5 +141,50 @@ public class PeersFragment
 	@Override
 	public void rpcTorrentListReceived(String callID, List<?> addedTorrentMaps,
 			List<?> removedTorrentIDs) {
+	}
+
+	@Override
+	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+		inflater.inflate(R.menu.menu_torrent_connections, menu);
+
+		super.onCreateOptionsMenu(menu, inflater);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		if (item.getItemId() == R.id.action_update_tracker) {
+			if (sessionInfo == null) {
+				return false;
+			}
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					if (torrentID < 0) {
+						return;
+					}
+					long[] torrentIDs = {
+						torrentID
+					};
+					rpc.simpleRpcCall("torrent-reannounce", torrentIDs,
+							new ReplyMapReceivedListener() {
+
+								@Override
+								public void rpcSuccess(String id, Map<?, ?> optionalMap) {
+									triggerRefresh();
+								}
+
+								@Override
+								public void rpcFailure(String id, String message) {
+								}
+
+								@Override
+								public void rpcError(String id, Exception e) {
+								}
+							});
+				}
+			});
+			return true;
+		}
+		return super.onOptionsItemSelected(item);
 	}
 }
