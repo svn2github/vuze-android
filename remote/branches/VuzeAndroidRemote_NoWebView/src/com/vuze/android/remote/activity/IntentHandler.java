@@ -58,80 +58,9 @@ public class IntentHandler
 		setContentView(R.layout.activity_intent_handler);
 
 		final Intent intent = getIntent();
-
-		boolean forceOpen = (intent.getFlags() & Intent.FLAG_ACTIVITY_CLEAR_TOP) > 0;
-
-		if (AndroidUtils.DEBUG) {
-			Log.d(TAG, "ForceOpen? " + forceOpen);
-			Log.d(TAG, "IntentHandler intent = " + intent);
-		}
-
-		appPreferences = VuzeRemoteApp.getAppPreferences();
-
-		Uri data = intent.getData();
-		if (data != null) {
-			try {
-				String scheme = data.getScheme();
-				String host = data.getHost();
-				String path = data.getPath();
-				if ("vuze".equals(scheme) && "remote".equals(host) && path != null
-						&& data.getPath().length() > 1) {
-					String ac = data.getPath().substring(1);
-					intent.setData(null);
-					if (ac.length() < 100) {
-						new RemoteUtils(this).openRemote("vuze", ac, true, true);
-						finish();
-						return;
-					}
-				}
-				if (host.equals("remote.vuze.com")
-						&& data.getQueryParameter("ac") != null) {
-					String ac = data.getQueryParameter("ac");
-					intent.setData(null);
-					if (ac.length() < 100) {
-						new RemoteUtils(this).openRemote("vuze", ac, true, true);
-						finish();
-						return;
-					}
-				}
-			} catch (Exception e) {
-				if (AndroidUtils.DEBUG) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		if (!forceOpen) {
-			int numRemotes = getRemotesWithLocal().length;
-			if (numRemotes == 0) {
-				// New User: Send them to Login (Account Creation)
-				Intent myIntent = new Intent(Intent.ACTION_VIEW, null, this,
-						LoginActivity.class);
-				myIntent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION
-						| Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
-
-				startActivity(myIntent);
-				finish();
-				return;
-			} else if (numRemotes == 1 || intent.getData() == null) {
-				try {
-					RemoteProfile remoteProfile = appPreferences.getLastUsedRemote();
-					if (remoteProfile != null) {
-						if (savedInstanceState == null) {
-							new RemoteUtils(this).openRemote(remoteProfile, true, true);
-							finish();
-							return;
-						}
-					} else {
-						Log.d(TAG, "Has Remotes, but no last remote");
-					}
-				} catch (Throwable t) {
-					if (AndroidUtils.DEBUG) {
-						Log.e(TAG, "onCreate", t);
-					}
-					VuzeEasyTracker.getInstance(this).logError(this, t);
-				}
-			}
+		
+		if (handleIntent(intent, savedInstanceState)) {
+			return;
 		}
 
 		listview = (ListView) findViewById(R.id.lvRemotes);
@@ -160,6 +89,101 @@ public class IntentHandler
 		registerForContextMenu(listview);
 	}
 
+	private boolean handleIntent(Intent intent, Bundle savedInstanceState) {
+		boolean forceOpen = (intent.getFlags() & Intent.FLAG_ACTIVITY_CLEAR_TOP) > 0;
+
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "ForceOpen? " + forceOpen);
+			Log.d(TAG, "IntentHandler intent = " + intent);
+		}
+
+		appPreferences = VuzeRemoteApp.getAppPreferences();
+
+		Uri data = intent.getData();
+		if (data != null) {
+			try {
+				String scheme = data.getScheme();
+				String host = data.getHost();
+				String path = data.getPath();
+				if ("vuze".equals(scheme) && "remote".equals(host) && path != null
+						&& data.getPath().length() > 1) {
+					String ac = data.getPath().substring(1);
+					if (AndroidUtils.DEBUG) {
+						Log.d(TAG, "got ac '" + ac + "' from " + data);
+					}
+					intent.setData(null);
+					if (ac.length() < 100) {
+						new RemoteUtils(this).openRemote("vuze", ac, true, true);
+						finish();
+						return true;
+					}
+				}
+				if (host.equals("remote.vuze.com")
+						&& data.getQueryParameter("ac") != null) {
+					String ac = data.getQueryParameter("ac");
+					if (AndroidUtils.DEBUG) {
+						Log.d(TAG, "got ac '" + ac + "' from " + data);
+					}
+					intent.setData(null);
+					if (ac.length() < 100) {
+						new RemoteUtils(this).openRemote("vuze", ac, true, true);
+						finish();
+						return true;
+					}
+				}
+			} catch (Exception e) {
+				if (AndroidUtils.DEBUG) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		if (!forceOpen) {
+			int numRemotes = getRemotesWithLocal().length;
+			if (numRemotes == 0) {
+				// New User: Send them to Login (Account Creation)
+				Intent myIntent = new Intent(Intent.ACTION_VIEW, null, this,
+						LoginActivity.class);
+				myIntent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION
+						| Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
+
+				startActivity(myIntent);
+				finish();
+				return true;
+			} else if (numRemotes == 1 || intent.getData() == null) {
+				try {
+					RemoteProfile remoteProfile = appPreferences.getLastUsedRemote();
+					if (remoteProfile != null) {
+						if (savedInstanceState == null) {
+							new RemoteUtils(this).openRemote(remoteProfile, true, true);
+							finish();
+							return true;
+						}
+					} else {
+						Log.d(TAG, "Has Remotes, but no last remote");
+					}
+				} catch (Throwable t) {
+					if (AndroidUtils.DEBUG) {
+						Log.e(TAG, "onCreate", t);
+					}
+					VuzeEasyTracker.getInstance(this).logError(this, t);
+				}
+			}
+		}
+		return false;
+	}
+
+	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+		if (AndroidUtils.DEBUG) {
+			Log.d(TAG, "onNewIntent " + intent);
+		}
+		if (handleIntent(intent, null)) {
+			return;
+		}
+	}
+	
 	private RemoteProfile[] getRemotesWithLocal() {
 		RemoteProfile[] remotes = appPreferences.getRemotes();
 
