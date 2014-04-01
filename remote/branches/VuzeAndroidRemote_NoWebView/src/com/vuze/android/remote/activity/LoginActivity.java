@@ -37,6 +37,7 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
+import android.util.Log;
 import android.view.*;
 import android.widget.*;
 import android.widget.TextView.OnEditorActionListener;
@@ -53,6 +54,8 @@ public class LoginActivity
 	extends ActionBarActivity
 	implements GenericRemoteProfileListener
 {
+
+	private static final String TAG = "LoginActivity";
 
 	private EditText textAccessCode;
 
@@ -73,7 +76,8 @@ public class LoginActivity
 		Bundle extras = intent.getExtras();
 
 		if (AndroidUtils.DEBUG) {
-			System.out.println("LoginActivity intent = " + getIntent());
+			Log.d(TAG, "LoginActivity intent = " + getIntent() + "/"
+					+ getIntent().getDataString());
 		}
 
 		appPreferences = VuzeRemoteApp.getAppPreferences();
@@ -83,7 +87,6 @@ public class LoginActivity
 		}
 
 		setContentView(R.layout.activity_login);
-
 
 		textAccessCode = (EditText) findViewById(R.id.editTextAccessCode);
 
@@ -152,7 +155,6 @@ public class LoginActivity
 
 		tvLoginGuide.setText(ss);
 	}
-
 
 	@Override
 	public void onConfigurationChanged(Configuration newConfig) {
