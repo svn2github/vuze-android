@@ -26,9 +26,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.astuetz.PagerSlidingTabStrip;
-import com.vuze.android.remote.AndroidUtils;
-import com.vuze.android.remote.R;
-import com.vuze.android.remote.SetTorrentIdListener;
+import com.vuze.android.remote.*;
 import com.vuze.android.remote.activity.TorrentDetailsActivity;
 import com.vuze.android.remote.activity.TorrentViewActivity;
 
@@ -48,6 +46,12 @@ public class TorrentDetailsFragment
 	private TorrentDetailsPagerAdapter pagerAdapter;
 
 	private long torrentID;
+	
+	@Override
+	public void onStart() {
+		super.onStart();
+		VuzeEasyTracker.getInstance(this).activityStart(this, TAG);
+	}
 
 	public View onCreateView(android.view.LayoutInflater inflater,
 			android.view.ViewGroup container, Bundle savedInstanceState) {

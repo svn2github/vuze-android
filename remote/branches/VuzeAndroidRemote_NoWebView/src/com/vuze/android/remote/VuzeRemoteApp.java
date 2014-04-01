@@ -96,8 +96,8 @@ public class VuzeRemoteApp
 		if (AndroidUtils.DEBUG) {
 			Log.d(TAG, "onLowMemory");
 		}
-		super.onLowMemory();
 		SessionInfoManager.clearTorrentCaches(false);
+		super.onLowMemory();
 	}
 	
 	public int pxToDp(int px) {

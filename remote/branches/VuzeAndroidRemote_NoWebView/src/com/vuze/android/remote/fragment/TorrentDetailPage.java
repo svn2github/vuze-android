@@ -42,6 +42,12 @@ public abstract class TorrentDetailPage
 	private boolean viewActive = false;
 
 	@Override
+	public void onStart() {
+		super.onStart();
+		VuzeEasyTracker.getInstance(this).activityStart(this, TAG);
+	}
+
+	@Override
 	public void onResume() {
 		if (AndroidUtils.DEBUG) {
 			logD("onResume, pausedTorrentID=" + pausedTorrentID);
@@ -54,7 +60,7 @@ public abstract class TorrentDetailPage
 		}
 
 		pagerPosition = getArguments().getInt("pagerPosition", pagerPosition);
-		
+
 		boolean active = getArguments().getBoolean("isActive", false);
 		if (active) {
 			pageActivated();
@@ -110,6 +116,9 @@ public abstract class TorrentDetailPage
 		if (sessionInfo != null) {
 			sessionInfo.addRefreshTriggerListener(this);
 		}
+
+		VuzeEasyTracker.getInstance(this).activityStart(this,
+				getClass().getSimpleName());
 	}
 
 	public final void setTorrentID(long id) {
@@ -141,10 +150,10 @@ public abstract class TorrentDetailPage
 		}
 
 		torrentID = id;
-		
+
 		updateTorrentID(torrentID, isTorrent, wasTorrent, torrentIdChanged);
 	}
-	
+
 	private void logD(String s) {
 		Log.d(TAG, getClass().getSimpleName() + "] " + s);
 	}
@@ -152,7 +161,7 @@ public abstract class TorrentDetailPage
 	private void logE(String s) {
 		Log.e(TAG, getClass().getSimpleName() + "] " + s);
 	}
-	
+
 	/**
 	 * refresh request triggered on a timer length set by user.<br>
 	 * Also triggered on {@link #pageActivated()}

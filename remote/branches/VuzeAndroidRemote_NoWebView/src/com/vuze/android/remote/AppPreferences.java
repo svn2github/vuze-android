@@ -188,7 +188,7 @@ public class AppPreferences
 								"Profile",
 								"Created",
 								rp.getRemoteType() == RemoteProfile.TYPE_LOOKUP ? "Vuze"
-										: "Transmission", null).build());
+										: rp.isLocalHost() ? "Local" : "Transmission", null).build());
 			}
 
 		} catch (Throwable t) {

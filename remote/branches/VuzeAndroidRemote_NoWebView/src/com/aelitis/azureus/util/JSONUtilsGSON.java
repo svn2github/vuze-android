@@ -22,7 +22,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 import android.annotation.SuppressLint;
-import android.util.Base64;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -109,11 +108,6 @@ public class JSONUtilsGSON
 		for (Iterator iter = map.keySet().iterator(); iter.hasNext();) {
 			String key = (String) iter.next();
 			Object value = map.get(key);
-
-			if (value instanceof byte[]) {
-				key += ".B64";
-				value = Base64.encode((byte[]) value, Base64.DEFAULT);
-			}
 
 			value = coerce(value);
 

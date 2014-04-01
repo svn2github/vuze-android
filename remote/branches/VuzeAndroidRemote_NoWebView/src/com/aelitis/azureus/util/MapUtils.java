@@ -17,11 +17,9 @@
 
 package com.aelitis.azureus.util;
 
-import java.util.*;
-
-import android.annotation.TargetApi;
-import android.os.Build;
-import android.util.Base64;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author TuxPaper
@@ -107,39 +105,6 @@ public class MapUtils
 		}
 	}
 	
-	@TargetApi(Build.VERSION_CODES.FROYO)
-	public static byte[] getMapByteArray(Map map, String key, byte[] def) {
-		if (map == null) {
-			return def;
-		}
-		try {
-			Object o = map.get(key);
-			if (o instanceof byte[]) {
-				return (byte[]) o;
-			}
-
-			String b64Key = key + ".B64";
-			if (map.containsKey(b64Key)) {
-				o = map.get(b64Key);
-				if (o instanceof String) {
-					return Base64.decode((String) o, Base64.DEFAULT);
-				}
-			}
-
-//			String b32Key = key + ".B32";
-//			if (map.containsKey(b32Key)) {
-//				o = map.get(b32Key);
-//				if (o instanceof String) {
-//					return Base32.decode((String) o);
-//				}
-//			}
-
-			return def;
-		} catch (Throwable t) {
-			return def;
-		}
-	}
-
 	public static Object getMapObject(Map map, String key, Object def, Class cla) {
 		if (map == null) {
 			return def;

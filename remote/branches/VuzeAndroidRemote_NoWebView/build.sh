@@ -20,24 +20,29 @@ else
 fi
 
 DSTDIR=${SRCDIR}-${NEXTVER}
+DSTDIR_APP=${DSTDIR}/VuzeRemoteProject
 rm -rf "${DSTDIR}"
 
-echo Copying ${SRCDIR} to ${DSTDIR}
-
-cp -r "${SRCDIR}" "${DSTDIR}"
-sed -i .bk -e "s/false/true/g" "${DSTDIR}/res/values/analytics.xml"
-sed -i .bk -e "s/DEBUG = true/DEBUG = false/g" "${DSTDIR}/src/com/vuze/android/remote/AndroidUtils.java"
-rm -r "${DSTDIR}/src/com/vuze/android/remote/AndroidUtils.java.bk"
-rm -r "${DSTDIR}/src/com/aelitis/azureus/util/JSONUtilsGSON.java"
-rm -r "${DSTDIR}/libs/gson-2.2.4.jar"
-rm -r "${DSTDIR}/src/com/aelitis/azureus/util/ObjectTypeAdapterLong.java"
-rm -r "${DSTDIR}/bin/"*
-rm -r "${DSTDIR}/gen/"*
-find "${DSTDIR}" -name '.svn' -exec rm -rf {} \;
-find "${DSTDIR}/src" -name '*.txt' -exec rm -rf {} \;
-cd "${DSTDIR}"
+echo Copying ${SRCDIR} to ${DSTDIR_APP}
+mkdir ${DSTDIR}
+cp -r "${SRCDIR}" "${DSTDIR_APP}"
+cp -r "${SRCDIR}/../android-pull-to-refresh" "${DSTDIR}"
+cp -r "${SRCDIR}/../PagerSlidingTabStrip" "${DSTDIR}"
+cp -r "${SRCDIR}/../appcompat" "${DSTDIR}"
+sed -i .bk -e "s/false/true/g" "${DSTDIR_APP}/res/values/analytics.xml"
+sed -i .bk -e "s/DEBUG = true/DEBUG = false/g" "${DSTDIR_APP}/src/com/vuze/android/remote/AndroidUtils.java"
+rm -r "${DSTDIR_APP}/src/com/vuze/android/remote/AndroidUtils.java.bk"
+rm -r "${DSTDIR_APP}/res/values/analytics.xml.bk"
+rm -r "${DSTDIR_APP}/src/com/aelitis/azureus/util/JSONUtilsGSON.java"
+rm -r "${DSTDIR_APP}/src/com/aelitis/azureus/util/ObjectTypeAdapterLong.java"
+rm -r "${DSTDIR_APP}/bin/"*
+rm -r "${DSTDIR_APP}/gen/"*
+find "${DSTDIR_APP}" -name '.svn' -exec rm -rf {} \;
+find "${DSTDIR_APP}/src" -name '*.txt' -exec rm -rf {} \;
+cd "${DSTDIR_APP}"
 android update project --name VuzeAndroidRemote --path .
-ant clean
+ant clean > /dev/null
 ant ${BUILDTYPE}
-cp -f "${DSTDIR}/bin/VuzeAndroidRemote-release.apk" ../VuzeAndroidRemote-${NEXTVER}.apk
+cp -f "${DSTDIR_APP}/bin/VuzeAndroidRemote-release.apk" ${SRCDIR}/../builds/VuzeAndroidRemote-${NEXTVER}.apk
 tar -czf "${DSTDIR}.tar.gz" .
+mv "${DSTDIR}.tar.gz" ${SRCDIR}/../builds

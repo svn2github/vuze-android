@@ -57,7 +57,6 @@ public class VuzeEasyTracker
 		return vuzeEasyTracker;
 	}
 
-
 	public static VuzeEasyTracker getInstance(Fragment fragment) {
 		synchronized (VuzeEasyTracker.class) {
 			if (vuzeEasyTracker == null) {
@@ -73,6 +72,7 @@ public class VuzeEasyTracker
 	 */
 	public void activityStart(Activity activity) {
 
+		easyTracker.set(Fields.SCREEN_NAME, activity.getClass().getSimpleName());
 		MapBuilder mapBuilder = MapBuilder.createAppView().set(Fields.SCREEN_NAME,
 				activity.getClass().getSimpleName());
 		Intent intent = activity.getIntent();
@@ -86,6 +86,7 @@ public class VuzeEasyTracker
 	}
 
 	public void activityStart(Fragment fragment, String name) {
+		easyTracker.set(Fields.SCREEN_NAME, name);
 		MapBuilder mapBuilder = MapBuilder.createAppView().set(Fields.SCREEN_NAME,
 				name);
 		easyTracker.send(mapBuilder.build());

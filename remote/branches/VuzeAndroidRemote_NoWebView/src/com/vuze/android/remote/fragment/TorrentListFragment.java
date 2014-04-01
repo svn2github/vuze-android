@@ -125,6 +125,8 @@ public class TorrentListFragment
 		adapter.registerDataSetObserver(new DataSetObserver() {
 			@Override
 			public void onChanged() {
+				updateTorrentCount(adapter.getCount());
+
 				long[] newSelectedIDs = getSelectedIDs(listview);
 				if (newSelectedIDs.length == 0 && selectedIDs.length == 0) {
 					return;
@@ -172,6 +174,7 @@ public class TorrentListFragment
 						updateSelectedIDs();
 					}
 				}
+				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
 			}
 		});
 
@@ -485,6 +488,12 @@ public class TorrentListFragment
 	}
 
 	@Override
+	public void onStart() {
+		super.onStart();
+		VuzeEasyTracker.getInstance(this).activityStart(this, TAG);
+	}
+
+	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
 		FragmentActivity activity = getActivity();
 		tvFilteringBy = (TextView) activity.findViewById(R.id.wvFilteringBy);
@@ -577,8 +586,6 @@ public class TorrentListFragment
 					return;
 				}
 				adapter.refreshDisplayList();
-				updateTorrentCount(adapter.getCount());
-				AndroidUtils.invalidateOptionsMenuHC(activity, mActionMode);
 			}
 		});
 	}

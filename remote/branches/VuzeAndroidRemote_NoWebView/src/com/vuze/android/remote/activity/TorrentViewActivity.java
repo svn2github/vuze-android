@@ -42,9 +42,10 @@ import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.SearchView.OnQueryTextListener;
 import android.text.Html;
-import android.util.Base64;
 import android.util.Log;
-import android.view.*;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -375,7 +376,7 @@ public class TorrentViewActivity
 		}
 		try {
 			byte[] bs = AndroidUtils.readInputStreamAsByteArray(is);
-			final String metainfo = Base64.encodeToString(bs, Base64.DEFAULT).replaceAll(
+			final String metainfo = jcifs.util.Base64.encode(bs).replaceAll(
 					"[\\r\\n]", "");
 			sessionInfo.executeRpc(new RpcExecuter() {
 				@Override
