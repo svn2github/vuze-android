@@ -35,14 +35,22 @@ rm -r "${DSTDIR_APP}/src/com/vuze/android/remote/AndroidUtils.java.bk"
 rm -r "${DSTDIR_APP}/res/values/analytics.xml.bk"
 rm -r "${DSTDIR_APP}/src/com/aelitis/azureus/util/JSONUtilsGSON.java"
 rm -r "${DSTDIR_APP}/src/com/aelitis/azureus/util/ObjectTypeAdapterLong.java"
-rm -r "${DSTDIR_APP}/bin/"*
-rm -r "${DSTDIR_APP}/gen/"*
 find "${DSTDIR_APP}" -name '.svn' -exec rm -rf {} \;
 find "${DSTDIR_APP}/src" -name '*.txt' -exec rm -rf {} \;
+echo Updating Projects
+cd "${DSTDIR}/android-pull-to-refresh"
+android update project --path .
+cd "${DSTDIR}/PagerSlidingTabStrip"
+android update project --path .
+cd "${DSTDIR}/appcompat"
+android update project --path .
 cd "${DSTDIR_APP}"
 android update project --name VuzeAndroidRemote --path .
+echo Clean
 ant clean > /dev/null
+echo Build
 ant ${BUILDTYPE}
 cp -f "${DSTDIR_APP}/bin/VuzeAndroidRemote-release.apk" ${SRCDIR}/../builds/VuzeAndroidRemote-${NEXTVER}.apk
-tar -czf "${DSTDIR}.tar.gz" .
+cd ${DSTDIR}
+tar -czf "${DSTDIR}.tar.gz" *
 mv "${DSTDIR}.tar.gz" ${SRCDIR}/../builds
