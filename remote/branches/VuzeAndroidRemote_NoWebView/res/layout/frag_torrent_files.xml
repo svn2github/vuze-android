@@ -18,7 +18,6 @@
 		android:fastScrollEnabled="true"
 		ptr:ptrAnimationStyle="flip"
 		ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
-		ptr:ptrShowIndicator="false"
-		tools:ignore="MissingRegistered" />
+		ptr:ptrShowIndicator="false" />
 
 </RelativeLayout>
