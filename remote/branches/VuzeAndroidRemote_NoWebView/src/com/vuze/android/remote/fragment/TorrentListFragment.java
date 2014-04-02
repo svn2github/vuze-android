@@ -987,7 +987,9 @@ public class TorrentListFragment
 
 	private boolean showContextualActions(boolean forceRebuild) {
 		if (mActionMode != null && !forceRebuild) {
-			Log.d(TAG, "showContextualActions: invalidate existing");
+			if (AndroidUtils.DEBUG_MENU) {
+				Log.d(TAG, "showContextualActions: invalidate existing");
+			}
 			mActionMode.invalidate();
 			return false;
 		}
@@ -995,7 +997,9 @@ public class TorrentListFragment
 		// Start the CAB using the ActionMode.Callback defined above
 		FragmentActivity activity = getActivity();
 		if (activity instanceof ActionBarActivity) {
-			Log.d(TAG, "showContextualActions: startAB");
+			if (AndroidUtils.DEBUG_MENU) {
+				Log.d(TAG, "showContextualActions: startAB");
+			}
 			ActionBarActivity abActivity = (ActionBarActivity) activity;
 
 			actionModeBeingReplaced = true;
@@ -1218,6 +1222,9 @@ public class TorrentListFragment
 			int choiceMode = listview.getChoiceMode();
 			mCallback.onTorrentSelectedListener(TorrentListFragment.this,
 					selectedIDs, choiceMode != ListView.CHOICE_MODE_SINGLE);
+		}
+		if (selectedIDs.length == 0 && mActionMode != null) {
+			mActionMode.finish();
 		}
 	}
 
