@@ -26,6 +26,7 @@ import android.os.*;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.view.ActionMode;
 import android.support.v7.view.ActionMode.Callback;
@@ -395,7 +396,7 @@ public class TorrentListFragment
 					// always isChecked, so we can't use it to uncheck
 					// maybe actionmode will help..
 					if (mActionMode == null) {
-						showContextualActions();
+						showContextualActions(false);
 						lastIdClicked = id;
 					} else if (lastIdClicked == id) {
 						listview.setItemChecked(position, false);
@@ -436,8 +437,11 @@ public class TorrentListFragment
 				listview.setItemChecked(position, true);
 				lastIdClicked = id;
 
-				multiChoiceModeListener.onItemCheckedStateChanged(mActionMode,
-						position, id, true);
+				if (listview.getChoiceMode() == ListView.CHOICE_MODE_MULTIPLE) {
+					multiChoiceModeListener.onItemCheckedStateChanged(mActionMode,
+							position, id, true);
+				}
+				AndroidUtils.invalidateOptionsMenuHC(getActivity(), mActionMode);
 				return true;
 			}
 		});
@@ -611,6 +615,12 @@ public class TorrentListFragment
 				inflater.inflate(R.menu.menu_context_torrent_details, menu);
 				mActionMode.setTitle(R.string.context_torrent_title);
 
+				SubMenu subMenu = menu.addSubMenu("Global Actions");
+				subMenu.setIcon(R.drawable.ic_menu_more);
+				MenuItemCompat.setShowAsAction(subMenu.getItem(),
+						MenuItemCompat.SHOW_AS_ACTION_IF_ROOM);
+				getActivity().onCreateOptionsMenu(subMenu);
+
 				return true;
 			}
 
@@ -624,7 +634,7 @@ public class TorrentListFragment
 
 				prepareContextMenu(menu);
 
-				TorrentListFragment.this.onPrepareOptionsMenu(menu);
+				getActivity().onPrepareOptionsMenu(menu);
 
 				AndroidUtils.fixupMenuAlpha(menu);
 
@@ -636,6 +646,9 @@ public class TorrentListFragment
 			public boolean onActionItemClicked(ActionModeWrapper mode, MenuItem item) {
 				if (AndroidUtils.DEBUG_MENU) {
 					Log.d(TAG, "MULTI:onActionItemClicked");
+				}
+				if (getActivity().onOptionsItemSelected(item)) {
+					return true;
 				}
 				if (TorrentListFragment.this.handleFragmentMenuItems(item.getItemId())) {
 					return true;
@@ -872,9 +885,25 @@ public class TorrentListFragment
 			// Called when the action mode is created; startActionMode() was called
 			@Override
 			public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+				if (AndroidUtils.DEBUG_MENU) {
+					Log.d(TAG, "onCreateActionMode");
+				}
+
 				// Inflate a menu resource providing context menu items
 				MenuInflater inflater = mode.getMenuInflater();
 				inflater.inflate(R.menu.menu_context_torrent_details, menu);
+
+				TorrentDetailsFragment frag = (TorrentDetailsFragment) getActivity().getSupportFragmentManager().findFragmentById(
+						R.id.fragment2);
+				if (frag != null) {
+					frag.onCreateActionMode(mode, menu);
+				}
+
+				SubMenu subMenu = menu.addSubMenu("Global Actions");
+				subMenu.setIcon(R.drawable.ic_menu_more);
+				MenuItemCompat.setShowAsAction(subMenu.getItem(),
+						MenuItemCompat.SHOW_AS_ACTION_IF_ROOM);
+				getActivity().onCreateOptionsMenu(subMenu);
 
 				return true;
 			}
@@ -883,10 +912,17 @@ public class TorrentListFragment
 			// may be called multiple times if the mode is invalidated.
 			@Override
 			public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-				//System.out.println("onPrepareActionMode in frag");
+				if (AndroidUtils.DEBUG_MENU) {
+					Log.d(TAG, "onPrepareActionMode");
+				}
 				prepareContextMenu(menu);
 
-				TorrentListFragment.this.onPrepareOptionsMenu(menu);
+				TorrentDetailsFragment frag = (TorrentDetailsFragment) getActivity().getSupportFragmentManager().findFragmentById(
+						R.id.fragment2);
+				if (frag != null) {
+					frag.onPrepareActionMode(mode, menu);
+				}
+				getActivity().onPrepareOptionsMenu(menu);
 
 				AndroidUtils.fixupMenuAlpha(menu);
 
@@ -898,6 +934,16 @@ public class TorrentListFragment
 			public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
 				if (TorrentListFragment.this.handleFragmentMenuItems(item.getItemId())) {
 					return true;
+				}
+				if (getActivity().onOptionsItemSelected(item)) {
+					return true;
+				}
+				TorrentDetailsFragment frag = (TorrentDetailsFragment) getActivity().getSupportFragmentManager().findFragmentById(
+						R.id.fragment2);
+				if (frag != null) {
+					if (frag.onActionItemClicked(mode, item)) {
+						return true;
+					}
 				}
 				return false;
 			}
@@ -939,8 +985,9 @@ public class TorrentListFragment
 		menuStop.setVisible(canStop);
 	}
 
-	private boolean showContextualActions() {
-		if (mActionMode != null) {
+	private boolean showContextualActions(boolean forceRebuild) {
+		if (mActionMode != null && !forceRebuild) {
+			Log.d(TAG, "showContextualActions: invalidate existing");
 			mActionMode.invalidate();
 			return false;
 		}
@@ -948,13 +995,17 @@ public class TorrentListFragment
 		// Start the CAB using the ActionMode.Callback defined above
 		FragmentActivity activity = getActivity();
 		if (activity instanceof ActionBarActivity) {
+			Log.d(TAG, "showContextualActions: startAB");
 			ActionBarActivity abActivity = (ActionBarActivity) activity;
 
+			actionModeBeingReplaced = true;
 			ActionMode am = abActivity.startSupportActionMode(mActionModeCallback);
+			actionModeBeingReplaced = false;
 			mActionMode = new ActionModeWrapper(am);
 			mActionMode.setSubtitle(R.string.multi_select_tip);
 			mActionMode.setTitle(R.string.context_torrent_title);
 		}
+
 		return true;
 	}
 
@@ -1086,7 +1137,7 @@ public class TorrentListFragment
 	public void actionModeBeingReplacedDone() {
 		if (rebuildActionMode) {
 			rebuildActionMode = false;
-			showContextualActions();
+			showContextualActions(false);
 		}
 	}
 
@@ -1169,4 +1220,10 @@ public class TorrentListFragment
 					selectedIDs, choiceMode != ListView.CHOICE_MODE_SINGLE);
 		}
 	}
+
+	@Override
+	public void rebuildActionMode() {
+		showContextualActions(true);
+	}
+
 }
