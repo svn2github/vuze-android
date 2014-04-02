@@ -22,6 +22,7 @@ import java.util.Map;
 
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.util.Log;
 import android.view.*;
 import android.widget.ListView;
 
@@ -123,6 +124,9 @@ public class PeersFragment
 
 	@Override
 	public void triggerRefresh() {
+		if (torrentID < 0) {
+			return;
+		}
 		sessionInfo.executeRpc(new RpcExecuter() {
 			@Override
 			public void executeRpc(TransmissionRPC rpc) {
@@ -145,9 +149,26 @@ public class PeersFragment
 
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-		inflater.inflate(R.menu.menu_torrent_connections, menu);
-
 		super.onCreateOptionsMenu(menu, inflater);
+
+		if (AndroidUtils.DEBUG_MENU) {
+			Log.d(TAG, "onCreateOptionsMenu " + torrentID + "/" + menu + " via "
+					+ AndroidUtils.getCompressedStackTrace());
+		}
+		inflater.inflate(R.menu.menu_torrent_connections, menu);
+	}
+
+	@Override
+	public void onPrepareOptionsMenu(Menu menu) {
+		if (AndroidUtils.DEBUG_MENU) {
+			Log.d(TAG, "onPrepareOptionsMenu " + torrentID);
+		}
+
+		MenuItem menuItem = menu.findItem(R.id.action_update_tracker);
+		if (menuItem != null) {
+			menuItem.setVisible(torrentID >= 0);
+		}
+		super.onPrepareOptionsMenu(menu);
 	}
 
 	@Override
