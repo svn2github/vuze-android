@@ -22,8 +22,9 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.support.v7.view.ActionMode;
 import android.util.Log;
-import android.view.View;
+import android.view.*;
 
 import com.astuetz.PagerSlidingTabStrip;
 import com.vuze.android.remote.*;
@@ -46,7 +47,7 @@ public class TorrentDetailsFragment
 	private TorrentDetailsPagerAdapter pagerAdapter;
 
 	private long torrentID;
-	
+
 	@Override
 	public void onStart() {
 		super.onStart();
@@ -58,6 +59,8 @@ public class TorrentDetailsFragment
 
 		View view = inflater.inflate(R.layout.frag_torrent_details, container,
 				false);
+
+		setHasOptionsMenu(true);
 
 		mViewPager = (ViewPager) view.findViewById(R.id.pager);
 		pagerAdapter = new TorrentDetailsPagerAdapter(getFragmentManager(),
@@ -120,7 +123,7 @@ public class TorrentDetailsFragment
 			l.pageActivated();
 		}
 	}
-	
+
 	@Override
 	public void onPause() {
 		Fragment newFrag = pagerAdapter.findFragmentByPosition(
@@ -147,5 +150,43 @@ public class TorrentDetailsFragment
 				}
 			}
 		});
+	}
+
+	public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+		MenuInflater inflater = mode.getMenuInflater();
+		List<Fragment> fragments = getFragmentManager().getFragments();
+		for (Fragment frag : fragments) {
+			if (frag instanceof FragmentPagerListener) {
+				if (frag.hasOptionsMenu()) {
+					frag.onCreateOptionsMenu(menu, inflater);
+				}
+			}
+		}
+		return true;
+	}
+
+	public void onPrepareActionMode(ActionMode mode, Menu menu) {
+		List<Fragment> fragments = getFragmentManager().getFragments();
+		for (Fragment frag : fragments) {
+			if (frag instanceof FragmentPagerListener) {
+				if (frag.hasOptionsMenu()) {
+					frag.onPrepareOptionsMenu(menu);
+				}
+			}
+		}
+	}
+
+	public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+		List<Fragment> fragments = getFragmentManager().getFragments();
+		for (Fragment frag : fragments) {
+			if (frag instanceof FragmentPagerListener) {
+				if (frag.hasOptionsMenu()) {
+					if (frag.onOptionsItemSelected(item)) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
 	}
 }
