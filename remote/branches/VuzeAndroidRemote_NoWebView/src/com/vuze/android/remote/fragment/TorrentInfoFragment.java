@@ -101,6 +101,9 @@ public class TorrentInfoFragment
 
 	@Override
 	public void triggerRefresh() {
+		if (torrentID < 0) {
+			return;
+		}
 		synchronized (mLock) {
 			if (refreshing) {
 				if (AndroidUtils.DEBUG) {
