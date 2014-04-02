@@ -765,6 +765,10 @@ public class TransmissionRPC
 
 			@Override
 			public void rpcSuccess(String id, Map<?, ?> optionalMap) {
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+				}
 				getRecentTorrents(id, null);
 				if (listener != null) {
 					listener.rpcSuccess(id, optionalMap);
