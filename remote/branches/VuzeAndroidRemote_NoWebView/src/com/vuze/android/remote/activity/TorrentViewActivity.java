@@ -294,6 +294,7 @@ public class TorrentViewActivity
 		if (AndroidUtils.DEBUG_MENU) {
 			Log.d(TAG, "InvalidateOptionsMenu Called");
 		}
+
 		super.supportInvalidateOptionsMenu();
 	}
 
@@ -615,13 +616,15 @@ public class TorrentViewActivity
 
 		if (sessionSettings != null) {
 			MenuItem menuRefresh = menu.findItem(R.id.action_refresh);
-			boolean refreshVisible = false;
-			if (!remoteProfile.isUpdateIntervalEnabled()
-					|| remoteProfile.getUpdateInterval() >= 45) {
-				refreshVisible = true;
+			if (menuRefresh != null) {
+				boolean refreshVisible = false;
+				if (!remoteProfile.isUpdateIntervalEnabled()
+						|| remoteProfile.getUpdateInterval() >= 45) {
+					refreshVisible = true;
+				}
+				menuRefresh.setVisible(refreshVisible);
+				menuRefresh.setEnabled(!disableRefreshButton);
 			}
-			menuRefresh.setVisible(refreshVisible);
-			menuRefresh.setEnabled(!disableRefreshButton);
 		}
 
 		MenuItem menuSearch = menu.findItem(R.id.action_search);
@@ -629,9 +632,10 @@ public class TorrentViewActivity
 			menuSearch.setEnabled(VuzeRemoteApp.getNetworkState().isOnline());
 		}
 
-		AndroidUtils.fixupMenuAlpha(menu);
+		super.onPrepareOptionsMenu(menu);
 
-		return super.onPrepareOptionsMenu(menu);
+		AndroidUtils.fixupMenuAlpha(menu);
+		return true;
 	}
 
 	private void setupSearchView(MenuItem searchItem) {
@@ -897,5 +901,14 @@ public class TorrentViewActivity
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
+	}
+
+	@Override
+	public void rebuildActionMode() {
+		TorrentListFragment frag = (TorrentListFragment) getSupportFragmentManager().findFragmentById(
+				R.id.fragment1);
+		if (frag != null) {
+			frag.rebuildActionMode();
+		}
 	}
 }
