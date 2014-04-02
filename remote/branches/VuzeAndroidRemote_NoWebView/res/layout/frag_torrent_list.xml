@@ -24,11 +24,12 @@
 		android:id="@+id/listTorrents"
 		android:layout_width="fill_parent"
 		android:layout_height="fill_parent"
-		android:fastScrollEnabled="true"
 		android:choiceMode="multipleChoice"
+		android:fastScrollEnabled="true"
 		ptr:ptrAnimationStyle="flip"
 		ptr:ptrHeaderTextAppearance="@style/ShadowStyle"
+		ptr:ptrShowIndicator="false"
 		ptr:ptrViewRefeshableViewProgressBarOnCenterWhileRefreshingEnabled="true"
-		ptr:ptrShowIndicator="false" />
+		tools:ignore="MissingRegistered" />
 
 </LinearLayout>
