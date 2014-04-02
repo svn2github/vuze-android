@@ -685,14 +685,18 @@ public class AndroidUtils
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				if (activity.isFinishing()) {
+					return;
+				}
+				if (mActionMode != null) {
+					mActionMode.invalidate();
+					return;
+				}
 				if (activity instanceof FragmentActivity) {
 					FragmentActivity aba = (FragmentActivity) activity;
 					aba.supportInvalidateOptionsMenu();
 				} else {
 					ActivityCompat.invalidateOptionsMenu(activity);
-				}
-				if (mActionMode != null) {
-					mActionMode.invalidate();
 				}
 			}
 		});
@@ -933,4 +937,23 @@ public class AndroidUtils
 				"([;\\]])([^\\s])", "$1\u200B$2");
 	}
 
+	public static String getCompressedStackTrace() {
+		try {
+			throw new Exception();
+		} catch (Exception e) {
+			String s = "";
+			StackTraceElement[] stackTrace = e.getStackTrace();
+			if (stackTrace.length < 4) {
+				return "";
+			}
+			for (int i = 1; i < stackTrace.length - 3; i++) {
+				StackTraceElement element = stackTrace[i];
+				String classname = element.getClassName();
+				String cnShort = classname.substring(classname.lastIndexOf(".") + 1);
+				s += cnShort + "::" + element.getMethodName() + "::"
+						+ element.getLineNumber() + ", ";
+			}
+			return s;
+		}
+	}
 }
