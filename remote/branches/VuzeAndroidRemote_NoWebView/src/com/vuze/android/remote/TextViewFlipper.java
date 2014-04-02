@@ -59,7 +59,9 @@ public class TextViewFlipper
 						}
 						return;
 					}
-					Log.d("flipper", meh(tv) + "] changeText: setting to " + newText);
+					if (DEBUG_FLIPPER) {
+						Log.d("flipper", meh(tv) + "] changeText: setting to " + newText);
+					}
 					tv.setText(newText);
 					tv.setVisibility(newText.length() == 0 ? View.GONE : View.VISIBLE);
 				}
@@ -76,8 +78,10 @@ public class TextViewFlipper
 				animId);
 		// Some Android versions won't animate when view is GONE
 		if (view.getVisibility() == View.GONE) {
-			Log.d("flipper", meh(view)
-					+ "] changeText: view gone.. need to make visible");
+			if (DEBUG_FLIPPER) {
+				Log.d("flipper", meh(view)
+						+ "] changeText: view gone.. need to make visible");
+			}
 			if (view instanceof TextView) {
 				// Some Android versions won't animate when text is ""
 				((TextView) view).setText(" ");
