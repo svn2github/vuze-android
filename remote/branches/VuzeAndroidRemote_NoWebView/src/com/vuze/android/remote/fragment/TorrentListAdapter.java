@@ -122,6 +122,8 @@ public class TorrentListAdapter
 
 	private TorrentListRowFiller torrentListRowFiller;
 
+	private boolean isRefreshing;
+
 	public TorrentListAdapter(Context context) {
 		this.context = context;
 
@@ -237,6 +239,10 @@ public class TorrentListAdapter
 
 		@Override
 		protected FilterResults performFiltering(CharSequence _constraint) {
+			synchronized (mLock) {
+				isRefreshing = false;
+			}
+
 			this.constraint = _constraint == null ? null
 					: _constraint.toString().toLowerCase(Locale.US);
 			FilterResults results = new FilterResults();
@@ -328,6 +334,15 @@ public class TorrentListAdapter
 	}
 
 	public void refreshDisplayList() {
+		synchronized (mLock) {
+			if (isRefreshing) {
+				if (AndroidUtils.DEBUG) {
+					Log.d(TAG, "skipped refreshDisplayList");
+				}
+				return;
+			}
+			isRefreshing = true;
+		}
 		getFilter().refilter();
 	}
 
