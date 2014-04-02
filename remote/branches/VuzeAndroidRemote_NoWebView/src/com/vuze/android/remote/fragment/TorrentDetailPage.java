@@ -17,9 +17,11 @@
 package com.vuze.android.remote.fragment;
 
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 
 import com.vuze.android.remote.*;
+import com.vuze.android.remote.activity.TorrentViewActivity;
 import com.vuze.android.remote.fragment.TorrentDetailsPagerAdapter.PagerPosition;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 
@@ -61,6 +63,14 @@ public abstract class TorrentDetailPage
 
 		pagerPosition = getArguments().getInt("pagerPosition", pagerPosition);
 
+		if (hasOptionsMenu()) {
+			FragmentActivity activity = getActivity();
+			if (activity instanceof ActionModeBeingReplacedListener) {
+				TorrentViewActivity tva = (TorrentViewActivity) activity;
+				tva.rebuildActionMode();
+			}
+		}
+
 		boolean active = getArguments().getBoolean("isActive", false);
 		if (active) {
 			pageActivated();
@@ -93,6 +103,10 @@ public abstract class TorrentDetailPage
 		} else {
 			logD("No sessionInfo " + torrentID);
 		}
+
+		if (hasOptionsMenu()) {
+			AndroidUtils.invalidateOptionsMenuHC(getActivity());
+		}
 	}
 
 	@Override
@@ -122,19 +136,21 @@ public abstract class TorrentDetailPage
 	}
 
 	public final void setTorrentID(long id) {
-		if (!viewActive && id != -1) {
-			if (AndroidUtils.DEBUG) {
-				logE("setTorrentID: view not Active " + torrentID);
+		if (id != -1) {
+			if (!viewActive) {
+				if (AndroidUtils.DEBUG) {
+					logE("setTorrentID: view not Active " + torrentID);
+				}
+				pausedTorrentID = id;
+				return;
 			}
-			pausedTorrentID = id;
-			return;
-		}
-		if (getActivity() == null) {
-			if (AndroidUtils.DEBUG) {
-				logE("setTorrentID: No Activity");
+			if (getActivity() == null) {
+				if (AndroidUtils.DEBUG) {
+					logE("setTorrentID: No Activity");
+				}
+				pausedTorrentID = id;
+				return;
 			}
-			pausedTorrentID = id;
-			return;
 		}
 
 		boolean wasTorrent = torrentID >= 0;
