@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<!--
+        Base application theme, dependent on API level. This theme is replaced
+        by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
+	-->
+	<style name="AppBaseTheme" parent="@style/Theme.AppCompat.Light.DarkActionBar">
+		<!--
+            Theme customizations available in newer API levels can go in
+            res/values-vXX/styles.xml, while customizations related to
+            backward-compatibility can go here.
+		-->
+	</style>
+
+	<!-- Application theme. -->
+	<style name="AppTheme" parent="AppBaseTheme">
+
+		<!-- All customizations that are NOT specific to a particular API-level can go here. -->
+		<item name="buttonStyleToggleSwitch">@style/ButtonToggleSwitchStyle</item>
+	</style>
+
+	<style name="AppThemeNoBackground" parent="AppTheme">
+		<item name="android:background">@null</item>
+		<item name="background">@null</item>
+	</style>
+
+	<style name="ShadowStyle">
+		<item name="android:paddingLeft">4dp</item>
+		<item name="android:paddingBottom">4dp</item>
+		<item name="android:textColor">#444</item>
+		<item name="android:shadowColor">#80404040</item>
+		<item name="android:shadowDx">1</item>
+		<item name="android:shadowDy">1</item>
+		<item name="android:shadowRadius">1</item>
+	</style>
+
+	<!-- ToggleButton style. -->
+	<attr name="buttonStyleToggleSwitch" format="reference" />
+
+	<style name="ButtonToggleSwitchStyle">
+		<item name="android:background">@drawable/toggletoswitch</item>
+		<item name="android:textOn">ON</item>
+		<item name="android:textOff">OFF</item>
+		<item name="android:paddingLeft">10dp</item>
+		<item name="android:paddingRight">10dp</item>
+		<item name="android:disabledAlpha">?android:attr/disabledAlpha</item>
+		<item name="android:textAppearance">?android:attr/textAppearanceSmall</item>
+	</style>
+	
+	<style name="ActionBarTextStyle" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title.Inverse"></style>
+
+	<bool name="showTorrentDetailsActivity">true</bool>
+
+</resources>
