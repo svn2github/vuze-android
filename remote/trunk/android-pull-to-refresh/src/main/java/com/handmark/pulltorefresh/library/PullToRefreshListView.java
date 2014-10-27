@@ -23,6 +23,7 @@ import android.graphics.Canvas;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -65,15 +66,22 @@ public class PullToRefreshListView extends PullToRefreshAdapterViewBase<ListView
 
 	@Override
 	protected void onRefreshing(final boolean doScroll) {
+		ListAdapter adapter = mRefreshableView.getAdapter();
 		/**
-		 * If we're not showing the Refreshing view, or the list is empty, the
+		 * Don't let ptrListView do refreshing if adapter is null.
+		 */
+		if (null == adapter) {
+			Log.d(PullToRefreshListView.class.getSimpleName(), "Please set an adapter for PullToRefreshListView");
+			return;
+		}
+		/**
+		 * If we're not showing the Refreshing view, the
 		 * the header/footer views won't show so we use the normal method.
 		 */
-		ListAdapter adapter = mRefreshableView.getAdapter();
 		/*
-		if (!mListViewExtrasEnabled || !getShowViewWhileRefreshing() || null == adapter || adapter.isEmpty() || getCurrentMode() == Mode.GOOGLE_STYLE) {
+		if (!mListViewExtrasEnabled || !getShowViewWhileRefreshing() || getCurrentMode() == Mode.GOOGLE_STYLE) {
 		*/
-		if (!mListViewExtrasEnabled || !getShowViewWhileRefreshing() || null == adapter || adapter.isEmpty()) {
+		if (!mListViewExtrasEnabled || !getShowViewWhileRefreshing()) {
 			super.onRefreshing(doScroll);
 			return;
 		}

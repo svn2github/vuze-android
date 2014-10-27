@@ -1083,6 +1083,10 @@ public abstract class PullToRefreshBase<T extends View> extends LinearLayout imp
 
 		super.onSizeChanged(w, h, oldw, oldh);
 
+		// Skip if this view is loaded from preview mode of IDE
+		if (isInEditMode()) {
+			return;
+		}
 		// We need to update the header/footer when our size changes
 		refreshLoadingViewsSize();
 
@@ -1317,6 +1321,10 @@ public abstract class PullToRefreshBase<T extends View> extends LinearLayout imp
 	 */
 	/*
 	protected void updateUIForGoogleStyleMode() {
+	    // Skip if this view is loaded from preview mode of IDE
+		if (isInEditMode()) {
+			return;
+		}
 		if ( mWindowAttached == false ) {
 			return;
 		}
@@ -1385,6 +1393,13 @@ public abstract class PullToRefreshBase<T extends View> extends LinearLayout imp
 
 	@SuppressWarnings("deprecation")
 	private void init(Context context, AttributeSet attrs) {
+		// Skip if this view is loaded from preview mode of IDE
+		if (isInEditMode()) {
+			// Create the refreshable view and finish the initialization
+			mRefreshableView = createRefreshableView(context, attrs);
+			addRefreshableView(context, mRefreshableView);
+			return;
+		}
 		// PullToRefreshXmlConfiguration must be initialized.
 		PullToRefreshXmlConfiguration.getInstance().init(context);
 		/**
@@ -1669,6 +1684,10 @@ public abstract class PullToRefreshBase<T extends View> extends LinearLayout imp
      *
 	private void initTopViewGroup() {
 
+		// Skip if this view is loaded from preview mode of IDE
+		if (isInEditMode()) {
+			return;
+		}
         if ( mMode.showGoogleStyle() == false ) {
             return;
         }
