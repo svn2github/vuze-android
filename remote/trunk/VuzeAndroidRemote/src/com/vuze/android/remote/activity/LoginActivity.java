@@ -217,20 +217,17 @@ public class LoginActivity
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 
-		switch (item.getItemId()) {
-			case R.id.action_adv_login: {
-				DialogFragmentGenericRemoteProfile dlg = new DialogFragmentGenericRemoteProfile();
-				AndroidUtils.showDialog(dlg, getSupportFragmentManager(),
-						"GenericRemoteProfile");
-
-				return true;
-			}
-			case R.id.action_about: {
-				DialogFragmentAbout dlg = new DialogFragmentAbout();
-				AndroidUtils.showDialog(dlg, getSupportFragmentManager(),
-						"About");
-				return true;
-			}
+		int itemId = item.getItemId();
+		if (itemId == R.id.action_adv_login) {
+			DialogFragmentGenericRemoteProfile dlg = new DialogFragmentGenericRemoteProfile();
+			AndroidUtils.showDialog(dlg, getSupportFragmentManager(),
+					"GenericRemoteProfile");
+			return true;
+		} else if (itemId == R.id.action_about) {
+			DialogFragmentAbout dlg = new DialogFragmentAbout();
+			AndroidUtils.showDialog(dlg, getSupportFragmentManager(),
+					"About");
+			return true;
 		}
 
 		return super.onOptionsItemSelected(item);

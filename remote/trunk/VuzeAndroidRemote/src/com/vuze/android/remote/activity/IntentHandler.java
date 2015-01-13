@@ -289,24 +289,20 @@ public class IntentHandler
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 
-		switch (item.getItemId()) {
-			case R.id.action_add_profile: {
-				Intent myIntent = new Intent(getIntent());
-				myIntent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-				myIntent.setClass(IntentHandler.this, LoginActivity.class);
-
-				startActivity(myIntent);
-				return true;
-			}
-			case R.id.action_adv_login: {
-				return AndroidUtils.showDialog(
-						new DialogFragmentGenericRemoteProfile(),
-						getSupportFragmentManager(), "GenericRemoteProfile");
-			}
-			case R.id.action_about: {
-				return AndroidUtils.showDialog(new DialogFragmentAbout(),
-						getSupportFragmentManager(), "About");
-			}
+		int itemId = item.getItemId();
+		if (itemId == R.id.action_add_profile) {
+			Intent myIntent = new Intent(getIntent());
+			myIntent.setFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+			myIntent.setClass(IntentHandler.this, LoginActivity.class);
+			startActivity(myIntent);
+			return true;
+		} else if (itemId == R.id.action_adv_login) {
+			return AndroidUtils.showDialog(
+					new DialogFragmentGenericRemoteProfile(),
+					getSupportFragmentManager(), "GenericRemoteProfile");
+		} else if (itemId == R.id.action_about) {
+			return AndroidUtils.showDialog(new DialogFragmentAbout(),
+					getSupportFragmentManager(), "About");
 		}
 
 		return super.onOptionsItemSelected(item);
@@ -342,27 +338,25 @@ public class IntentHandler
 
 		final RemoteProfile remoteProfile = (RemoteProfile) item;
 
-		switch (menuitem.getItemId()) {
-			case R.id.action_edit_pref:
-				editProfile(remoteProfile);
-
-				return true;
-			case R.id.action_delete_pref:
-				new AlertDialog.Builder(this).setTitle("Remove Profile?").setMessage(
-						"Configuration settings for profile '" + remoteProfile.getNick()
-								+ "' will be deleted.").setPositiveButton("Remove",
-						new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int which) {
-								appPreferences.removeRemoteProfile(remoteProfile.getID());
-								adapter.refreshList();
-							}
-						}).setNegativeButton(android.R.string.cancel,
-						new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int which) {
-							}
-						}).setIcon(android.R.drawable.ic_dialog_alert).show();
-
-				return true;
+		int itemId = menuitem.getItemId();
+		if (itemId == R.id.action_edit_pref) {
+			editProfile(remoteProfile);
+			return true;
+		} else if (itemId == R.id.action_delete_pref) {
+			new AlertDialog.Builder(this).setTitle("Remove Profile?").setMessage(
+					"Configuration settings for profile '" + remoteProfile.getNick()
+							+ "' will be deleted.").setPositiveButton("Remove",
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int which) {
+							appPreferences.removeRemoteProfile(remoteProfile.getID());
+							adapter.refreshList();
+						}
+					}).setNegativeButton(android.R.string.cancel,
+					new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int which) {
+						}
+					}).setIcon(android.R.drawable.ic_dialog_alert).show();
+			return true;
 		}
 		return super.onContextItemSelected(menuitem);
 	}

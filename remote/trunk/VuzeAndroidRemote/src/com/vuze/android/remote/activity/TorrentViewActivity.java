@@ -388,135 +388,109 @@ public class TorrentViewActivity
 		if (isFinishing()) {
 			return true;
 		}
-		switch (itemId) {
-			case android.R.id.home:
+		if (itemId == android.R.id.home) {
+			Intent upIntent = NavUtils.getParentActivityIntent(this);
+			if (NavUtils.shouldUpRecreateTask(this, upIntent)) {
+				upIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-				Intent upIntent = NavUtils.getParentActivityIntent(this);
-				if (NavUtils.shouldUpRecreateTask(this, upIntent)) {
-					upIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-					// This activity is NOT part of this app's task, so create a new task
-					// when navigating up, with a synthesized back stack.
-					TaskStackBuilder.create(this)
-					// Add all of this activity's parents to the back stack
-					.addNextIntentWithParentStack(upIntent)
-					// Navigate up to the closest parent
-					.startActivities();
-					finish();
-				} else {
-					upIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-					startActivity(upIntent);
-					finish();
-					// Opens parent with FLAG_ACTIVITY_CLEAR_TOP
-					// Note: navigateUpFromSameTask and navigateUpTo doesn't set FLAG_ACTIVITY_CLEAR_TOP on JellyBean
-					//NavUtils.navigateUpFromSameTask(this);
-					//NavUtils.navigateUpTo(this, upIntent);
-				}
-				return true;
-			case R.id.action_settings: {
-				return DialogFragmentSessionSettings.openDialog(
-						getSupportFragmentManager(), sessionInfo);
-			}
-			case R.id.action_add_torrent: {
-				DialogFragmentOpenTorrent dlg = new DialogFragmentOpenTorrent();
-				AndroidUtils.showDialog(dlg, getSupportFragmentManager(),
-						"OpenTorrentDialog");
-				break;
-			}
-
-			case R.id.action_search:
-				onSearchRequested();
-				return true;
-
-			case R.id.action_logout: {
-				new RemoteUtils(TorrentViewActivity.this).openRemoteList();
-				SessionInfoManager.removeSessionInfo(remoteProfile.getID());
+				// This activity is NOT part of this app's task, so create a new task
+				// when navigating up, with a synthesized back stack.
+				TaskStackBuilder.create(this)
+				// Add all of this activity's parents to the back stack
+				.addNextIntentWithParentStack(upIntent)
+				// Navigate up to the closest parent
+				.startActivities();
 				finish();
-				return true;
+			} else {
+				upIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+				startActivity(upIntent);
+				finish();
+				// Opens parent with FLAG_ACTIVITY_CLEAR_TOP
+				// Note: navigateUpFromSameTask and navigateUpTo doesn't set FLAG_ACTIVITY_CLEAR_TOP on JellyBean
+				//NavUtils.navigateUpFromSameTask(this);
+				//NavUtils.navigateUpTo(this, upIntent);
 			}
-
-			case R.id.action_start_all: {
-				if (sessionInfo == null) {
-					return false;
+			return true;
+		} else if (itemId == R.id.action_settings) {
+			return DialogFragmentSessionSettings.openDialog(
+					getSupportFragmentManager(), sessionInfo);
+		} else if (itemId == R.id.action_add_torrent) {
+			DialogFragmentOpenTorrent dlg = new DialogFragmentOpenTorrent();
+			AndroidUtils.showDialog(dlg, getSupportFragmentManager(),
+					"OpenTorrentDialog");
+		} else if (itemId == R.id.action_search) {
+			onSearchRequested();
+			return true;
+		} else if (itemId == R.id.action_logout) {
+			new RemoteUtils(TorrentViewActivity.this).openRemoteList();
+			SessionInfoManager.removeSessionInfo(remoteProfile.getID());
+			finish();
+			return true;
+		} else if (itemId == R.id.action_start_all) {
+			if (sessionInfo == null) {
+				return false;
+			}
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.startTorrents(TAG, null, false, null);
 				}
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.startTorrents(TAG, null, false, null);
-					}
-				});
-
-				return true;
+			});
+			return true;
+		} else if (itemId == R.id.action_stop_all) {
+			if (sessionInfo == null) {
+				return false;
 			}
-
-			case R.id.action_stop_all: {
-				if (sessionInfo == null) {
-					return false;
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.stopTorrents(TAG, null, null);
 				}
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.stopTorrents(TAG, null, null);
-					}
-				});
-
-				return true;
+			});
+			return true;
+		} else if (itemId == R.id.action_refresh) {
+			if (sessionInfo == null) {
+				return false;
 			}
-
-			case R.id.action_refresh: {
-				if (sessionInfo == null) {
-					return false;
+			sessionInfo.triggerRefresh(true, null);
+			disableRefreshButton = true;
+			invalidateOptionsMenuHC();
+			new Timer().schedule(new TimerTask() {
+				public void run() {
+					disableRefreshButton = false;
+					invalidateOptionsMenuHC();
 				}
-				sessionInfo.triggerRefresh(true, null);
-
-				disableRefreshButton = true;
-				invalidateOptionsMenuHC();
-
-				new Timer().schedule(new TimerTask() {
-					public void run() {
-						disableRefreshButton = false;
-						invalidateOptionsMenuHC();
-					}
-				}, 10000);
-				return true;
+			}, 10000);
+			return true;
+		} else if (itemId == R.id.action_about) {
+			DialogFragmentAbout dlg = new DialogFragmentAbout();
+			AndroidUtils.showDialog(dlg, getSupportFragmentManager(), "About");
+			return true;
+		} else if (itemId == R.id.action_rate) {
+			final String appPackageName = getPackageName();
+			try {
+				startActivity(new Intent(Intent.ACTION_VIEW,
+						Uri.parse("market://details?id=" + appPackageName)));
+			} catch (android.content.ActivityNotFoundException anfe) {
+				startActivity(new Intent(Intent.ACTION_VIEW,
+						Uri.parse("http://play.google.com/store/apps/details?id="
+								+ appPackageName)));
 			}
-
-			case R.id.action_about: {
-				DialogFragmentAbout dlg = new DialogFragmentAbout();
-				AndroidUtils.showDialog(dlg, getSupportFragmentManager(), "About");
-				return true;
-			}
-
-			case R.id.action_rate: {
-				final String appPackageName = getPackageName();
-				try {
-					startActivity(new Intent(Intent.ACTION_VIEW,
-							Uri.parse("market://details?id=" + appPackageName)));
-				} catch (android.content.ActivityNotFoundException anfe) {
-					startActivity(new Intent(Intent.ACTION_VIEW,
-							Uri.parse("http://play.google.com/store/apps/details?id="
-									+ appPackageName)));
-				}
-				VuzeEasyTracker.getInstance(this).sendEvent("uiAction", "Rating",
-						"StoreClick", null);
-				return true;
-			}
-
-			case R.id.action_forum: {
-				String url = "http://www.vuze.com/forums/android-remote";
-				Intent i = new Intent(Intent.ACTION_VIEW);
-				i.setData(Uri.parse(url));
-				startActivity(i);
-				return true;
-			}
-
-			case R.id.action_vote: {
-				String url = "http://vote.vuze.com/forums/227649";
-				Intent i = new Intent(Intent.ACTION_VIEW);
-				i.setData(Uri.parse(url));
-				startActivity(i);
-				return true;
-			}
+			VuzeEasyTracker.getInstance(this).sendEvent("uiAction", "Rating",
+					"StoreClick", null);
+			return true;
+		} else if (itemId == R.id.action_forum) {
+			String url = "http://www.vuze.com/forums/android-remote";
+			Intent i = new Intent(Intent.ACTION_VIEW);
+			i.setData(Uri.parse(url));
+			startActivity(i);
+			return true;
+		} else if (itemId == R.id.action_vote) {
+			String url = "http://vote.vuze.com/forums/227649";
+			Intent i = new Intent(Intent.ACTION_VIEW);
+			i.setData(Uri.parse(url));
+			startActivity(i);
+			return true;
 		}
 		return false;
 	}

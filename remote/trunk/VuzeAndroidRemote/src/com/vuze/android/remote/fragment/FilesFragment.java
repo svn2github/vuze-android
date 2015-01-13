@@ -653,99 +653,86 @@ public class FilesFragment
 		if (sessionInfo == null || torrentID < 0) {
 			return false;
 		}
-		switch (itemId) {
-			case R.id.action_sel_launch: {
-				Map<?, ?> selectedFile = getSelectedFile();
-				if (selectedFile == null) {
-					return false;
+		if (itemId == R.id.action_sel_launch) {
+			Map<?, ?> selectedFile = getSelectedFile();
+			if (selectedFile == null) {
+				return false;
+			}
+			return launchLocalFile(selectedFile);
+		} else if (itemId == R.id.action_sel_launch_stream) {
+			Map<?, ?> selectedFile = getSelectedFile();
+			if (selectedFile == null) {
+				return false;
+			}
+			return streamFile(selectedFile);
+		} else if (itemId == R.id.action_sel_save) {
+			Map<?, ?> selectedFile = getSelectedFile();
+			return saveFile(selectedFile);
+		} else if (itemId == R.id.action_sel_wanted) {
+			showProgressBar();
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.setWantState(TAG, torrentID, new int[] {
+						selectedFileIndex
+					}, true, null);
 				}
-				return launchLocalFile(selectedFile);
-			}
-			case R.id.action_sel_launch_stream: {
-				Map<?, ?> selectedFile = getSelectedFile();
-				if (selectedFile == null) {
-					return false;
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_unwanted) {
+			// TODO: Delete Prompt
+			showProgressBar();
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.setWantState(TAG, torrentID, new int[] {
+						selectedFileIndex
+					}, false, null);
 				}
-				return streamFile(selectedFile);
-			}
-			case R.id.action_sel_save: {
-				Map<?, ?> selectedFile = getSelectedFile();
-				return saveFile(selectedFile);
-			}
-			case R.id.action_sel_wanted: {
-				showProgressBar();
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.setWantState(TAG, torrentID, new int[] {
-							selectedFileIndex
-						}, true, null);
-					}
-				});
-
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_priority_up) {
+			Map<?, ?> selectedFile = getSelectedFile();
+			int priority = MapUtils.getMapInt(selectedFile,
+					TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
+					TransmissionVars.TR_PRI_NORMAL);
+			if (priority >= TransmissionVars.TR_PRI_HIGH) {
 				return true;
+			} else {
+				priority += 1;
 			}
-			case R.id.action_sel_unwanted: {
-				// TODO: Delete Prompt
-				showProgressBar();
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.setWantState(TAG, torrentID, new int[] {
-							selectedFileIndex
-						}, false, null);
-					}
-				});
-
-				return true;
-			}
-			case R.id.action_sel_priority_up: {
-				Map<?, ?> selectedFile = getSelectedFile();
-				int priority = MapUtils.getMapInt(selectedFile,
-						TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
-						TransmissionVars.TR_PRI_NORMAL);
-
-				if (priority >= TransmissionVars.TR_PRI_HIGH) {
-					return true;
-				} else {
-					priority += 1;
+			showProgressBar();
+			final int fpriority = priority;
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.setFilePriority(TAG, torrentID, new int[] {
+						selectedFileIndex
+					}, fpriority, null);
 				}
-				showProgressBar();
-				final int fpriority = priority;
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.setFilePriority(TAG, torrentID, new int[] {
-							selectedFileIndex
-						}, fpriority, null);
-					}
-				});
-
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_priority_down) {
+			Map<?, ?> selectedFile = getSelectedFile();
+			int priority = MapUtils.getMapInt(selectedFile,
+					TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
+					TransmissionVars.TR_PRI_NORMAL);
+			if (priority <= TransmissionVars.TR_PRI_LOW) {
 				return true;
+			} else {
+				priority -= 1;
 			}
-			case R.id.action_sel_priority_down: {
-				Map<?, ?> selectedFile = getSelectedFile();
-				int priority = MapUtils.getMapInt(selectedFile,
-						TransmissionVars.FIELD_TORRENT_FILES_PRIORITY,
-						TransmissionVars.TR_PRI_NORMAL);
-
-				if (priority <= TransmissionVars.TR_PRI_LOW) {
-					return true;
-				} else {
-					priority -= 1;
+			showProgressBar();
+			final int fpriority = priority;
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.setFilePriority(TAG, torrentID, new int[] {
+						selectedFileIndex
+					}, fpriority, null);
 				}
-				showProgressBar();
-				final int fpriority = priority;
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.setFilePriority(TAG, torrentID, new int[] {
-							selectedFileIndex
-						}, fpriority, null);
-					}
-				});
-				return true;
-			}
+			});
+			return true;
 		}
 		return false;
 	}

@@ -631,33 +631,29 @@ public class TorrentListFragment
 			return false;
 		}
 
-		switch (itemId) {
-			case R.id.action_filterby:
-				DialogFragmentFilterBy.openFilterByDialog(this,
-						sessionInfo.getRemoteProfile().getID());
-				return true;
-
-			case R.id.action_filter:
-				boolean newVisibility = filterEditText.getVisibility() != View.VISIBLE;
-				filterEditText.setVisibility(newVisibility ? View.VISIBLE : View.GONE);
-				if (newVisibility) {
-					filterEditText.requestFocus();
-					InputMethodManager mgr = (InputMethodManager) getActivity().getSystemService(
-							Context.INPUT_METHOD_SERVICE);
-					mgr.showSoftInput(filterEditText, InputMethodManager.SHOW_IMPLICIT);
-					VuzeEasyTracker.getInstance(this).sendEvent("uiAction", "ViewShown",
-							"FilterBox", null);
-				} else {
-					InputMethodManager mgr = (InputMethodManager) getActivity().getSystemService(
-							Context.INPUT_METHOD_SERVICE);
-					mgr.hideSoftInputFromWindow(filterEditText.getWindowToken(), 0);
-				}
-				return true;
-
-			case R.id.action_sortby:
-				DialogFragmentSortBy.open(getFragmentManager(), this);
-				return true;
-
+		if (itemId == R.id.action_filterby) {
+			DialogFragmentFilterBy.openFilterByDialog(this,
+					sessionInfo.getRemoteProfile().getID());
+			return true;
+		} else if (itemId == R.id.action_filter) {
+			boolean newVisibility = filterEditText.getVisibility() != View.VISIBLE;
+			filterEditText.setVisibility(newVisibility ? View.VISIBLE : View.GONE);
+			if (newVisibility) {
+				filterEditText.requestFocus();
+				InputMethodManager mgr = (InputMethodManager) getActivity().getSystemService(
+						Context.INPUT_METHOD_SERVICE);
+				mgr.showSoftInput(filterEditText, InputMethodManager.SHOW_IMPLICIT);
+				VuzeEasyTracker.getInstance(this).sendEvent("uiAction", "ViewShown",
+						"FilterBox", null);
+			} else {
+				InputMethodManager mgr = (InputMethodManager) getActivity().getSystemService(
+						Context.INPUT_METHOD_SERVICE);
+				mgr.hideSoftInputFromWindow(filterEditText.getWindowToken(), 0);
+			}
+			return true;
+		} else if (itemId == R.id.action_sortby) {
+			DialogFragmentSortBy.open(getFragmentManager(), this);
+			return true;
 		}
 		return handleTorrentMenuActions(sessionInfo, getCheckedIDs(listview),
 				getFragmentManager(), itemId);
@@ -671,85 +667,75 @@ public class TorrentListFragment
 		if (sessionInfo == null || ids == null || ids.length == 0) {
 			return false;
 		}
-		switch (itemId) {
-			case R.id.action_sel_remove: {
-				for (long torrentID : ids) {
-					Map<?, ?> map = sessionInfo.getTorrent(torrentID);
-					long id = MapUtils.getMapLong(map, "id", -1);
-					String name = MapUtils.getMapString(map, "name", "");
-					// TODO: One at a time!
-					DialogFragmentDeleteTorrent.open(fm, sessionInfo, name, id);
+		if (itemId == R.id.action_sel_remove) {
+			for (long torrentID : ids) {
+				Map<?, ?> map = sessionInfo.getTorrent(torrentID);
+				long id = MapUtils.getMapLong(map, "id", -1);
+				String name = MapUtils.getMapString(map, "name", "");
+				// TODO: One at a time!
+				DialogFragmentDeleteTorrent.open(fm, sessionInfo, name, id);
+			}
+			return true;
+		} else if (itemId == R.id.action_sel_start) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.startTorrents(TAG, ids, false, null);
 				}
-				return true;
-			}
-			case R.id.action_sel_start: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.startTorrents(TAG, ids, false, null);
-					}
-				});
-				return true;
-			}
-			case R.id.action_sel_forcestart: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.startTorrents(TAG, ids, true, null);
-					}
-				});
-				return true;
-			}
-			case R.id.action_sel_stop: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.stopTorrents(TAG, ids, null);
-					}
-				});
-				return true;
-			}
-			case R.id.action_sel_relocate: {
-				Map<?, ?> mapFirst = sessionInfo.getTorrent(ids[0]);
-				DialogFragmentMoveData.openMoveDataDialog(mapFirst, sessionInfo, fm);
-				return true;
-			}
-			case R.id.action_sel_move_top: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.simpleRpcCall("queue-move-top", ids, null);
-					}
-				});
-				return true;
-			}
-			case R.id.action_sel_move_up: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.simpleRpcCall("queue-move-up", ids, null);
-					}
-				});
-				return true;
-			}
-			case R.id.action_sel_move_down: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.simpleRpcCall("queue-move-down", ids, null);
-					}
-				});
-				return true;
-			}
-			case R.id.action_sel_move_bottom: {
-				sessionInfo.executeRpc(new RpcExecuter() {
-					@Override
-					public void executeRpc(TransmissionRPC rpc) {
-						rpc.simpleRpcCall("queue-move-bottom", ids, null);
-					}
-				});
-				return true;
-			}
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_forcestart) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.startTorrents(TAG, ids, true, null);
+				}
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_stop) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.stopTorrents(TAG, ids, null);
+				}
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_relocate) {
+			Map<?, ?> mapFirst = sessionInfo.getTorrent(ids[0]);
+			DialogFragmentMoveData.openMoveDataDialog(mapFirst, sessionInfo, fm);
+			return true;
+		} else if (itemId == R.id.action_sel_move_top) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.simpleRpcCall("queue-move-top", ids, null);
+				}
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_move_up) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.simpleRpcCall("queue-move-up", ids, null);
+				}
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_move_down) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.simpleRpcCall("queue-move-down", ids, null);
+				}
+			});
+			return true;
+		} else if (itemId == R.id.action_sel_move_bottom) {
+			sessionInfo.executeRpc(new RpcExecuter() {
+				@Override
+				public void executeRpc(TransmissionRPC rpc) {
+					rpc.simpleRpcCall("queue-move-bottom", ids, null);
+				}
+			});
+			return true;
 		}
 		return false;
 	}

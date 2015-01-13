@@ -306,18 +306,16 @@ public class RcmActivity
 		if (onOptionsItemSelected_drawer(item)) {
 			return true;
 		}
-		switch (item.getItemId()) {
-			case android.R.id.home:
-				finish();
-				return true;
-			case R.id.action_download: {
-				Map<?, ?> map = AndroidUtils.getFirstChecked(listview);
-				String hash = MapUtils.getMapString(map, "hash", null);
-				String name = MapUtils.getMapString(map, "title", null);
-				if (hash != null && sessionInfo != null) {
-					sessionInfo.openTorrent(RcmActivity.this, hash, name);
-				}
-				break;
+		int itemId = item.getItemId();
+		if (itemId == android.R.id.home) {
+			finish();
+			return true;
+		} else if (itemId == R.id.action_download) {
+			Map<?, ?> map = AndroidUtils.getFirstChecked(listview);
+			String hash = MapUtils.getMapString(map, "hash", null);
+			String name = MapUtils.getMapString(map, "title", null);
+			if (hash != null && sessionInfo != null) {
+				sessionInfo.openTorrent(RcmActivity.this, hash, name);
 			}
 		}
 		return super.onOptionsItemSelected(item);
