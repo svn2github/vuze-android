@@ -27,6 +27,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpProtocolParams;
 
 import android.annotation.TargetApi;
@@ -71,6 +72,8 @@ public class RPC
 
 			BasicHttpParams basicHttpParams = new BasicHttpParams();
 			HttpProtocolParams.setUserAgent(basicHttpParams, "Vuze Android Remote");
+			HttpConnectionParams.setConnectionTimeout(basicHttpParams, 200);
+			HttpConnectionParams.setSoTimeout(basicHttpParams, 900);
 			HttpClient httpclient = new DefaultHttpClient(basicHttpParams);
 
 			// Prepare a request object
