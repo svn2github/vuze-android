@@ -19,9 +19,9 @@ package com.vuze.android.remote;
 
 import java.util.*;
 
-import android.content.Context;
+import com.vuze.util.MapUtils;
 
-import com.aelitis.azureus.util.MapUtils;
+import android.content.Context;
 
 @SuppressWarnings({
 	"rawtypes",

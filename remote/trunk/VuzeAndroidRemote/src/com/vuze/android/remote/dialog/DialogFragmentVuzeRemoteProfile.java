@@ -27,10 +27,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 
-import com.aelitis.azureus.util.JSONUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.AlertDialogBuilder;
 import com.vuze.android.remote.dialog.DialogFragmentGenericRemoteProfile.GenericRemoteProfileListener;
+import com.vuze.util.JSONUtils;
 
 public class DialogFragmentVuzeRemoteProfile
 	extends DialogFragment

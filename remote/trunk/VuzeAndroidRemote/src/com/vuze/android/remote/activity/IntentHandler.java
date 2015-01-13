@@ -35,11 +35,11 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.ListView;
 
-import com.aelitis.azureus.util.JSONUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.dialog.*;
 import com.vuze.android.remote.dialog.DialogFragmentGenericRemoteProfile.GenericRemoteProfileListener;
 import com.vuze.android.remote.rpc.RPC;
+import com.vuze.util.JSONUtils;
 
 public class IntentHandler
 	extends ActionBarActivity

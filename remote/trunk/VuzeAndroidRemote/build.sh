@@ -12,6 +12,7 @@ if [[ "$SRCDIR" == *VuzeRemoteProject ]]; then
 	echo build.sh does not need to be called.  Just use ant.
 	exit
 fi
+BUILDS_DIR=`cd ${SRCDIR}/../builds;pwd`
 GITDIR=/Volumes/Workspace/git
 
 ver=$(sed -n 's/.*android:versionCode="\([^"+]*\)".*/\1/p' ${SRCDIR}/AndroidManifest.xml)
@@ -26,6 +27,14 @@ fi
 
 DSTDIR=${SRCDIR}-${NEXTVER}
 DSTDIR_APP=${DSTDIR}/VuzeRemoteProject
+ARCHIVE_DIR=`cd $(dirname $DSTDIR)/old;pwd`
+
+echo SRCDIR=${SRCDIR}
+echo DSTDIR=${DSTDIR}
+echo DSTDIR_APP=${DSTDIR_APP}
+echo ARCHIVE_DIR=${ARCHIVE_DIR}
+echo BUILDS_DIR=${BUILDS_DIR}
+
 rm -rf "${DSTDIR}"
 
 echo Copying ${SRCDIR} to ${DSTDIR_APP}
@@ -34,7 +43,6 @@ cp -r "${SRCDIR}" "${DSTDIR_APP}"
 cp -r "${SRCDIR}/../android-pull-to-refresh" "${DSTDIR}"
 cp -r "${SRCDIR}/../PagerSlidingTabStrip" "${DSTDIR}"
 cp -r "${SRCDIR}/../appcompat" "${DSTDIR}"
-cp -r "${SRCDIR}/../google-play-services_lib" "${DSTDIR}"
 cp -r "${GITDIR}/android-switch-backport" "${DSTDIR}"
 cp -r "${GITDIR}/MaterialEditText" "${DSTDIR}"
 
@@ -45,8 +53,6 @@ if [ "$1" != "debug" ]; then
 	sed -i .bk -e "s/DEBUG_MENU = true/DEBUG_MENU = false/g" "${DSTDIR_APP}/src/com/vuze/android/remote/AndroidUtils.java"
 	rm -r "${DSTDIR_APP}/src/com/vuze/android/remote/AndroidUtils.java.bk"
 fi
-rm -r "${DSTDIR_APP}/src/com/aelitis/azureus/util/JSONUtilsGSON.java"
-rm -r "${DSTDIR_APP}/src/com/aelitis/azureus/util/ObjectTypeAdapterLong.java"
 find "${DSTDIR_APP}" -name '.svn' -exec rm -rf {} \;
 find "${DSTDIR_APP}/src" -name '*.txt' -exec rm -rf {} \;
 
@@ -58,8 +64,6 @@ sed -i .bk -e "s/=..\/..\/..\/..\/..\/workspace-droid/=../g" "project.properties
 android update project --path .
 cd "${DSTDIR}/PagerSlidingTabStrip"
 sed -i .bk -e "s/=..\/..\/..\/..\/..\/workspace-droid/=../g" "project.properties"
-android update project --path .
-cd "${DSTDIR}/google-play-services_lib"
 android update project --path .
 cd "${DSTDIR}/MaterialEditText/library/src/main"
 sed -i .bk -e "s/=..\/..\/..\/..\/..\/workspace-droid/=..\/..\/..\/../g" "project.properties"
@@ -75,15 +79,20 @@ ant clean > /dev/null
 
 echo Build
 ant ${BUILDTYPE}
-cp -f "${DSTDIR_APP}/bin/VuzeAndroidRemote-release.apk" ${SRCDIR}/../builds/VuzeAndroidRemote-${NEXTVER}.apk
+cp -f "${DSTDIR_APP}/bin/VuzeAndroidRemote-release.apk" ${BUILDS_DIR}/VuzeAndroidRemote-${NEXTVER}.apk
+mv "${DSTDIR_APP}/bin/proguard" "${DSTDIR_APP}/"
 ant clean > /dev/null
 
 cd ${DSTDIR}
-echo Compressing source
+rm -rf `find . -name .svn`
+rm -rf `find . -name .git`
+rm -rf `find . -name .gitignore`
+rm -rf `find . -name .DS_Store`
+echo Compressing source and move to ${BUILDS_DIR}
 tar -czf "${DSTDIR}.tar.gz" *
-mv -fv "${DSTDIR}.tar.gz" ${SRCDIR}/../builds
-cd $DSTDIR/..
-echo Moving $DSTDIR to ../old
-cp -R $DSTDIR old
+mv -fv "${DSTDIR}.tar.gz" ${BUILDS_DIR}
+
+echo Moving $DSTDIR to $ARCHIVE_DIR
+cp -R $DSTDIR ${ARCHIVE_DIR}
 rm -rf $DSTDIR
 cd ${SRCDIR}

@@ -18,7 +18,8 @@ package com.vuze.android.remote;
 
 import java.util.*;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -30,8 +31,6 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-
-import com.aelitis.azureus.util.MapUtils;
 
 public class RcmAdapter
 	extends BaseAdapter

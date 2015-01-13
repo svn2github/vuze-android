@@ -31,10 +31,10 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.ValueStringArray;
 import com.vuze.android.remote.fragment.SessionInfoGetter;
+import com.vuze.util.MapUtils;
 
 public class DialogFragmentFilterBy
 	extends DialogFragment

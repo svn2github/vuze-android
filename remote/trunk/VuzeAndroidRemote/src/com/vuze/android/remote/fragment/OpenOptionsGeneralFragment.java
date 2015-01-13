@@ -20,8 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
@@ -36,7 +34,6 @@ import android.view.View.OnClickListener;
 import android.widget.*;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.activity.TorrentOpenOptionsActivity;
@@ -44,6 +41,8 @@ import com.vuze.android.remote.dialog.DialogFragmentMoveData;
 import com.vuze.android.remote.rpc.ReplyMapReceivedListener;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 public class OpenOptionsGeneralFragment
 	extends Fragment

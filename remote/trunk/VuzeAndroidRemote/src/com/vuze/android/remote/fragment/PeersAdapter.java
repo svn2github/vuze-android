@@ -20,17 +20,16 @@ package com.vuze.android.remote.fragment;
 import java.text.NumberFormat;
 import java.util.*;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.TextViewFlipper.FlipValidator;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 public class PeersAdapter
 	extends BaseAdapter

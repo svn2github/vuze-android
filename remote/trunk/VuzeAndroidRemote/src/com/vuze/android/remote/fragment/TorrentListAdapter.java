@@ -26,9 +26,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.TextViewFlipper.FlipValidator;
+import com.vuze.util.MapUtils;
 
 public class TorrentListAdapter
 	extends BaseAdapter

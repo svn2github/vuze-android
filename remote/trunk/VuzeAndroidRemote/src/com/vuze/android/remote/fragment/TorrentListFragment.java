@@ -45,7 +45,6 @@ import android.widget.*;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.handmark.pulltorefresh.library.*;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnPullEventListener;
@@ -61,6 +60,7 @@ import com.vuze.android.remote.dialog.DialogFragmentSortBy.SortByDialogListener;
 import com.vuze.android.remote.fragment.TorrentListAdapter.TorrentFilter;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.MapUtils;
 
 /**
  * Handles a ListView that shows Torrents

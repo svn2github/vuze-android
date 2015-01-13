@@ -22,6 +22,9 @@ import java.util.*;
 
 import org.json.JSONException;
 
+import com.vuze.util.JSONUtils;
+import com.vuze.util.MapUtils;
+
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -35,9 +38,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.text.format.DateUtils;
 import android.util.Log;
-
-import com.aelitis.azureus.util.JSONUtils;
-import com.aelitis.azureus.util.MapUtils;
 
 @SuppressWarnings("rawtypes")
 public class AppPreferences

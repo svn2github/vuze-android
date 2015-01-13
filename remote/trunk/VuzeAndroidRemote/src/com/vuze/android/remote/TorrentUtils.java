@@ -19,7 +19,7 @@ package com.vuze.android.remote;
 import java.util.List;
 import java.util.Map;
 
-import com.aelitis.azureus.util.MapUtils;
+import com.vuze.util.MapUtils;
 
 public class TorrentUtils
 {

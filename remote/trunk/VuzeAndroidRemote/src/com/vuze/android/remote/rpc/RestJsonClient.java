@@ -39,8 +39,8 @@ import android.net.http.AndroidHttpClient;
 import android.os.Build;
 import android.util.Log;
 
-import com.aelitis.azureus.util.JSONUtils;
 import com.vuze.android.remote.AndroidUtils;
+import com.vuze.util.JSONUtils;
 
 /**
  * Connects to URL, decodes JSON results

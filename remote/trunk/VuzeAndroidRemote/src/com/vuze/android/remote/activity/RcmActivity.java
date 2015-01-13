@@ -34,7 +34,6 @@ import android.view.View;
 import android.widget.*;
 import android.widget.AdapterView.OnItemClickListener;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.handmark.pulltorefresh.library.*;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnPullEventListener;
@@ -48,6 +47,7 @@ import com.vuze.android.remote.dialog.DialogFragmentRcmAuth.DialogFragmentRcmAut
 import com.vuze.android.remote.fragment.TorrentListFragment;
 import com.vuze.android.remote.rpc.ReplyMapReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.MapUtils;
 
 /**
  * Activity to hold {@link TorrentListFragment}.  Used for narrow screens.

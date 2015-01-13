@@ -21,8 +21,6 @@ import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.SearchManager;
@@ -55,6 +53,7 @@ import com.vuze.android.remote.dialog.DialogFragmentSessionSettings;
 import com.vuze.android.remote.fragment.*;
 import com.vuze.android.remote.fragment.TorrentListFragment.OnTorrentSelectedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.DisplayFormatters;
 
 /**
  * Torrent View -- containing:<br>

@@ -21,19 +21,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.content.Context;
 import android.content.res.Resources;
 import android.text.SpannableStringBuilder;
 import android.text.format.DateUtils;
 import android.view.View;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.activity.TorrentDetailsActivity;
 import com.vuze.android.remote.fragment.TorrentListAdapter.ViewHolder;
 import com.vuze.android.remote.fragment.TorrentListAdapter.ViewHolderFlipValidator;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 /**
  * Fills one Torrent info row.

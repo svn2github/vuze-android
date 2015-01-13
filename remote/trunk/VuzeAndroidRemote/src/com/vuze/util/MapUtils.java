@@ -15,7 +15,7 @@
  * 
  */
 
-package com.aelitis.azureus.util;
+package com.vuze.util;
 
 import java.util.Arrays;
 import java.util.List;

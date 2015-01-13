@@ -20,9 +20,9 @@ package com.vuze.android.remote.fragment;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.SessionInfo;
 import com.vuze.android.remote.TransmissionVars;
+import com.vuze.util.MapUtils;
 
 public class FilesAdapterDisplayFolder
 	extends FilesAdapterDisplayObject

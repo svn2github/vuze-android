@@ -53,7 +53,6 @@ import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.handmark.pulltorefresh.library.*;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.OnPullEventListener;
@@ -66,6 +65,7 @@ import com.vuze.android.remote.activity.ImageViewer;
 import com.vuze.android.remote.activity.VideoViewer;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.MapUtils;
 
 /**
  * Shows the list of files with a torrent

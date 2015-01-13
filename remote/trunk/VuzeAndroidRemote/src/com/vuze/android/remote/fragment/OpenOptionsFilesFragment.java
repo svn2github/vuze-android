@@ -19,8 +19,6 @@ package com.vuze.android.remote.fragment;
 import java.util.List;
 import java.util.Map;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.annotation.TargetApi;
 import android.content.Intent;
 import android.os.Build;
@@ -34,7 +32,6 @@ import android.widget.*;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.handmark.pulltorefresh.library.PullToRefreshBase.Mode;
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
 import com.vuze.android.remote.*;
@@ -42,6 +39,8 @@ import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.activity.TorrentViewActivity;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 public class OpenOptionsFilesFragment
 	extends Fragment

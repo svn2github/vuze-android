@@ -44,11 +44,11 @@ import android.text.Spanned;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.alibaba.fastjson.util.Base64;
 import com.vuze.android.remote.NetworkState.NetworkStateListener;
 import com.vuze.android.remote.activity.TorrentOpenOptionsActivity;
 import com.vuze.android.remote.rpc.*;
+import com.vuze.util.MapUtils;
 
 /**
  * Access to all the information for a session, such as:<P>

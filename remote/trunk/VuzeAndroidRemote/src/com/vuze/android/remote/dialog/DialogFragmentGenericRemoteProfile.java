@@ -28,9 +28,9 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
 
-import com.aelitis.azureus.util.JSONUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.AndroidUtils.AlertDialogBuilder;
+import com.vuze.util.JSONUtils;
 
 public class DialogFragmentGenericRemoteProfile
 	extends DialogFragment

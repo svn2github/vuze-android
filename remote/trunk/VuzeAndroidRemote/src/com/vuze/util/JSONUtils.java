@@ -15,7 +15,7 @@
  * 
  */
 
-package com.aelitis.azureus.util;
+package com.vuze.util;
 
 import java.io.Reader;
 import java.util.*;

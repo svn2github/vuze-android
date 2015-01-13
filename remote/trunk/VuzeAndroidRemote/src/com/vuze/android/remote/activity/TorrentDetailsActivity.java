@@ -33,11 +33,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.NetworkState.NetworkStateListener;
 import com.vuze.android.remote.fragment.*;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
+import com.vuze.util.MapUtils;
 
 /**
  * Activity to hold {@link TorrentDetailsFragment}.  Used for narrow screens.

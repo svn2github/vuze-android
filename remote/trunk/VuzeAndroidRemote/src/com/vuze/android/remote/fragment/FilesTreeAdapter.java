@@ -21,8 +21,6 @@ import java.text.NumberFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.content.Context;
 import android.content.res.Resources;
 import android.util.Log;
@@ -32,11 +30,12 @@ import android.view.View.OnClickListener;
 import android.widget.*;
 import android.widget.RelativeLayout.LayoutParams;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.TextViewFlipper.FlipValidator;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 public class FilesTreeAdapter
 	extends BaseAdapter

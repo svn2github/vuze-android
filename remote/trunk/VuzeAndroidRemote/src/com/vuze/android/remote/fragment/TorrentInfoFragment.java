@@ -18,8 +18,6 @@ package com.vuze.android.remote.fragment;
 
 import java.util.*;
 
-import org.gudy.azureus2.core3.util.DisplayFormatters;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -28,11 +26,12 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
 import com.vuze.android.remote.SessionInfo.RpcExecuter;
 import com.vuze.android.remote.rpc.TorrentListReceivedListener;
 import com.vuze.android.remote.rpc.TransmissionRPC;
+import com.vuze.util.DisplayFormatters;
+import com.vuze.util.MapUtils;
 
 public class TorrentInfoFragment
 	extends TorrentDetailPage

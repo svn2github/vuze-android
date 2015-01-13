@@ -25,9 +25,9 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import android.app.Activity;
 import android.util.Log;
 
-import com.aelitis.azureus.util.JSONUtils;
-import com.aelitis.azureus.util.MapUtils;
 import com.vuze.android.remote.*;
+import com.vuze.util.JSONUtils;
+import com.vuze.util.MapUtils;
 
 @SuppressWarnings("rawtypes")
 public class TransmissionRPC

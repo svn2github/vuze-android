@@ -21,28 +21,17 @@ import android.content.Context;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
-
-public class VuzeEasyTracker 
+public class VuzeEasyTracker
 {
 	private static IVuzeEasyTracker vuzeEasyTracker;
 
 	public static IVuzeEasyTracker getInstance(Context ctx) {
 		synchronized (VuzeEasyTracker.class) {
 			if (vuzeEasyTracker == null) {
-				int available = GooglePlayServicesUtil.isGooglePlayServicesAvailable(ctx);
-				if (available == ConnectionResult.SUCCESS) {
-					if (AndroidUtils.DEBUG) {
-						Log.d("VET", "Using GooglePlay GA");
-					}
-					vuzeEasyTracker = new VuzeEasyTrackerNew(ctx);
-				} else {
-					if (AndroidUtils.DEBUG) {
-						Log.d("VET", "Using old GA API");
-					}
-					vuzeEasyTracker = new VuzeEasyTrackerOld(ctx);
+				if (AndroidUtils.DEBUG) {
+					Log.d("VET", "Using old GA API");
 				}
+				vuzeEasyTracker = new VuzeEasyTrackerOld(ctx);
 			}
 		}
 		return vuzeEasyTracker;
