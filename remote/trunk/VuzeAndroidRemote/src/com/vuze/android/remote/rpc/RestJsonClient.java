@@ -40,6 +40,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.vuze.android.remote.AndroidUtils;
+import com.vuze.android.remote.Base64Encode;
 import com.vuze.util.JSONUtils;
 
 /**
@@ -50,7 +51,7 @@ public class RestJsonClient
 {
 	private static final String TAG = "RPC";
 
-	private static final boolean DEBUG_DETAILED = false;
+	private static final boolean DEBUG_DETAILED = true;
 
 	private static final boolean USE_STRINGBUFFER = true;
 
@@ -90,12 +91,20 @@ public class RestJsonClient
 			}
 
 			//AndroidHttpClient.newInstance("Vuze Android Remote");
+
+			// This doesn't set the "Authorization" header!?
 			httpclient.getCredentialsProvider().setCredentials(
 					new AuthScope(null, -1), creds);
 
 			// Prepare a request object
 			HttpRequestBase httpRequest = jsonPost == null ? new HttpGet(uri)
 					: new HttpPost(uri); // IllegalArgumentException
+
+			if (creds != null) {
+  			byte[] toEncode = (creds.getUserName() + ":" + creds.getPassword()).getBytes();
+  			String encoding = Base64Encode.encodeToString(toEncode, 0, toEncode.length);
+  			httpRequest.setHeader("Authorization", "Basic " + encoding);
+			}
 
 			if (jsonPost != null) {
 				HttpPost post = (HttpPost) httpRequest;
@@ -143,6 +152,10 @@ public class RestJsonClient
 			HttpEntity entity = response.getEntity();
 
 			// XXX STATUSCODE!
+			
+			StatusLine statusLine = response.getStatusLine();
+			Log.d(TAG, "StatusCode: " + 			statusLine.getStatusCode());
+
 
 			if (entity != null) {
 
@@ -209,7 +222,7 @@ public class RestJsonClient
 
 				} catch (Exception pe) {
 
-					StatusLine statusLine = response.getStatusLine();
+//					StatusLine statusLine = response.getStatusLine();
 					if (statusLine != null && statusLine.getStatusCode() == 409) {
 						throw new RPCException(response, "409");
 					}

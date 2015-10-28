@@ -719,6 +719,23 @@ public class TransmissionRPC
 				callID, l, torrentIDs, fileIndexes, null));
 	}
 
+	public void addTag(String callID, long torrentID, String[] tags,
+			final ReplyMapReceivedListener l) {
+		long[] torrentIDs = {
+			torrentID
+		};
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("method", "torrent-set");
+		Map<String, Object> mapArguments = new HashMap<String, Object>();
+		map.put("arguments", mapArguments);
+		mapArguments.put("ids", torrentIDs);
+		mapArguments.put("tagAdd", tags);
+
+		sendRequest("addTag", map, new ReplyMapReceivedListenerWithRefresh(
+				callID, l, torrentIDs));
+	}
+
+
 	public void setDisplayName(String callID, long torrentID, String newName) {
 		long[] torrentIDs = {
 			torrentID

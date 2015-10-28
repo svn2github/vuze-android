@@ -74,6 +74,9 @@ public class IntentHandler
 		adapter = new ProfileArrayAdapter(this);
 
 		listview.setAdapter(adapter);
+		
+		Log.d("TUX1", "DS: " + intent.getDataString());
+
 
 		listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
@@ -85,7 +88,7 @@ public class IntentHandler
 				if (item instanceof RemoteProfile) {
 					RemoteProfile remote = (RemoteProfile) item;
 					new RemoteUtils(IntentHandler.this).openRemote(remote,
-							intent.getData() != null);
+							IntentHandler.this.getIntent().getData() != null);
 				}
 			}
 

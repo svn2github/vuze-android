@@ -270,7 +270,7 @@ lawful and non-infringing content.</string>
 	<string name="open_options_lbl_saveloc">Save Location</string>
 	<string name="one_click_edit_mode">One Click Edit Mode</string>
 	<string name="openoptions_sw_position">Initial State</string>
-	<string name="openoptions_sw_state">Queue Position:</string>
+	<string name="openoptions_sw_state">Queue Position</string>
 	<string name="openoptions_btn_editname">Edit Name</string>
 	<string name="openoptions_btn_editdir">Edit Save Location</string>
 	<string name="filerow_btn_dl">Toggle Want State</string>
@@ -300,4 +300,6 @@ Could not open <b>%1$s</b>.  Since you are on Kitkat (Android v4), it\'s most li
 	<string name="torrent_row_line_split" translatable="false"> • </string>
 	<string name="torrent_row_share_ratio_circle">%.01f\nShare\nRatio</string>
 	<string name="torrent_row_share_ratio">%.01f Share Ratio</string>
+	<string name="openoptions_lbl_tags">Tags</string>
+	<string name="connerror_pairing">Could not retrieve the location of your remote.  Please ensure you have internet access and try again.</string>
 </resources>

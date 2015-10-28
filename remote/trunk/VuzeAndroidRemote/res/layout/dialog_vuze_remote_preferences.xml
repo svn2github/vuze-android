@@ -21,8 +21,8 @@
 			android:hint="@string/profile_nickname"
 			android:imeOptions="actionNext"
 			android:singleLine="true"
-			app:floatingLabel="highlight"
-			app:helperText="@string/profile_nick_explain"
+			app:met_floatingLabel="highlight"
+			app:met_helperText="@string/profile_nick_explain"
 			tools:ignore="MissingRegistered" >
 
 			<requestFocus />
@@ -36,8 +36,8 @@
 			android:hint="@string/access_code_hint"
 			android:imeOptions="actionNext"
 			android:singleLine="true"
-			app:floatingLabel="highlight"
-			app:helperText="@string/profile_ac_explain"
+			app:met_floatingLabel="highlight"
+			app:met_helperText="@string/profile_ac_explain"
 			tools:ignore="MissingRegistered" />
 
 	</LinearLayout>

@@ -31,6 +31,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpProtocolParams;
@@ -177,10 +178,18 @@ public class AndroidUtils
 
 	public static void showConnectionError(Activity activity, Throwable t,
 			boolean allowContinue) {
+
+		if (t instanceof HttpHostConnectException) {
+			String message = t.getMessage();
+			if (message != null && message.contains("pair.vuze.com")) {
+				showConnectionError(activity, R.string.connerror_pairing, allowContinue);
+				return;
+			}
+		}
 		String message = "";
 		while (t != null) {
 			String newMessage = t.getMessage();
-			if (message.contains(newMessage)) {
+			if (newMessage != null && message.contains(newMessage)) {
 				t = t.getCause();
 				continue;
 			}
