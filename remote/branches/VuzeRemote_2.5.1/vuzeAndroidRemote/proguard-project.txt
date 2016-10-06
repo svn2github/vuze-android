@@ -1,0 +1,106 @@
+# To enable ProGuard in your project, edit project.properties
+# to define the proguard.config property as described in that file.
+#
+# Add project specific ProGuard rules here.
+# By default, the flags in this file are appended to flags specified
+# in ${sdk.dir}/tools/proguard/proguard-android.txt
+# You can edit the include path and order by changing the ProGuard
+# include property in project.properties.
+#
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
+
+# Add any project specific keep options here:
+
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
+
+-keepnames class com.android.util.Base64 {
+   public *;
+}
+
+-keep public class com.rengwuxian.materialedittext.MaterialEditText
+
+-keep public class com.vuze.android.remote.rpc.RPCException
+
+
+############################
+# GA
+############################
+-keep class * extends java.util.ListResourceBundle {
+    protected Object[][] getContents();
+}
+
+-keep public class com.google.android.gms.common.internal.safeparcel.SafeParcelable {
+    public static final *** NULL;
+}
+
+-keepnames @com.google.android.gms.common.annotation.KeepName class *
+-keepclassmembernames class * {
+    @com.google.android.gms.common.annotation.KeepName *;
+}
+
+-keepnames class * implements android.os.Parcelable {
+    public static final ** CREATOR;
+}
+############################
+
+# Picasso
+#-dontwarn com.squareup.okhttp.**
+-keep class com.squareup.okhttp.** { *; }
+-keep interface com.squareup.okhttp.** { *; }
+-dontwarn com.squareup.okhttp.**
+-dontwarn okio.**
+
+#############
+# Vuze Core
+#############
+
+# plugins end up using non-plugin interface classes, so keep all vuze core names
+-keepnames class com.aelitis.**
+-keepnames class org.gudy.**
+
+
+-keep class com.vuze.android.remote.service.VuzeServiceInit { *; }
+-keep class com.vuze.android.core.az.** { *; }
+
+-keep class com.aelitis.azureus.plugins.** { *; }
+-keep class com.aelitis.plugins.** { *; }
+-keep,includedescriptorclasses class com.vuze.client.plugins.** { *; }
+#-keep class org.gudy.azureus2.pluginsimpl.** { *; }
+-keep,includedescriptorclasses class org.gudy.azureus2.pluginsimpl.local.** { *; }
+#-keep class org.gudy.azureus2.platform.** { *; }
+-keep class org.gudy.azureus2.platform.* { *; }
+-keep class org.gudy.azureus2.update.** { *; }
+-keep class lbms.plugins.mldht.** { *; }
+#-keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.gudy.bouncycastle.jce.provider.** { *; }
+-keep class org.gudy.azureus2.ui.telnet.** { *; }
+-keep class org.gudy.azureus2.core3.util.protocol.** { *; }
+-keep class com.aelitis.azureus.core.diskmanager.cache.impl.CacheFileManagerImpl { *; }
+-keep class com.aelitis.azureus.core.subs.SubscriptionManagerFactory { *; }
+-keep class com.aelitis.azureus.core.subs.impl.SubscriptionManagerImpl { *; }
+-keep class com.aelitis.azureus.core.peermanager.unchoker.UnchokerFactory { *; }
+-keep class org.gudy.azureus2.core3.torrentdownloader.impl.TorrentDownloader* { *; }
+-keep class org.gudy.azureus2.pluginsimpl.local.utils.FormattersImpl { *; }
+-keep class com.aelitis.azureus.core.util.bloom.** { *; }
+
+-assumenosideeffects class org.bouncycastle.jce.provider.** { *; }
+-dontwarn org.gudy.azureus2.platform.macosx.**
+-dontwarn org.gudy.azureus2.platform.win32.**
+-dontwarn com.aelitis.azureus.core.speedmanager.impl.v1.**
+-dontwarn com.aelitis.azureus.core.speedmanager.impl.v3.**
+
+#-libraryjars libs/vuzeandroidcore.jar(!org/gudy/azureus2/platform/macosx/**)
+#-libraryjars libs/vuzeandroidcore.jar(!org/gudy/azureus2/platform/win32/**)
+
+
+# Not needed for Android, but instantiated via classloader
+#-keep class com.aelitis.azureus.core.devices.impl.DeviceManagerImpl { *; }
+
+#############
+
