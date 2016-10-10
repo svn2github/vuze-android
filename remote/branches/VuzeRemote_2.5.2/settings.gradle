@@ -1,3 +1,0 @@
-include ':recyclerview-fastscroll', ':android-numberpicker'
-include ':pagerSlidingTabStrip'
-include ':vuzeAndroidRemote'

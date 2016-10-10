@@ -1,9 +1,0 @@
--optimizationpasses 5
-
--useuniqueclassmembernames
-
--keepattributes SourceFile,LineNumberTable
-
--flattenpackagehierarchy
-
--mergeinterfacesaggressively
